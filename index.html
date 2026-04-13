@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JumbleJump | Joyful English Sentence Builder</title>
+    
+    <!-- External Libraries & CDN -->
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SortableJS for Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Canvas Confetti for Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- SheetJS for Excel Uploads/Downloads -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF for Generating Custom Certificates -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Firebase (Auth + Firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Paste your Firebase project credentials here once, then keep app logic unchanged.
+        window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+  authDomain: "jumblejump-prod.firebaseapp.com",
+  projectId: "jumblejump-prod",
+  storageBucket: "jumblejump-prod.firebasestorage.app",
+  messagingSenderId: "25185167776",
+  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
+  measurementId: "G-WWWQHS7WD3"
+        };
+
+        // Optional: Google Apps Script Web App URL for logging students to Google Sheets.
+        window.JJ_SHEETS_WEBHOOK_URL = window.JJ_SHEETS_WEBHOOK_URL || "";
+
+        // Requested teacher login bootstrap account.
+        window.JJ_DEFAULT_TEACHER = window.JJ_DEFAULT_TEACHER || {
+            name: "Ayman Nasser",
+            email: "aym.naser78@gmail.com",
+            password: "1234Qwer@"
+        };
+    </script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f8fafc;
+        }
+        .drag-card {
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .drag-card:active {
+            cursor: grabbing;
+        }
+        /* Soft custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-700 select-none">
+
+    <!-- TOP NAVBAR -->
+    <header id="top-header" class="bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Brand / Logo -->
+            <div class="flex items-center gap-3">
+                <div id="logo-box" class="bg-white text-teal-600 p-2 rounded-xl shadow-md rotate-3 flex items-center justify-center">
+                    <i class="fa-solid fa-graduation-cap text-2xl animate-bounce"></i>
+                </div>
+                <div>
+                    <h1 id="brand-title" class="text-2xl font-bold tracking-wide"><span id="brand-primary">Jumble</span><span id="brand-secondary" class="text-orange-300">Jump</span></h1>
+                    <p class="text-xs opacity-90 font-medium">English Sentence Builder</p>
+                </div>
+            </div>
+
+            <!-- Header Navigation & Controls -->
+            <div class="flex items-center gap-6">
+                    <!-- Modes / Screens Tabs -->
+                <div class="hidden md:flex bg-teal-700/50 p-1 rounded-xl gap-1">
+                    <button onclick="switchTab('game-view')" id="tab-game-view" class="tab-btn px-4 py-2 rounded-lg font-semibold bg-white text-teal-600 shadow-sm transition">
+                        <i class="fa-solid fa-gamepad mr-2"></i> Play & Learn
+                    </button>
+                    <button onclick="switchTab('admin-view')" id="tab-admin-view" class="tab-btn hidden px-4 py-2 rounded-lg font-semibold text-white hover:bg-white/10 transition">
+                        <i class="fa-solid fa-chart-line mr-2"></i> Admin Panel
+                    </button>
+                </div>
+
+                <!-- Firebase Connection Status + User Stats -->
+                <div class="flex items-center gap-2 bg-teal-800/40 px-3 py-2 rounded-2xl border border-teal-400/20">
+                    <div id="firebase-status-badge" class="text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-300/30">
+                        Firebase: Not Connected
+                    </div>
+                </div>
+
+                <!-- Current User Progress / Stats -->
+                <div class="flex items-center gap-4 bg-teal-800/40 px-4 py-2 rounded-2xl border border-teal-400/20">
+                    <div class="flex flex-col text-right">
+                        <span id="header-user-name" class="text-sm font-bold text-orange-200">Guest Student</span>
+                    </div>
+                    <!-- Stats Icons -->
+                    <div class="flex gap-3">
+                        <div class="flex items-center gap-1 bg-amber-500/20 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-star text-amber-300"></i>
+                            <span id="score-stars" class="font-bold">0</span>
+                        </div>
+                        <div class="flex items-center gap-1 bg-rose-500/20 px-2.5 py-1 rounded-lg">
+                            <i class="fa-solid fa-medal text-rose-300"></i>
+                            <span id="score-medals" class="font-bold">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auth/Reset Button -->
+                <button onclick="logout()" class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden md:inline">Sign Out</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- AUTHENTICATION SPLASH SCREEN (Shown before game starts) -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white max-w-xl w-full rounded-3xl p-8 shadow-2xl border-4 border-teal-500 relative overflow-hidden">
+            <!-- Decorative Background blob -->
+            <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-400 opacity-10 rounded-full blur-xl"></div>
+            
+            <div class="text-center mb-6">
+                <div class="inline-block bg-teal-100 text-teal-600 p-4 rounded-full mb-4 shadow-inner">
+                    <i class="fa-solid fa-user-graduate text-4xl animate-pulse"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800">Welcome to Jumble<span class="text-orange-500">Jump</span></h2>
+                <p class="text-slate-500 mt-2 text-sm leading-relaxed">
+                    Designed for Saudi 8th & 9th Grade English learners. Sign in or create your account to start.
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-xl">
+                    <button id="auth-tab-login" onclick="toggleAuthPane('login')" class="py-2 rounded-lg text-sm font-bold bg-white text-teal-700">Login</button>
+                    <button id="auth-tab-signup" onclick="toggleAuthPane('signup')" class="py-2 rounded-lg text-sm font-bold text-slate-600">Sign Up</button>
+                </div>
+
+                <div id="auth-login-pane" class="space-y-3">
+                    <input type="email" id="login-email" placeholder="Email" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                    <div class="relative">
+                        <input type="password" id="login-password" placeholder="Password" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                        <button type="button" onclick="togglePasswordVisibility('login-password', this)" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                    <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">Sign In</button>
+                    <button onclick="forgotPassword()" class="w-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-key"></i> Forget My Password
+                    </button>
+                    <button onclick="toggleAuthPane('signup')" class="w-full border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i> New Student? Create Account
+                    </button>
+                </div>
+
+                <div id="auth-signup-pane" class="space-y-3 hidden">
+                    <input type="text" id="signup-name" placeholder="Full Name" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                    <input type="email" id="signup-email" placeholder="Email" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                    <div class="relative">
+                        <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                        <button type="button" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                    <select id="signup-grade" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                        <option value="8th Grade">8th Grade</option>
+                        <option value="9th Grade">9th Grade</option>
+                    </select>
+                    <button onclick="handleSignup()" class="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i> Create Student Account
+                    </button>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <p id="auth-status" class="text-xs text-amber-800">
+                        Students use Sign Up first, then Sign In. Teacher login: aym.naser78@gmail.com / 1234Qwer@
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-grow flex flex-col gap-6">
+
+        <!-- ============================================== -->
+        <!-- 1. PLAY & LEARN ZONE (Student Game View)       -->
+        <!-- ============================================== -->
+        <section id="game-view" class="flex flex-col gap-6">
+
+            <!-- Progress Dashboard / Levels Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Beginner Level Card -->
+                <div id="card-Beginner" onclick="selectLevel('Beginner')" class="bg-white rounded-3xl p-6 shadow-sm border-2 border-teal-500 cursor-pointer transition hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                    <div id="target-label-Beginner" class="absolute top-0 right-0 bg-teal-500 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">100 Sentences</div>
+                    <div>
+                        <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-lg font-bold">Level 1</span>
+                        <h3 class="text-xl font-bold text-slate-800 mt-2">Beginner</h3>
+                        <p class="text-slate-500 text-sm mt-1">Simple subject, verb, and object ordering.</p>
+                    </div>
+                    <div class="mt-4">
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                            <div id="prog-bar-Beginner" class="bg-teal-500 h-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-400 mt-1 font-semibold">
+                            <span>Sentences Completed</span>
+                            <span id="prog-count-Beginner">0 / 100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Intermediate Level Card -->
+                <div id="card-Intermediate" onclick="selectLevel('Intermediate')" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 cursor-pointer transition hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[140px] opacity-75">
+                    <div id="lock-Intermediate" class="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center z-10 transition">
+                        <div id="lock-text-Intermediate" class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-lock"></i> Locked until Beginner 100% complete
+                        </div>
+                    </div>
+                    <div id="target-label-Intermediate" class="absolute top-0 right-0 bg-slate-400 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">100 Sentences</div>
+                    <div>
+                        <span class="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-lg font-bold">Level 2</span>
+                        <h3 class="text-xl font-bold text-slate-800 mt-2">Intermediate</h3>
+                        <p class="text-slate-500 text-sm mt-1">Prepositions, adverbs, and complex objects.</p>
+                    </div>
+                    <div class="mt-4">
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                            <div id="prog-bar-Intermediate" class="bg-slate-500 h-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-400 mt-1 font-semibold">
+                            <span>Sentences Completed</span>
+                            <span id="prog-count-Intermediate">0 / 100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Level Card -->
+                <div id="card-Advanced" onclick="selectLevel('Advanced')" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 cursor-pointer transition hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[140px] opacity-75">
+                    <div id="lock-Advanced" class="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center z-10 transition">
+                        <div id="lock-text-Advanced" class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-lock"></i> Locked until Intermediate 100% complete
+                        </div>
+                    </div>
+                    <div id="target-label-Advanced" class="absolute top-0 right-0 bg-slate-400 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">100 Sentences</div>
+                    <div>
+                        <span class="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-lg font-bold">Level 3</span>
+                        <h3 class="text-xl font-bold text-slate-800 mt-2">Advanced</h3>
+                        <p class="text-slate-500 text-sm mt-1">Conjunctions, conditional clauses, and full structures.</p>
+                    </div>
+                    <div class="mt-4">
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                            <div id="prog-bar-Advanced" class="bg-slate-500 h-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-400 mt-1 font-semibold">
+                            <span>Sentences Completed</span>
+                            <span id="prog-count-Advanced">0 / 100</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Board & Grammar Instructions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Left/Main Interactive Drag-and-Drop Column -->
+                <div class="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between min-h-[450px]">
+                    
+                    <!-- Game Header & Controls -->
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                        <div>
+                            <span id="current-level-badge" class="bg-teal-100 text-teal-800 font-bold px-3 py-1 rounded-xl text-xs">Beginner Level</span>
+                            <h2 class="text-2xl font-bold text-slate-800 mt-1">Sentence Builder Workspace</h2>
+                            <p class="text-slate-500 text-sm">Drag and drop the word chips below to arrange them into a grammatically correct sentence.</p>
+                        </div>
+                    </div>
+
+                    <!-- Scrambled Words / Builder Container -->
+                    <div class="flex-grow flex flex-col justify-center my-8">
+                        <div class="text-center mb-6">
+                            <i class="fa-solid fa-puzzle-piece text-4xl text-orange-400 opacity-60 mb-2"></i>
+                            <p class="text-sm text-slate-400 font-medium">Drag the word cards and drop them in the correct order!</p>
+                        </div>
+
+                        <!-- Dropzone for Sorting Words -->
+                        <div id="word-sorting-zone" class="flex flex-wrap gap-3 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 min-h-[120px] items-center justify-center">
+                            <!-- Words will be dynamically injected here via JS -->
+                        </div>
+
+                        <!-- Validation Message Box -->
+                        <div id="game-feedback" class="mt-6 text-center text-sm font-bold p-3 rounded-xl hidden"></div>
+                    </div>
+
+                    <!-- Footer Controls & Spotlight Validation -->
+                    <div class="border-t border-slate-100 pt-4 flex justify-between items-center gap-4">
+                        <div class="flex gap-2">
+                            <!-- Shuffle words again -->
+                            <button onclick="shuffleCurrentSentence()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm transition flex items-center gap-2">
+                                <i class="fa-solid fa-shuffle"></i> Shuffle
+                            </button>
+                            <button id="btn-hint" onclick="showHint()" class="hidden px-4 py-3 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-xl font-bold text-sm transition flex items-center gap-2">
+                                <i class="fa-solid fa-lightbulb"></i> Hint
+                            </button>
+                        </div>
+
+                        <!-- Check / Next Action Buttons -->
+                        <div class="flex gap-2">
+                            <span id="mastery-counter" class="px-3 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm">Correct Rearranges: 0/3</span>
+                            <button id="btn-check" onclick="checkAnswer()" class="px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2">
+                                <i class="fa-solid fa-repeat"></i> Rearrange
+                            </button>
+                            <button id="btn-next" onclick="nextSentence()" disabled class="px-6 py-3 bg-orange-300 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2 cursor-not-allowed">
+                                Submit & Next <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Sidebar: Grammar Rules, Motivation, Rewards & Certificates -->
+                <div class="flex flex-col gap-6">
+
+                    <!-- Grammar Spotlight / English Rules -->
+                    <div class="bg-orange-50 border-l-4 border-orange-400 rounded-r-2xl p-5 shadow-sm">
+                        <div class="flex items-center gap-2 text-orange-600 font-bold mb-2">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            <h3>Grammar Spotlight</h3>
+                        </div>
+                        <p id="grammar-rule-desc" class="text-sm text-slate-600 leading-relaxed font-medium">
+                            Rearrange the words first. Grammar hint appears after a wrong attempt when you tap Hint.
+                        </p>
+                    </div>
+
+                    <!-- Motivational Quote / Praise -->
+                    <div class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-3xl p-5 text-center flex flex-col justify-center items-center shadow-sm flex-grow">
+                        <div class="bg-indigo-500 text-white p-3 rounded-full shadow-md mb-3">
+                            <i class="fa-solid fa-quote-left text-xl"></i>
+                        </div>
+                        <p id="motivational-quote" class="text-indigo-900 font-semibold text-lg italic leading-relaxed">
+                            "Every correct sentence makes your writing shine brighter!"
+                        </p>
+                        <p id="teacher-note-text" class="text-xs text-indigo-700 mt-3 font-semibold leading-relaxed">Teacher Note: Keep practicing word order every day.</p>
+                        <span class="text-xs text-indigo-400 font-bold mt-2 uppercase tracking-wider">Teacher's Note</span>
+                    </div>
+
+                    <!-- Certificate Generation Section -->
+                    <div class="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                        <div class="w-16 h-16 bg-amber-100 text-amber-500 flex items-center justify-center rounded-2xl mb-3">
+                            <i class="fa-solid fa-award text-3xl"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-lg">Official Certificates</h4>
+                        <p id="certificate-target-note" class="text-slate-500 text-xs mt-1 mb-4">Complete 100 sentences in a level to download your colorful, stamped accomplishment certificate.</p>
+                        <div class="w-full text-left mb-4">
+                            <label class="block text-[11px] font-bold text-slate-500 mb-1">Optional Photo for Certificate</label>
+                            <input id="student-photo-upload" type="file" accept="image/*" onchange="handleStudentPhotoUpload(event)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 border border-slate-200 rounded-xl">
+                            <div id="student-photo-preview-wrap" class="hidden mt-2 items-center gap-2">
+                                <img id="student-photo-preview" class="w-12 h-12 rounded-xl object-cover border border-slate-200" alt="Student photo preview">
+                                <span class="text-[11px] text-slate-500 font-semibold">Photo ready for certificate</span>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full space-y-2">
+                            <button id="cert-btn-Beginner" onclick="downloadCertificate('Beginner')" disabled class="w-full py-2.5 bg-slate-100 text-slate-400 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 cursor-not-allowed">
+                                <i class="fa-solid fa-file-pdf"></i> Beginner Certificate
+                            </button>
+                            <button id="cert-btn-Intermediate" onclick="downloadCertificate('Intermediate')" disabled class="w-full py-2.5 bg-slate-100 text-slate-400 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 cursor-not-allowed">
+                                <i class="fa-solid fa-file-pdf"></i> Intermediate Certificate
+                            </button>
+                            <button id="cert-btn-Advanced" onclick="downloadCertificate('Advanced')" disabled class="w-full py-2.5 bg-slate-100 text-slate-400 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 cursor-not-allowed">
+                                <i class="fa-solid fa-file-pdf"></i> Advanced Certificate
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ============================================== -->
+        <!-- 2. ADMIN PANEL & DATA CORRECTION SECTION       -->
+        <!-- ============================================== -->
+        <section id="admin-view" class="hidden flex flex-col gap-6">
+
+            <!-- Teacher-only Notice -->
+            <div id="admin-login-area" class="hidden bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center max-w-md mx-auto my-12">
+                <i class="fa-solid fa-user-shield text-5xl text-teal-600 mb-4"></i>
+                <h3 class="text-xl font-bold text-slate-800">Teacher Access Only</h3>
+                <p class="text-sm text-slate-500 mt-1">Sign in using a teacher account to access Excel upload, student progress, and manual correction tools.</p>
+            </div>
+
+            <!-- Admin Content area (Visible for teacher role only) -->
+            <div id="admin-content" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Left Column: Upload Excel, Manual Correction & File Template -->
+                <div class="lg:col-span-1 space-y-6">
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i class="fa-solid fa-palette text-2xl text-fuchsia-600"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Theme Designer</h4>
+                                <p class="text-xs text-slate-500">Teacher can control font, colors, background, and logo icon/text.</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleThemeDesigner()" class="w-full mb-3 py-2.5 bg-fuchsia-500 hover:bg-fuchsia-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-sliders"></i> Open Theme Controls
+                        </button>
+                        <div id="theme-designer-panel" class="hidden space-y-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">App Background</label>
+                                <input id="theme-bg" type="color" value="#f8fafc" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Font Color</label>
+                                <input id="theme-font" type="color" value="#334155" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Font Style</label>
+                                <select id="theme-font-family" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="Fredoka, sans-serif">Fredoka</option>
+                                    <option value="Arial, sans-serif">Arial</option>
+                                    <option value="Verdana, sans-serif">Verdana</option>
+                                    <option value="Tahoma, sans-serif">Tahoma</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Base Font Size (px)</label>
+                                <input id="theme-font-size" type="number" min="14" max="22" value="16" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Header Gradient (From)</label>
+                                <input id="theme-header-from" type="color" value="#14b8a6" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Header Gradient (To)</label>
+                                <input id="theme-header-to" type="color" value="#0d9488" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Logo Accent Color</label>
+                                <input id="theme-logo-accent" type="color" value="#fdba74" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Logo Brand Text</label>
+                                <input id="theme-logo-text" type="text" value="JumbleJump" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Logo Icon Upload</label>
+                                <input id="theme-logo-upload" type="file" accept="image/*" onchange="handleThemeLogoUpload(event)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100 border border-slate-200 rounded-xl">
+                                <img id="theme-logo-preview" class="hidden mt-2 w-12 h-12 object-cover rounded-lg border border-slate-200" alt="Logo preview">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="applyThemeFromControls()" class="py-2.5 bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-bold rounded-xl text-xs">Apply</button>
+                                <button onclick="resetThemeCustomizer()" class="py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i class="fa-solid fa-certificate text-2xl text-amber-500"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Certificate Designer</h4>
+                                <p class="text-xs text-slate-500">Control certificate title, colors, background, and fonts.</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleCertificateDesigner()" class="w-full mb-3 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-sliders"></i> Open Certificate Controls
+                        </button>
+                        <div id="certificate-designer-panel" class="hidden space-y-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Certificate Title</label>
+                                <input id="cert-title" type="text" value="CERTIFICATE OF EXCELLENCE" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Awarding Line</label>
+                                <input id="cert-award-line" type="text" value="This official certificate is proudly presented to:" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Footer Line</label>
+                                <input id="cert-footer-line" type="text" value="Authorized by: JumbleJump Grammar Board" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Achievement Line 1</label>
+                                <input id="cert-achievement-line1" type="text" value="For successfully mastering 100 sentences in the Beginner Tier" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Achievement Line 2</label>
+                                <input id="cert-achievement-line2" type="text" value="conforming perfectly to Saudi 8th & 9th Grade English standards." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Background Color</label>
+                                <input id="cert-bg-color" type="color" value="#ffffff" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Border Color</label>
+                                <input id="cert-border-color" type="color" value="#0d9488" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Title Color</label>
+                                <input id="cert-title-color" type="color" value="#f97316" class="w-full h-10 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Body Font</label>
+                                <select id="cert-font-family" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="helvetica">Helvetica</option>
+                                    <option value="times">Times</option>
+                                    <option value="courier">Courier</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Certificate Logo 1</label>
+                                <input id="cert-logo1-upload" type="file" accept="image/*" onchange="handleCertificateLogoUpload(event, 1)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-slate-200 rounded-xl">
+                                <img id="cert-logo1-preview" class="hidden mt-2 w-12 h-12 object-cover rounded-lg border border-slate-200" alt="Certificate logo 1 preview">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Certificate Logo 2</label>
+                                <input id="cert-logo2-upload" type="file" accept="image/*" onchange="handleCertificateLogoUpload(event, 2)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-slate-200 rounded-xl">
+                                <img id="cert-logo2-preview" class="hidden mt-2 w-12 h-12 object-cover rounded-lg border border-slate-200" alt="Certificate logo 2 preview">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="applyCertificateSettings()" class="py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs">Apply</button>
+                                <button onclick="resetCertificateSettings()" class="py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="fa-solid fa-list-ol text-2xl text-teal-600"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Sentence Target</h4>
+                                <p class="text-xs text-slate-500">Set required sentences per level (100, 150, 200...).</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <input id="sentence-target" type="number" min="50" step="10" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            <button onclick="applySentenceTarget()" class="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold">Apply</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="fa-solid fa-note-sticky text-2xl text-indigo-600"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Teacher Note</h4>
+                                <p class="text-xs text-slate-500">Update the student note shown on the learning screen.</p>
+                            </div>
+                        </div>
+                        <textarea id="teacher-note-input" rows="3" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Write a motivational note for students..."></textarea>
+                        <button onclick="saveTeacherNote()" class="w-full mt-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                            Save Teacher Note
+                        </button>
+                    </div>
+
+                    <!-- File Template / Excel Info -->
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i class="fa-solid fa-file-excel text-3xl text-emerald-600"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Excel Data Upload</h4>
+                                <p class="text-xs text-slate-500">Upload new batches of sentences and grammar hints via .xlsx</p>
+                            </div>
+                        </div>
+
+                        <button onclick="triggerExcelPicker()" class="w-full mb-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-file-circle-plus"></i> Upload New Sentences + Grammar Hint
+                        </button>
+
+                        <!-- Template Structure Download -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                            <h5 class="text-xs font-bold text-slate-700 mb-2">Required Columns (Headers)</h5>
+                            <div class="flex flex-wrap gap-1">
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Level</span>
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Scrambled_Words</span>
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Correct_Sentence</span>
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Grammar_Rule</span>
+                                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Teacher_Note</span>
+                            </div>
+                            <button onclick="downloadExcelTemplate()" class="mt-3 w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-download"></i> Download Ready-to-Use Template
+                            </button>
+                        </div>
+
+                        <!-- Actual Upload Form via SheetJS -->
+                        <div class="space-y-3">
+                            <label class="block text-slate-600 text-xs font-bold mb-1">Upload Sentences File (include Grammar_Rule and Teacher_Note columns)</label>
+                            <input type="file" id="excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-xl">
+                            
+                            <button onclick="processExcelUpload()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                                Process Excel File & Sync Firestore
+                            </button>
+                            <label class="block text-slate-600 text-xs font-bold mb-1 mt-2">Upload Teacher Notes File (Level, Correct_Sentence, Teacher_Note)</label>
+                            <input type="file" id="teacher-note-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-200 rounded-xl">
+                            <button onclick="processTeacherNotesUpload()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                                Upload Teacher Notes
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manual Data Correction Panel -->
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-lg mb-3">Manual Data Correction</h4>
+                        <p class="text-xs text-slate-500 mb-4">Fix any broken sentence or add a custom scrambled structure directly into the database.</p>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Level Category</label>
+                                <select id="manual-level" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Correct Sentence (e.g., The smart cat drinks cold milk.)</label>
+                                <input type="text" id="manual-sentence" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Scrambled Words (Comma separated)</label>
+                                <input type="text" id="manual-scramble" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="milk, drinks, The, cat, cold, smart">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Grammar Rule Description</label>
+                                <input type="text" id="manual-rule" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Adjectives describe nouns and precede them.">
+                            </div>
+
+                            <button onclick="addManualSentence()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                                Add Corrected Sentence
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="fa-brands fa-google text-2xl text-sky-500"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Google Sheet Sync</h4>
+                                <p class="text-xs text-slate-500">Save signed students with their scores and level to your Google Sheet.</p>
+                            </div>
+                        </div>
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">Apps Script Web App URL</label>
+                        <input id="sheets-webhook" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm mb-3">
+                        <button onclick="saveSheetsWebhook()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition mb-2">
+                            Save Google Sheet URL
+                        </button>
+                        <button onclick="syncAllStudentsToGoogleSheet()" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                            Sync All Students Now
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: Student Roster and Sentence Logs -->
+                <div class="lg:col-span-2 space-y-6">
+
+                    <!-- Student Progress Table -->
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Student Progress</h4>
+                                <p class="text-xs text-slate-500">Monitor active students and review real-time stars from Firestore progress data.</p>
+                            </div>
+                            <!-- Mock generator for list testing -->
+                            <button onclick="addMockStudent()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-semibold transition">
+                                + Add Mock Student
+                            </button>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                                        <th class="p-3">Student Name</th>
+                                        <th class="p-3">Grade/Level</th>
+                                        <th class="p-3">Total Stars</th>
+                                        <th class="p-3">Current Level</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-roster-body" class="divide-y divide-slate-100">
+                                    <!-- Roster dynamically filled by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sentence Dictionary / Database Logs -->
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Sentences Collection (Firestore View)</h4>
+                                <p class="text-xs text-slate-500">Currently available sentence/level database nodes</p>
+                            </div>
+                        </div>
+
+                        <!-- Database rows -->
+                        <div class="max-h-[300px] overflow-y-auto border border-slate-100 rounded-xl">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 sticky top-0 text-slate-500 font-bold">
+                                    <tr>
+                                        <th class="p-3">Level</th>
+                                        <th class="p-3">Correct Sentence</th>
+                                        <th class="p-3">Scrambled Array</th>
+                                        <th class="p-3">Grammar Rule</th>
+                                        <th class="p-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sentence-db-body" class="divide-y divide-slate-100">
+                                    <!-- Sentences loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-100 border-t border-slate-200 py-6 text-center text-slate-500 text-xs mt-auto">
+        <p>JumbleJumb English Sentence Builder Designed by Ayman Naser</p>
+    </footer>
+
+    <!-- JAVASCRIPT & DATA CONTROLLER -->
+    <script>
+        // ==========================================
+        // 1. DATASETS & DEFAULT COLLECTIONS
+        // ==========================================
+
+        // Starter sentences. Teachers can upload more through Excel/manual editor.
+        const baseSentences = {
+            Beginner: [
+                { correct: "The clever student reads books.", scramble: ["books", "student", "reads", "The", "clever"], rule: "Adjectives like 'clever' precede nouns, followed by the main verb and object." },
+                { correct: "She plays soccer every morning.", scramble: ["every", "She", "soccer", "plays", "morning"], rule: "In simple present tense, place frequency/time adverbials at the end." },
+                { correct: "Ali enjoys cold orange juice.", scramble: ["enjoys", "orange", "Ali", "juice", "cold"], rule: "Multiple adjectives (cold, orange) describe the noun (juice)." },
+                { correct: "We always listen to teachers.", scramble: ["listen", "always", "teachers", "to", "We"], rule: "Adverbs of frequency (always) go before the main verb." }
+            ],
+            Intermediate: [
+                { correct: "Sarah bought a beautiful red dress yesterday.", scramble: ["red", "yesterday", "Sarah", "a", "dress", "bought", "beautiful"], rule: "Order of adjectives: opinion (beautiful) goes before color (red)." },
+                { correct: "He was walking to the mosque when it rained.", scramble: ["walking", "when", "the", "mosque", "to", "it", "rained", "He", "was"], rule: "Past continuous (was walking) interrupted by past simple (rained)." },
+                { correct: "Reading English stories improves vocabulary quickly.", scramble: ["quickly", "vocabulary", "improves", "English", "Reading", "stories"], rule: "Gerunds (Reading) can function as the subject of the sentence." },
+                { correct: "The teacher explained the lesson clearly to students.", scramble: ["explained", "clearly", "to", "The", "students", "teacher", "the", "lesson"], rule: "Manner adverbs (clearly) follow the object of the sentence." }
+            ],
+            Advanced: [
+                { correct: "If I study hard, I will pass the final exams.", scramble: ["pass", "If", "study", "the", "I", "exams", "will", "final", "hard", "I"], rule: "First conditional structure: If + present simple, followed by will + infinitive." },
+                { correct: "Although it was very hot, they played a football match.", scramble: ["hot", "a", "match", "played", "Although", "was", "it", "they", "football", "very"], rule: "Subordinating conjunctions (Although) introduce a concessive dependent clause." },
+                { correct: "The ancient library, which was recently renovated, contains rare manuscripts.", scramble: ["recently", "The", "library", "which", "manuscripts", "renovated", "ancient", "rare", "was", "contains"], rule: "Non-defining relative clauses provide extra information within commas." },
+                { correct: "By the time we arrived, the plane had already taken off.", scramble: ["arrived", "already", "the", "had", "By", "time", "we", "plane", "taken", "off", "the"], rule: "Past perfect (had taken) shows an action completed before another past action." }
+            ]
+        };
+
+        function shuffleArray(items) {
+            const arr = [...items];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function createScrambleFromSentence(sentence) {
+            const clean = sentence.replace(/[.,!?]/g, "").trim();
+            const tokens = clean.split(/\s+/);
+            const shuffled = shuffleArray(tokens);
+            if (shuffled.join(" ") === tokens.join(" ") && shuffled.length > 1) {
+                [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+            }
+            return shuffled;
+        }
+
+        function ensureSentencePool() {
+            // Auto-generated placeholder sentences are intentionally disabled.
+        }
+
+        function normalizeSentence(text) {
+            return String(text || "")
+                .replace(/[.,!?]/g, "")
+                .replace(/\s+/g, " ")
+                .trim()
+                .toLowerCase();
+        }
+
+        // ==========================================
+        // 2. STATE VARIABLES + FIREBASE CONNECTIVITY
+        // ==========================================
+        let currentUser = {
+            uid: null,
+            name: "Guest Student",
+            email: "",
+            grade: "8th Grade",
+            role: "student",
+            photoDataUrl: "",
+            stars: 0,
+            medals: 0,
+            progress: {
+                Beginner: 0,
+                Intermediate: 0,
+                Advanced: 0
+            }
+        };
+
+        let currentLevel = "Beginner";
+        let currentSentenceIdx = 0;
+        let sentenceMasteryCount = 0;
+        let sentenceTarget = 100;
+        let sortableInstance = null;
+        let firebaseReady = false;
+        let auth = null;
+        let db = null;
+        let sheetsWebhookUrl = "";
+        let lastSheetSyncAt = 0;
+        let pendingThemeLogoData = "";
+        const defaultTeacherAccount = window.JJ_DEFAULT_TEACHER || {
+            name: "Ayman Nasser",
+            email: "aym.naser78@gmail.com",
+            password: "1234Qwer@"
+        };
+        const motivationalQuotes = [
+            "Every correct sentence makes your writing shine brighter!",
+            "Great grammar creates great confidence.",
+            "You are training your brain like a language champion."
+        ];
+        const defaultTheme = {
+            bg: "#f8fafc",
+            font: "#334155",
+            fontFamily: "Fredoka, sans-serif",
+            fontSize: 16,
+            headerFrom: "#14b8a6",
+            headerTo: "#0d9488",
+            logoAccent: "#fdba74",
+            logoText: "JumbleJump",
+            logoIcon: ""
+        };
+        const defaultCertificateTheme = {
+            title: "CERTIFICATE OF EXCELLENCE",
+            awardLine: "This official certificate is proudly presented to:",
+            footerLine: "Authorized by: JumbleJump Grammar Board",
+            achievementLine1: "For successfully mastering {target} sentences in the {level} Tier",
+            achievementLine2: "conforming perfectly to Saudi 8th & 9th Grade English standards.",
+            bgColor: "#ffffff",
+            borderColor: "#0d9488",
+            titleColor: "#f97316",
+            fontFamily: "helvetica",
+            logo1: "",
+            logo2: ""
+        };
+        let teacherNote = "Keep practicing word order every day.";
+        let pendingCertLogo1 = "";
+        let pendingCertLogo2 = "";
+        let sentenceIdSeed = 1;
+
+        // Mock Students for Admin Panel
+        let roster = [
+            { name: "Fatima Al-Dosari", grade: "9th Grade", stars: 120, level: "Intermediate" },
+            { name: "Khalid Bin Omar", grade: "8th Grade", stars: 85, level: "Beginner" },
+            { name: "Noura Al-Shehri", grade: "8th Grade", stars: 300, level: "Advanced" }
+        ];
+
+        function attachSentenceMeta() {
+            ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                baseSentences[level] = baseSentences[level].map(item => ({
+                    id: item.id || `local-${sentenceIdSeed++}`,
+                    correct: item.correct,
+                    scramble: item.scramble,
+                    rule: item.rule,
+                    teacherNote: item.teacherNote || ""
+                }));
+            });
+        }
+
+        // ==========================================
+        // 3. AUTHENTICATION & INITIALIZATION
+        // ==========================================
+
+        function setAuthStatus(message, isError = false) {
+            const statusEl = document.getElementById("auth-status");
+            statusEl.textContent = message;
+            statusEl.className = isError ? "text-xs text-rose-700" : "text-xs text-amber-800";
+        }
+
+        function setFirebaseBadge(isConnected) {
+            const badge = document.getElementById("firebase-status-badge");
+            if (!badge) return;
+            if (isConnected) {
+                badge.textContent = "Firebase: Connected";
+                badge.className = "text-[11px] font-bold px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-300/30";
+            } else {
+                badge.textContent = "Firebase: Not Connected";
+                badge.className = "text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-300/30";
+            }
+        }
+
+        function setMotivationalQuote() {
+            const quote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+            document.getElementById("motivational-quote").innerText = `"${quote}"`;
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function getSentenceTarget() {
+            return sentenceTarget;
+        }
+
+        function getLevelTarget(level) {
+            return Math.min(getSentenceTarget(), baseSentences[level].length);
+        }
+
+        function updateRoleUI() {
+            const adminTab = document.getElementById("tab-admin-view");
+            if (!adminTab) return;
+            adminTab.classList.toggle("hidden", currentUser.role !== "teacher");
+        }
+
+        function updateSentenceTargetLabels() {
+            ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                const label = document.getElementById(`target-label-${level}`);
+                if (label) label.textContent = `${getLevelTarget(level)} Sentences`;
+            });
+            const lockIntermediate = document.getElementById("lock-text-Intermediate");
+            const lockAdvanced = document.getElementById("lock-text-Advanced");
+            if (lockIntermediate) lockIntermediate.innerHTML = `<i class="fa-solid fa-lock"></i> Locked until Beginner ${getLevelTarget("Beginner")} complete`;
+            if (lockAdvanced) lockAdvanced.innerHTML = `<i class="fa-solid fa-lock"></i> Locked until Intermediate ${getLevelTarget("Intermediate")} complete`;
+            const certNote = document.getElementById("certificate-target-note");
+            if (certNote) certNote.textContent = "Complete each level target to download your colorful certificate.";
+            const targetInput = document.getElementById("sentence-target");
+            if (targetInput) targetInput.value = getSentenceTarget();
+        }
+
+        function loadSentenceTarget() {
+            const saved = Number(localStorage.getItem("jj_sentence_target"));
+            sentenceTarget = Number.isFinite(saved) && saved >= 50 ? saved : 100;
+            updateSentenceTargetLabels();
+        }
+
+        function applySentenceTarget() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can change sentence target.");
+                return;
+            }
+            const input = document.getElementById("sentence-target");
+            const nextTarget = Number(input?.value || 100);
+            if (!Number.isFinite(nextTarget) || nextTarget < 50) {
+                alert("Enter a valid sentence target (50 or more).");
+                return;
+            }
+            const hasEnoughForAll = ["Beginner", "Intermediate", "Advanced"].every(level => baseSentences[level].length >= nextTarget);
+            if (!hasEnoughForAll) {
+                alert("Not enough real sentences in one or more levels. Upload more sentences first.");
+                return;
+            }
+            sentenceTarget = nextTarget;
+            localStorage.setItem("jj_sentence_target", String(sentenceTarget));
+            updateSentenceTargetLabels();
+            updateProgressBars();
+            loadSentence();
+        }
+
+        function updateSentenceActionUI() {
+            const mastered = sentenceMasteryCount >= 3;
+            const nextBtn = document.getElementById("btn-next");
+            const counter = document.getElementById("mastery-counter");
+            nextBtn.disabled = !mastered;
+            nextBtn.className = mastered
+                ? "px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2"
+                : "px-6 py-3 bg-orange-300 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2 cursor-not-allowed";
+            counter.textContent = `Correct Rearranges: ${sentenceMasteryCount}/3`;
+        }
+
+        function showHint() {
+            const current = baseSentences[currentLevel][currentSentenceIdx];
+            const feedbackBox = document.getElementById("game-feedback");
+            feedbackBox.classList.remove("hidden", "bg-rose-100", "text-rose-700", "bg-emerald-100", "text-emerald-700");
+            feedbackBox.classList.add("bg-amber-100", "text-amber-700");
+            feedbackBox.innerHTML = `Hint: ${current.rule}`;
+            document.getElementById("grammar-rule-desc").innerText = current.rule;
+        }
+
+        function renderLogoIcon(dataUrl = "") {
+            const logoBox = document.getElementById("logo-box");
+            if (!logoBox) return;
+            if (dataUrl) {
+                logoBox.innerHTML = `<img src="${dataUrl}" alt="Logo" class="w-8 h-8 rounded-md object-cover">`;
+            } else {
+                logoBox.innerHTML = '<i class="fa-solid fa-graduation-cap text-2xl animate-bounce"></i>';
+            }
+        }
+
+        function handleThemeLogoUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                pendingThemeLogoData = String(reader.result || "");
+                const preview = document.getElementById("theme-logo-preview");
+                if (preview) {
+                    preview.src = pendingThemeLogoData;
+                    preview.classList.remove("hidden");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function toggleThemeDesigner() {
+            document.getElementById("theme-designer-panel").classList.toggle("hidden");
+        }
+
+        function applyThemeSettings(theme) {
+            document.body.style.backgroundColor = theme.bg;
+            document.body.style.color = theme.font;
+            document.body.style.fontFamily = theme.fontFamily || "Fredoka, sans-serif";
+            document.documentElement.style.fontSize = `${theme.fontSize || 16}px`;
+            document.getElementById("top-header").style.background = `linear-gradient(to right, ${theme.headerFrom}, ${theme.headerTo})`;
+            document.getElementById("brand-primary").textContent = theme.logoText;
+            document.getElementById("brand-secondary").textContent = "";
+            document.getElementById("logo-box").style.color = theme.headerFrom;
+            document.getElementById("brand-secondary").style.color = theme.logoAccent;
+            renderLogoIcon(theme.logoIcon || "");
+        }
+
+        function loadThemeCustomizer() {
+            const saved = localStorage.getItem("jj_theme_settings");
+            const theme = saved ? { ...defaultTheme, ...JSON.parse(saved) } : defaultTheme;
+            document.getElementById("theme-bg").value = theme.bg;
+            document.getElementById("theme-font").value = theme.font;
+            document.getElementById("theme-font-family").value = theme.fontFamily || "Fredoka, sans-serif";
+            document.getElementById("theme-font-size").value = String(theme.fontSize || 16);
+            document.getElementById("theme-header-from").value = theme.headerFrom;
+            document.getElementById("theme-header-to").value = theme.headerTo;
+            document.getElementById("theme-logo-accent").value = theme.logoAccent;
+            document.getElementById("theme-logo-text").value = theme.logoText;
+            pendingThemeLogoData = theme.logoIcon || "";
+            const preview = document.getElementById("theme-logo-preview");
+            if (preview) {
+                if (pendingThemeLogoData) {
+                    preview.src = pendingThemeLogoData;
+                    preview.classList.remove("hidden");
+                } else {
+                    preview.classList.add("hidden");
+                }
+            }
+            applyThemeSettings(theme);
+        }
+
+        function applyThemeFromControls() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can change the app theme.");
+                return;
+            }
+            const theme = {
+                bg: document.getElementById("theme-bg").value,
+                font: document.getElementById("theme-font").value,
+                fontFamily: document.getElementById("theme-font-family").value,
+                fontSize: Number(document.getElementById("theme-font-size").value || 16),
+                headerFrom: document.getElementById("theme-header-from").value,
+                headerTo: document.getElementById("theme-header-to").value,
+                logoAccent: document.getElementById("theme-logo-accent").value,
+                logoText: document.getElementById("theme-logo-text").value.trim() || "JumbleJump",
+                logoIcon: pendingThemeLogoData || (JSON.parse(localStorage.getItem("jj_theme_settings") || "{}").logoIcon || "")
+            };
+            localStorage.setItem("jj_theme_settings", JSON.stringify(theme));
+            applyThemeSettings(theme);
+        }
+
+        function resetThemeCustomizer() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can reset the app theme.");
+                return;
+            }
+            localStorage.removeItem("jj_theme_settings");
+            loadThemeCustomizer();
+        }
+
+        function getCertificateTheme() {
+            const saved = localStorage.getItem("jj_certificate_theme");
+            return saved ? { ...defaultCertificateTheme, ...JSON.parse(saved) } : { ...defaultCertificateTheme };
+        }
+
+        function toggleCertificateDesigner() {
+            document.getElementById("certificate-designer-panel").classList.toggle("hidden");
+        }
+
+        function loadCertificateDesigner() {
+            const theme = getCertificateTheme();
+            document.getElementById("cert-title").value = theme.title;
+            document.getElementById("cert-award-line").value = theme.awardLine;
+            document.getElementById("cert-footer-line").value = theme.footerLine;
+            document.getElementById("cert-achievement-line1").value = theme.achievementLine1;
+            document.getElementById("cert-achievement-line2").value = theme.achievementLine2;
+            document.getElementById("cert-bg-color").value = theme.bgColor;
+            document.getElementById("cert-border-color").value = theme.borderColor;
+            document.getElementById("cert-title-color").value = theme.titleColor;
+            document.getElementById("cert-font-family").value = theme.fontFamily;
+            pendingCertLogo1 = theme.logo1 || "";
+            pendingCertLogo2 = theme.logo2 || "";
+            const p1 = document.getElementById("cert-logo1-preview");
+            const p2 = document.getElementById("cert-logo2-preview");
+            if (p1) {
+                if (pendingCertLogo1) {
+                    p1.src = pendingCertLogo1;
+                    p1.classList.remove("hidden");
+                } else {
+                    p1.classList.add("hidden");
+                }
+            }
+            if (p2) {
+                if (pendingCertLogo2) {
+                    p2.src = pendingCertLogo2;
+                    p2.classList.remove("hidden");
+                } else {
+                    p2.classList.add("hidden");
+                }
+            }
+        }
+
+        function handleCertificateLogoUpload(event, slot) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const data = String(reader.result || "");
+                if (slot === 1) {
+                    pendingCertLogo1 = data;
+                    const p1 = document.getElementById("cert-logo1-preview");
+                    if (p1) {
+                        p1.src = data;
+                        p1.classList.remove("hidden");
+                    }
+                } else {
+                    pendingCertLogo2 = data;
+                    const p2 = document.getElementById("cert-logo2-preview");
+                    if (p2) {
+                        p2.src = data;
+                        p2.classList.remove("hidden");
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyCertificateSettings() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can change certificate style.");
+                return;
+            }
+            const theme = {
+                title: document.getElementById("cert-title").value.trim() || defaultCertificateTheme.title,
+                awardLine: document.getElementById("cert-award-line").value.trim() || defaultCertificateTheme.awardLine,
+                footerLine: document.getElementById("cert-footer-line").value.trim() || defaultCertificateTheme.footerLine,
+                achievementLine1: document.getElementById("cert-achievement-line1").value.trim() || defaultCertificateTheme.achievementLine1,
+                achievementLine2: document.getElementById("cert-achievement-line2").value.trim() || defaultCertificateTheme.achievementLine2,
+                bgColor: document.getElementById("cert-bg-color").value,
+                borderColor: document.getElementById("cert-border-color").value,
+                titleColor: document.getElementById("cert-title-color").value,
+                fontFamily: document.getElementById("cert-font-family").value,
+                logo1: pendingCertLogo1 || (getCertificateTheme().logo1 || ""),
+                logo2: pendingCertLogo2 || (getCertificateTheme().logo2 || "")
+            };
+            localStorage.setItem("jj_certificate_theme", JSON.stringify(theme));
+            alert("Certificate settings saved.");
+        }
+
+        function resetCertificateSettings() {
+            if (currentUser.role !== "teacher") return;
+            localStorage.removeItem("jj_certificate_theme");
+            loadCertificateDesigner();
+        }
+
+        function loadTeacherNote() {
+            teacherNote = localStorage.getItem("jj_teacher_note") || teacherNote;
+            const noteText = document.getElementById("teacher-note-text");
+            const noteInput = document.getElementById("teacher-note-input");
+            if (noteText) noteText.textContent = `Teacher Note: ${teacherNote}`;
+            if (noteInput) noteInput.value = teacherNote;
+        }
+
+        function getActiveSentence() {
+            return baseSentences[currentLevel][currentSentenceIdx] || null;
+        }
+
+        function renderTeacherNoteForSentence() {
+            const noteText = document.getElementById("teacher-note-text");
+            if (!noteText) return;
+            const active = getActiveSentence();
+            const custom = active?.teacherNote?.trim();
+            noteText.textContent = `Teacher Note: ${custom || teacherNote}`;
+        }
+
+        function saveTeacherNote() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can update the teacher note.");
+                return;
+            }
+            const value = document.getElementById("teacher-note-input").value.trim();
+            if (!value) return;
+            teacherNote = value;
+            localStorage.setItem("jj_teacher_note", teacherNote);
+            renderTeacherNoteForSentence();
+        }
+
+        function toggleAuthPane(targetPane) {
+            const loginPane = document.getElementById("auth-login-pane");
+            const signupPane = document.getElementById("auth-signup-pane");
+            const loginTab = document.getElementById("auth-tab-login");
+            const signupTab = document.getElementById("auth-tab-signup");
+
+            const showLogin = targetPane === "login";
+            loginPane.classList.toggle("hidden", !showLogin);
+            signupPane.classList.toggle("hidden", showLogin);
+
+            loginTab.className = showLogin ? "py-2 rounded-lg text-sm font-bold bg-white text-teal-700" : "py-2 rounded-lg text-sm font-bold text-slate-600";
+            signupTab.className = !showLogin ? "py-2 rounded-lg text-sm font-bold bg-white text-teal-700" : "py-2 rounded-lg text-sm font-bold text-slate-600";
+        }
+
+        function togglePasswordVisibility(inputId, buttonElement) {
+            const input = document.getElementById(inputId);
+            if (!input || !buttonElement) return;
+
+            const icon = buttonElement.querySelector("i");
+            const isHidden = input.type === "password";
+            input.type = isHidden ? "text" : "password";
+
+            if (icon) {
+                icon.className = isHidden ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
+            }
+            buttonElement.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+        }
+
+        function loadSheetsConfig() {
+            const stored = localStorage.getItem("jj_sheets_webhook_url") || "";
+            sheetsWebhookUrl = stored || window.JJ_SHEETS_WEBHOOK_URL || "";
+            const input = document.getElementById("sheets-webhook");
+            if (input) input.value = sheetsWebhookUrl;
+        }
+
+        function saveSheetsWebhook() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can configure Google Sheet sync.");
+                return;
+            }
+            const input = document.getElementById("sheets-webhook");
+            sheetsWebhookUrl = input ? input.value.trim() : "";
+            localStorage.setItem("jj_sheets_webhook_url", sheetsWebhookUrl);
+            alert(sheetsWebhookUrl ? "Google Sheet URL saved." : "Google Sheet URL cleared.");
+        }
+
+        function getStudentCurrentLevel(progress) {
+            if ((progress.Advanced || 0) > 0) return "Advanced";
+            if ((progress.Intermediate || 0) > 0) return "Intermediate";
+            return "Beginner";
+        }
+
+        async function syncStudentToGoogleSheet(studentPayload) {
+            if (!sheetsWebhookUrl) return;
+            try {
+                await fetch(sheetsWebhookUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(studentPayload)
+                });
+            } catch (error) {
+                console.warn("Google Sheet sync failed:", error.message);
+            }
+        }
+
+        async function syncAllStudentsToGoogleSheet() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can sync data to Google Sheets.");
+                return;
+            }
+            if (!sheetsWebhookUrl) {
+                alert("Add and save your Google Apps Script URL first.");
+                return;
+            }
+            await populateRosterTable();
+            const latestStudents = new Map();
+            for (const student of roster) {
+                if (!student.uid) continue;
+                latestStudents.set(student.uid, student);
+            }
+            for (const student of latestStudents.values()) {
+                await syncStudentToGoogleSheet({
+                    type: "student_progress",
+                    uid: student.uid,
+                    name: student.name,
+                    email: student.email || "",
+                    grade: student.grade,
+                    level: student.level,
+                    stars: student.stars,
+                    beginner: student.progress?.Beginner || 0,
+                    intermediate: student.progress?.Intermediate || 0,
+                    advanced: student.progress?.Advanced || 0,
+                    syncedAt: new Date().toISOString()
+                });
+            }
+            alert("Student scores synced to Google Sheet.");
+        }
+
+        function initFirebase() {
+            const firebaseConfig = window.JJ_FIREBASE_CONFIG || {};
+            if (!firebaseConfig.apiKey) {
+                setAuthStatus("Firebase config missing. Add window.JJ_FIREBASE_CONFIG to enable real signup/login.");
+                setFirebaseBadge(false);
+                return;
+            }
+
+            try {
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                firebaseReady = true;
+                setAuthStatus("Firebase connected. Students can Sign Up. Teachers should Sign In with existing Firebase accounts.");
+                setFirebaseBadge(true);
+
+                auth.onAuthStateChanged(async (user) => {
+                    if (!user) return;
+                    try {
+                        await completeLogin(user.uid, user.email || "");
+                    } catch (error) {
+                        setAuthStatus(error.message, true);
+                    }
+                });
+            } catch (error) {
+                firebaseReady = false;
+                setFirebaseBadge(false);
+                setAuthStatus(`Firebase init failed: ${error.message}`, true);
+            }
+        }
+
+        async function handleSignup() {
+            if (!firebaseReady) {
+                setAuthStatus("Firebase is not connected. Signup is disabled.", true);
+                return;
+            }
+
+            const role = "student";
+            const name = document.getElementById("signup-name").value.trim();
+            const email = document.getElementById("signup-email").value.trim();
+            const password = document.getElementById("signup-password").value;
+            const grade = document.getElementById("signup-grade").value;
+
+            if (!name || !email || !password) {
+                setAuthStatus("Please fill all required signup fields.", true);
+                return;
+            }
+            if (!isValidEmail(email)) {
+                setAuthStatus("Please enter a valid email address.", true);
+                return;
+            }
+
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, password);
+                const userDoc = {
+                    name,
+                    email,
+                    role,
+                    grade,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                await db.collection("users").doc(cred.user.uid).set(userDoc);
+
+                await db.collection("userProgress").doc(cred.user.uid).set({
+                    Beginner: 0,
+                    Intermediate: 0,
+                    Advanced: 0,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                await syncStudentToGoogleSheet({
+                    type: "student_signup",
+                    uid: cred.user.uid,
+                    name,
+                    email,
+                    grade,
+                    level: "Beginner",
+                    stars: 0,
+                    beginner: 0,
+                    intermediate: 0,
+                    advanced: 0,
+                    syncedAt: new Date().toISOString()
+                });
+
+                setAuthStatus("Account created. You are now signed in.");
+                await completeLogin(cred.user.uid);
+            } catch (error) {
+                setAuthStatus(error.message, true);
+            }
+        }
+
+        async function forgotPassword() {
+            if (!firebaseReady) {
+                setAuthStatus("Firebase is not connected. Password reset is disabled.", true);
+                return;
+            }
+            const email = document.getElementById("login-email").value.trim();
+            if (!email || !isValidEmail(email)) {
+                setAuthStatus("Enter a valid email first, then tap Forget My Password.", true);
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                setAuthStatus("Password reset email sent. Check your inbox.");
+            } catch (error) {
+                setAuthStatus(error.message, true);
+            }
+        }
+
+        function getStudentPhotoKey() {
+            return `jj_student_photo_${currentUser.uid || currentUser.email || "guest"}`;
+        }
+
+        function refreshStudentPhotoPreview() {
+            const wrap = document.getElementById("student-photo-preview-wrap");
+            const preview = document.getElementById("student-photo-preview");
+            if (!wrap || !preview) return;
+            if (currentUser.photoDataUrl) {
+                preview.src = currentUser.photoDataUrl;
+                wrap.classList.remove("hidden");
+                wrap.classList.add("flex");
+            } else {
+                wrap.classList.add("hidden");
+                wrap.classList.remove("flex");
+            }
+        }
+
+        function handleStudentPhotoUpload(event) {
+            if (currentUser.role !== "student") {
+                alert("Only student profiles can add certificate photo.");
+                return;
+            }
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                currentUser.photoDataUrl = String(reader.result || "");
+                localStorage.setItem(getStudentPhotoKey(), currentUser.photoDataUrl);
+                refreshStudentPhotoPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function handleLogin() {
+            if (!firebaseReady) {
+                setAuthStatus("Firebase is not connected. Login is disabled.", true);
+                return;
+            }
+
+            const email = document.getElementById("login-email").value.trim();
+            const password = document.getElementById("login-password").value;
+
+            if (!email || !password) {
+                setAuthStatus("Enter email and password.", true);
+                return;
+            }
+
+            try {
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                await completeLogin(cred.user.uid, cred.user.email || email);
+            } catch (error) {
+                const isDefaultTeacher =
+                    email.toLowerCase() === (defaultTeacherAccount.email || "").toLowerCase() &&
+                    password === defaultTeacherAccount.password;
+
+                // If teacher account does not exist yet in Firebase Auth, bootstrap it once.
+                if (isDefaultTeacher && error && error.code === "auth/user-not-found") {
+                    try {
+                        const teacherCred = await auth.createUserWithEmailAndPassword(email, password);
+                        await db.collection("users").doc(teacherCred.user.uid).set({
+                            name: defaultTeacherAccount.name || "Ayman Nasser",
+                            email,
+                            role: "teacher",
+                            grade: "Teacher",
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                        setAuthStatus("Teacher account created in Firebase. You are now signed in.");
+                        await completeLogin(teacherCred.user.uid, email);
+                        return;
+                    } catch (bootstrapError) {
+                        setAuthStatus(bootstrapError.message, true);
+                        return;
+                    }
+                }
+                setAuthStatus(error.message, true);
+            }
+        }
+
+        async function completeLogin(uid, fallbackEmail = "") {
+            let userSnap = await db.collection("users").doc(uid).get();
+            if (!userSnap.exists) {
+                const isDefaultTeacher = fallbackEmail.toLowerCase() === (defaultTeacherAccount.email || "").toLowerCase();
+                if (isDefaultTeacher) {
+                    await db.collection("users").doc(uid).set({
+                        name: defaultTeacherAccount.name || "Ayman Nasser",
+                        email: fallbackEmail,
+                        role: "teacher",
+                        grade: "Teacher",
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    userSnap = await db.collection("users").doc(uid).get();
+                }
+            }
+            if (!userSnap.exists) {
+                throw new Error("User profile not found in Firestore users collection.");
+            }
+
+            const profile = userSnap.data();
+
+            currentUser.uid = uid;
+            currentUser.name = profile.name;
+            currentUser.email = profile.email;
+            currentUser.grade = profile.grade || "8th Grade";
+            currentUser.role = profile.role;
+
+            if (currentUser.role === "student") {
+                const progressSnap = await db.collection("userProgress").doc(uid).get();
+                if (progressSnap.exists) {
+                    const progress = progressSnap.data();
+                    currentUser.progress = {
+                        Beginner: progress.Beginner || 0,
+                        Intermediate: progress.Intermediate || 0,
+                        Advanced: progress.Advanced || 0
+                    };
+                }
+            }
+
+            document.getElementById("auth-modal").classList.add("hidden");
+            document.getElementById("header-user-name").innerText = currentUser.name;
+            document.getElementById("admin-login-area").classList.toggle("hidden", currentUser.role === "teacher");
+            document.getElementById("admin-content").classList.toggle("hidden", currentUser.role !== "teacher");
+
+            updateProgressBars();
+            loadSentence();
+            populateDatabaseTable();
+            populateRosterTable();
+            loadTeacherNote();
+
+            switchTab(currentUser.role === "teacher" ? "admin-view" : "game-view");
+        }
+
+        function logout() {
+            if (firebaseReady) {
+                auth.signOut().finally(() => location.reload());
+                return;
+            }
+            location.reload();
+        }
+
+
+        // ==========================================
+        // 4. LEVEL & PROGRESS MANAGEMENT
+        // ==========================================
+
+        function selectLevel(level) {
+            // Verify lock conditions
+            if (level === "Intermediate" && currentUser.progress.Beginner < getLevelTarget("Beginner")) {
+                alert(`Intermediate level is locked until you complete ${getLevelTarget("Beginner")} Beginner sentences.`);
+                return;
+            }
+            if (level === "Advanced" && currentUser.progress.Intermediate < getLevelTarget("Intermediate")) {
+                alert(`Advanced level is locked until you complete ${getLevelTarget("Intermediate")} Intermediate sentences.`);
+                return;
+            }
+
+            currentLevel = level;
+            // Set index based on current progress
+            currentSentenceIdx = currentUser.progress[level] >= getLevelTarget(level) ? 0 : currentUser.progress[level];
+
+            // Highlight Cards
+            document.querySelectorAll("[id^='card-']").forEach(card => card.classList.remove("border-4", "border-teal-500"));
+            document.getElementById(`card-${level}`).classList.add("border-4", "border-teal-500");
+
+            document.getElementById("current-level-badge").innerText = `${level} Level`;
+            loadSentence();
+        }
+
+        function updateProgressBars() {
+            // Check locks & progress counters
+            ["Beginner", "Intermediate", "Advanced"].forEach(lvl => {
+                const completed = currentUser.progress[lvl];
+                const levelTarget = getLevelTarget(lvl) || 1;
+                document.getElementById(`prog-count-${lvl}`).innerText = `${completed} / ${levelTarget}`;
+                document.getElementById(`prog-bar-${lvl}`).style.width = `${Math.min(100, (completed / levelTarget) * 100)}%`;
+
+                // Update Lock visibility & Certificate unlocking
+                if (lvl === "Intermediate") {
+                    const isUnlocked = currentUser.progress.Beginner >= getLevelTarget("Beginner");
+                    document.getElementById("lock-Intermediate").style.display = isUnlocked ? "none" : "flex";
+                }
+                if (lvl === "Advanced") {
+                    const isUnlocked = currentUser.progress.Intermediate >= getLevelTarget("Intermediate");
+                    document.getElementById("lock-Advanced").style.display = isUnlocked ? "none" : "flex";
+                }
+
+                // Certificates
+                const certBtn = document.getElementById(`cert-btn-${lvl}`);
+                if (completed >= getLevelTarget(lvl)) {
+                    certBtn.disabled = false;
+                    certBtn.className = "w-full py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer animate-pulse";
+                } else {
+                    certBtn.disabled = true;
+                    certBtn.className = "w-full py-2.5 bg-slate-100 text-slate-400 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 cursor-not-allowed";
+                }
+            });
+
+            // Update Star/Medal Scores
+            let totalSentencesDone = currentUser.progress.Beginner + currentUser.progress.Intermediate + currentUser.progress.Advanced;
+            currentUser.stars = totalSentencesDone;
+            currentUser.medals = Math.floor(totalSentencesDone / 10);
+
+            document.getElementById("score-stars").innerText = currentUser.stars;
+            document.getElementById("score-medals").innerText = currentUser.medals;
+
+            // Persist progress for authenticated students
+            if (firebaseReady && currentUser.uid && currentUser.role === "student") {
+                db.collection("userProgress").doc(currentUser.uid).set({
+                    Beginner: currentUser.progress.Beginner,
+                    Intermediate: currentUser.progress.Intermediate,
+                    Advanced: currentUser.progress.Advanced,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                const now = Date.now();
+                if (now - lastSheetSyncAt > 8000) {
+                    lastSheetSyncAt = now;
+                    syncStudentToGoogleSheet({
+                        type: "student_progress",
+                        uid: currentUser.uid,
+                        name: currentUser.name,
+                        email: currentUser.email,
+                        grade: currentUser.grade,
+                        level: getStudentCurrentLevel(currentUser.progress),
+                        stars: currentUser.stars,
+                        beginner: currentUser.progress.Beginner,
+                        intermediate: currentUser.progress.Intermediate,
+                        advanced: currentUser.progress.Advanced,
+                        syncedAt: new Date().toISOString()
+                    });
+                }
+            }
+        }
+
+        // ==========================================
+        // 5. THE GAME ENGINE & SORTABLE JS INTEGRATION
+        // ==========================================
+
+        function loadSentence() {
+            const list = baseSentences[currentLevel];
+            const levelTarget = getLevelTarget(currentLevel);
+            if (currentSentenceIdx >= levelTarget || currentSentenceIdx >= list.length) {
+                document.getElementById("word-sorting-zone").innerHTML = `<div class="text-teal-600 font-bold text-xl"><i class="fa-solid fa-trophy mr-2 text-amber-500"></i> Level Complete! Great job.</div>`;
+                return;
+            }
+
+            const current = list[currentSentenceIdx];
+
+            // Render Scrambled Words
+            const container = document.getElementById("word-sorting-zone");
+            container.innerHTML = "";
+
+            current.scramble.forEach(word => {
+                const chip = document.createElement("div");
+                chip.className = "drag-card px-5 py-3 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:border-teal-400 flex items-center gap-2 select-none";
+                chip.dataset.word = word;
+                chip.innerHTML = `<i class="fa-solid fa-grip-vertical text-slate-300"></i> <span>${word}</span>`;
+                container.appendChild(chip);
+            });
+
+            // Initialize SortableJS
+            if (sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(container, {
+                animation: 150,
+                ghostClass: 'bg-teal-50',
+                chosenClass: 'scale-105'
+            });
+
+            // Reset UI states
+            sentenceMasteryCount = 0;
+            document.getElementById("game-feedback").classList.add("hidden");
+            document.getElementById("btn-hint").classList.add("hidden");
+            updateSentenceActionUI();
+
+            // Grammar spotlight
+            document.getElementById("grammar-rule-desc").innerText = "Rearrange the words first. Grammar hint appears after a wrong attempt when you tap Hint.";
+            renderTeacherNoteForSentence();
+            setMotivationalQuote();
+        }
+
+        function shuffleCurrentSentence() {
+            const container = document.getElementById("word-sorting-zone");
+            for (let i = container.children.length; i >= 0; i--) {
+                container.appendChild(container.children[Math.random() * i | 0]);
+            }
+        }
+
+        function checkAnswer() {
+            const container = document.getElementById("word-sorting-zone");
+            const arrangedWords = Array.from(container.children).map(chip => chip.dataset.word || chip.innerText.trim());
+            const userSentence = arrangedWords.join(" ");
+
+            const correctSentence = baseSentences[currentLevel][currentSentenceIdx].correct;
+
+            const isCorrect = normalizeSentence(userSentence) === normalizeSentence(correctSentence);
+            const feedbackBox = document.getElementById("game-feedback");
+            feedbackBox.classList.remove("hidden", "bg-rose-100", "text-rose-700", "bg-emerald-100", "text-emerald-700", "bg-amber-100", "text-amber-700");
+
+            if (isCorrect) {
+                sentenceMasteryCount += 1;
+                feedbackBox.classList.add("bg-emerald-100", "text-emerald-700");
+                document.getElementById("btn-hint").classList.add("hidden");
+                if (sentenceMasteryCount < 3) {
+                    feedbackBox.innerHTML = `Correct! Great job (${sentenceMasteryCount}/3). Rearrange the same sentence again.`;
+                    shuffleCurrentSentence();
+                } else {
+                    feedbackBox.innerHTML = "Excellent! 3/3 correct. Submit is now enabled for the next sentence.";
+                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                    setMotivationalQuote();
+                }
+                updateSentenceActionUI();
+            } else {
+                sentenceMasteryCount = 0;
+                feedbackBox.classList.add("bg-rose-100", "text-rose-700");
+                feedbackBox.innerHTML = "Incorrect order. Try rearranging again. You can use Hint to see the grammar rule.";
+                document.getElementById("btn-hint").classList.remove("hidden");
+                updateSentenceActionUI();
+            }
+        }
+
+        function nextSentence() {
+            if (sentenceMasteryCount < 3) {
+                alert("Complete 3 correct rearranges before submitting this sentence.");
+                return;
+            }
+            currentUser.progress[currentLevel] = Math.min(getLevelTarget(currentLevel), currentUser.progress[currentLevel] + 1);
+            updateProgressBars();
+            currentSentenceIdx++;
+            loadSentence();
+        }
+
+
+        // ==========================================
+        // 6. CERTIFICATE GENERATION via jsPDF
+        // ==========================================
+
+        function downloadCertificate(level) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF("landscape", "px", "a4");
+            const certTheme = getCertificateTheme();
+
+            function hexToRgb(hex) {
+                const normalized = String(hex || "").replace("#", "");
+                const value = parseInt(normalized, 16);
+                return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+            }
+            const border = hexToRgb(certTheme.borderColor);
+            const bg = hexToRgb(certTheme.bgColor);
+            const title = hexToRgb(certTheme.titleColor);
+            doc.setFont(certTheme.fontFamily || "helvetica", "normal");
+
+            // Outer decorative borders
+            doc.setFillColor(border[0], border[1], border[2]);
+            doc.rect(0, 0, 630, 445, "F");
+
+            doc.setFillColor(bg[0], bg[1], bg[2]);
+            doc.rect(20, 20, 590, 405, "F");
+
+            // Add Header
+            doc.setTextColor(title[0], title[1], title[2]);
+            doc.setFontSize(36);
+            doc.text(certTheme.title, 315, 80, { align: "center" });
+
+            // Sub-Title / Awarding
+            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(16);
+            doc.text(certTheme.awardLine, 315, 130, { align: "center" });
+
+            // Student Name
+            doc.setTextColor(15, 23, 42);
+            doc.setFontSize(32);
+            doc.text(currentUser.name, 315, 175, { align: "center" });
+
+            // Underline for name
+            doc.setLineWidth(2);
+            doc.setDrawColor(title[0], title[1], title[2]);
+            doc.line(180, 185, 450, 185);
+
+            // Grade & Level Text
+            doc.setTextColor(71, 85, 105);
+            doc.setFontSize(14);
+            const line1 = String(certTheme.achievementLine1 || defaultCertificateTheme.achievementLine1)
+                .replace("{target}", String(getLevelTarget(level)))
+                .replace("{level}", level);
+            const line2 = String(certTheme.achievementLine2 || defaultCertificateTheme.achievementLine2)
+                .replace("{target}", String(getLevelTarget(level)))
+                .replace("{level}", level);
+            doc.text(line1, 315, 220, { align: "center" });
+            doc.text(line2, 315, 240, { align: "center" });
+
+            // Medals & Stars Info
+            doc.setTextColor(13, 148, 136);
+            doc.setFontSize(16);
+            doc.text(`Total Lifetime Stars Earned: ${currentUser.stars} | Total Medals: ${currentUser.medals}`, 315, 280, { align: "center" });
+
+            // Signatures & Dates
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(12);
+            doc.text("Date of Issue: " + new Date().toLocaleDateString(), 100, 360);
+            doc.text(certTheme.footerLine, 380, 360);
+
+            if (currentUser.photoDataUrl) {
+                try {
+                    doc.addImage(currentUser.photoDataUrl, "JPEG", 500, 70, 72, 72);
+                } catch (error) {
+                    console.warn("Certificate photo could not be added.");
+                }
+            }
+
+            if (certTheme.logo1) {
+                try {
+                    doc.addImage(certTheme.logo1, "PNG", 45, 45, 50, 50);
+                } catch (error) {
+                    console.warn("Certificate logo 1 could not be added.");
+                }
+            }
+            if (certTheme.logo2) {
+                try {
+                    doc.addImage(certTheme.logo2, "PNG", 535, 45, 50, 50);
+                } catch (error) {
+                    console.warn("Certificate logo 2 could not be added.");
+                }
+            }
+
+            // Save PDF
+            doc.save(`JumbleJump_Certificate_${currentUser.name}_${level}.pdf`);
+        }
+
+
+        // ==========================================
+        // 7. ADMIN PANEL & DATA CORRECTIONS
+        // ==========================================
+
+        function switchTab(targetId) {
+            if (targetId === "admin-view" && currentUser.role !== "teacher") {
+                return;
+            }
+
+            ["game-view", "admin-view"].forEach(id => {
+                document.getElementById(id).classList.add("hidden");
+                document.getElementById(`tab-${id}`).className = "tab-btn px-4 py-2 rounded-lg font-semibold text-white hover:bg-white/10 transition";
+            });
+
+            document.getElementById(targetId).classList.remove("hidden");
+            document.getElementById(`tab-${targetId}`).className = "tab-btn px-4 py-2 rounded-lg font-semibold bg-white text-teal-600 shadow-sm transition";
+        }
+
+        // SheetJS (Excel) - Download Template
+        function downloadExcelTemplate() {
+            const worksheet = XLSX.utils.json_to_sheet([
+                { Level: "Beginner", Scrambled_Words: "apple,red,The,is", Correct_Sentence: "The apple is red", Grammar_Rule: "Adjective follows linking verb.", Teacher_Note: "Focus on subject then verb." },
+                { Level: "Intermediate", Scrambled_Words: "fast,ran,very,dog,The", Correct_Sentence: "The dog ran very fast", Grammar_Rule: "Adverbs follow action verbs.", Teacher_Note: "Watch adverb placement." }
+            ]);
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Sentences");
+            XLSX.writeFile(workbook, "JumbleJump_Import_Template.xlsx");
+        }
+
+        function triggerExcelPicker() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can upload Excel files.");
+                return;
+            }
+            document.getElementById("excel-upload").click();
+        }
+
+        // SheetJS (Excel) - Process Scrambled Files
+        async function processExcelUpload() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can upload Excel files.");
+                return;
+            }
+
+            const fileInput = document.getElementById("excel-upload");
+            if (!fileInput.files.length) {
+                alert("Please select a valid .xlsx file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+                let importedCount = 0;
+                for (const row of rows) {
+                    if (row.Level && row.Scrambled_Words && row.Correct_Sentence) {
+                        if (baseSentences[row.Level]) {
+                            const payload = {
+                                level: row.Level,
+                                correct: row.Correct_Sentence,
+                                scramble: row.Scrambled_Words.split(",").map(w => w.trim()),
+                                rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
+                                teacherNote: row.Teacher_Note || ""
+                            };
+                            let firestoreId = "";
+                            baseSentences[row.Level].push({
+                                id: `local-${sentenceIdSeed++}`,
+                                correct: payload.correct,
+                                scramble: payload.scramble,
+                                rule: payload.rule,
+                                teacherNote: payload.teacherNote
+                            });
+                            if (firebaseReady) {
+                                const ref = await db.collection("sentences").add({
+                                    ...payload,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                                firestoreId = ref.id;
+                                const last = baseSentences[row.Level][baseSentences[row.Level].length - 1];
+                                last.firestoreId = firestoreId;
+                            }
+                            importedCount++;
+                        }
+                    }
+                }
+
+                alert(`✅ Success! Imported ${importedCount} custom sentences into the database.`);
+                populateDatabaseTable();
+            };
+
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function findSentenceByLevelAndCorrect(level, correctSentence) {
+            const normalized = normalizeSentence(correctSentence);
+            return baseSentences[level].find(item => normalizeSentence(item.correct) === normalized) || null;
+        }
+
+        async function processTeacherNotesUpload() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can upload teacher notes.");
+                return;
+            }
+            const fileInput = document.getElementById("teacher-note-upload");
+            if (!fileInput.files.length) {
+                alert("Please select a valid notes Excel file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+                let updated = 0;
+                for (const row of rows) {
+                    const level = row.Level;
+                    const sentence = row.Correct_Sentence;
+                    const note = String(row.Teacher_Note || "").trim();
+                    if (!level || !sentence || !baseSentences[level]) continue;
+                    const target = findSentenceByLevelAndCorrect(level, sentence);
+                    if (!target) continue;
+                    target.teacherNote = note;
+                    updated++;
+                    if (firebaseReady && target.firestoreId) {
+                        try {
+                            await db.collection("sentences").doc(target.firestoreId).set({
+                                teacherNote: note,
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                        } catch (error) {
+                            console.warn("Teacher note update failed:", error.message);
+                        }
+                    }
+                }
+
+                renderTeacherNoteForSentence();
+                populateDatabaseTable();
+                alert(`Updated teacher notes for ${updated} sentence(s).`);
+            };
+
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        // Add Manual Correction
+        async function addManualSentence() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can edit sentence data.");
+                return;
+            }
+
+            const level = document.getElementById("manual-level").value;
+            const correct = document.getElementById("manual-sentence").value.trim();
+            const scrambleStr = document.getElementById("manual-scramble").value.trim();
+            const rule = document.getElementById("manual-rule").value.trim();
+
+            if (!correct || !scrambleStr) {
+                alert("Please fill in both the Correct Sentence and Scrambled Words.");
+                return;
+            }
+
+            const scramble = scrambleStr.split(",").map(w => w.trim());
+
+            const item = {
+                id: `local-${sentenceIdSeed++}`,
+                correct,
+                scramble,
+                rule,
+                teacherNote: teacherNote
+            };
+            baseSentences[level].push(item);
+
+            if (firebaseReady) {
+                const ref = await db.collection("sentences").add({
+                    level,
+                    correct,
+                    scramble,
+                    rule: rule || "Custom rule",
+                    teacherNote,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                item.firestoreId = ref.id;
+            }
+
+            alert(`✅ Added corrected sentence to ${level} Tier!`);
+            
+            // Reset fields
+            document.getElementById("manual-sentence").value = "";
+            document.getElementById("manual-scramble").value = "";
+            document.getElementById("manual-rule").value = "";
+
+            populateDatabaseTable();
+        }
+
+        // Render Database Records
+        function populateDatabaseTable() {
+            const tbody = document.getElementById("sentence-db-body");
+            tbody.innerHTML = "";
+
+            ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                baseSentences[level].slice(0, 15).forEach((item, idx) => { // show top 15 each to keep view performant
+                    const row = document.createElement("tr");
+                    row.className = "hover:bg-slate-100";
+                    row.innerHTML = `
+                        <td class="p-3 font-semibold text-teal-600">${level}</td>
+                        <td class="p-3">${item.correct}</td>
+                        <td class="p-3 text-slate-400 italic">${item.scramble.join(", ")}</td>
+                        <td class="p-3 text-slate-500">${item.rule}</td>
+                        <td class="p-3">
+                            <div class="flex gap-2">
+                                <button onclick="editSentence('${level}', '${item.id}')" class="px-2 py-1 text-[11px] rounded bg-sky-100 text-sky-700 font-bold">Edit</button>
+                                <button onclick="deleteSentence('${level}', '${item.id}')" class="px-2 py-1 text-[11px] rounded bg-rose-100 text-rose-700 font-bold">Delete</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+
+        async function deleteSentence(level, sentenceId) {
+            if (currentUser.role !== "teacher") return;
+            const index = baseSentences[level].findIndex(item => item.id === sentenceId);
+            if (index === -1) return;
+            const item = baseSentences[level][index];
+            if (!confirm("Delete this sentence?")) return;
+            baseSentences[level].splice(index, 1);
+            if (firebaseReady && item.firestoreId) {
+                try {
+                    await db.collection("sentences").doc(item.firestoreId).delete();
+                } catch (error) {
+                    console.warn("Firestore delete failed:", error.message);
+                }
+            }
+            populateDatabaseTable();
+            loadSentence();
+        }
+
+        async function editSentence(level, sentenceId) {
+            if (currentUser.role !== "teacher") return;
+            const index = baseSentences[level].findIndex(item => item.id === sentenceId);
+            if (index === -1) return;
+            const item = baseSentences[level][index];
+            const nextCorrect = prompt("Edit correct sentence:", item.correct);
+            if (nextCorrect === null) return;
+            const nextScramble = prompt("Edit scrambled words (comma separated):", item.scramble.join(", "));
+            if (nextScramble === null) return;
+            const nextRule = prompt("Edit grammar rule:", item.rule || "");
+            if (nextRule === null) return;
+            const nextNote = prompt("Edit teacher note:", item.teacherNote || "");
+            if (nextNote === null) return;
+
+            item.correct = nextCorrect.trim() || item.correct;
+            item.scramble = nextScramble.split(",").map(w => w.trim()).filter(Boolean);
+            item.rule = nextRule.trim() || item.rule;
+            item.teacherNote = nextNote.trim();
+
+            if (firebaseReady && item.firestoreId) {
+                try {
+                    await db.collection("sentences").doc(item.firestoreId).set({
+                        level,
+                        correct: item.correct,
+                        scramble: item.scramble,
+                        rule: item.rule,
+                        teacherNote: item.teacherNote,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Firestore update failed:", error.message);
+                }
+            }
+
+            populateDatabaseTable();
+            renderTeacherNoteForSentence();
+        }
+
+        // Admin Table: Student Progress Snapshot
+        async function populateRosterTable() {
+            const tbody = document.getElementById("student-roster-body");
+            tbody.innerHTML = "";
+
+            if (firebaseReady && currentUser.role === "teacher") {
+                const studentsSnap = await db.collection("users").where("role", "==", "student").get();
+                roster = await Promise.all(studentsSnap.docs.map(async (docSnap) => {
+                    const profile = docSnap.data();
+                    const progSnap = await db.collection("userProgress").doc(docSnap.id).get();
+                    const p = progSnap.exists ? progSnap.data() : { Beginner: 0, Intermediate: 0, Advanced: 0 };
+                    const stars = (p.Beginner || 0) + (p.Intermediate || 0) + (p.Advanced || 0);
+                    return {
+                        uid: docSnap.id,
+                        name: profile.name,
+                        email: profile.email || "",
+                        grade: profile.grade || "8th Grade",
+                        stars,
+                        level: getStudentCurrentLevel(p),
+                        progress: {
+                            Beginner: p.Beginner || 0,
+                            Intermediate: p.Intermediate || 0,
+                            Advanced: p.Advanced || 0
+                        }
+                    };
+                }));
+            }
+
+            roster.forEach((student) => {
+                const row = document.createElement("tr");
+                row.className = "hover:bg-slate-50";
+                row.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-800">${student.name}</td>
+                    <td class="p-3 text-slate-600">${student.grade}</td>
+                    <td class="p-3 font-bold text-amber-500">${student.stars} ★</td>
+                    <td class="p-3 text-slate-600 font-semibold">${student.level || "Beginner"}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function addMockStudent() {
+            roster.push({
+                name: "Hamad Al-Harbi",
+                grade: "8th Grade",
+                stars: 45,
+                level: "Beginner"
+            });
+            populateRosterTable();
+        }
+
+        // Base initialization
+        initFirebase();
+        loadSheetsConfig();
+        populateDatabaseTable();
+        populateRosterTable();
+
+    </script>
+
+</body>
+</html>
