@@ -30,13 +30,12 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
-  authDomain: "jumblejump-prod.firebaseapp.com",
-  projectId: "jumblejump-prod",
-  storageBucket: "jumblejump-prod.firebasestorage.app",
-  messagingSenderId: "25185167776",
-  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
-  measurementId: "G-WWWQHS7WD3"
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
         };
 
         // Optional: Google Apps Script Web App URL for logging students to Google Sheets.
@@ -540,6 +539,12 @@
                                 <input id="cert-logo2-upload" type="file" accept="image/*" onchange="handleCertificateLogoUpload(event, 2)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-slate-200 rounded-xl">
                                 <img id="cert-logo2-preview" class="hidden mt-2 w-12 h-12 object-cover rounded-lg border border-slate-200" alt="Certificate logo 2 preview">
                             </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">A4 Certificate Template (Optional)</label>
+                                <input id="cert-template-upload" type="file" accept="image/*" onchange="handleCertificateTemplateUpload(event)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-slate-200 rounded-xl">
+                                <img id="cert-template-preview" class="hidden mt-2 w-full h-24 object-cover rounded-lg border border-slate-200" alt="Certificate template preview">
+                                <button onclick="clearCertificateTemplate()" class="mt-2 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">Remove Template</button>
+                            </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <button onclick="applyCertificateSettings()" class="py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs">Apply</button>
                                 <button onclick="resetCertificateSettings()" class="py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs">Reset</button>
@@ -872,11 +877,13 @@
             titleColor: "#f97316",
             fontFamily: "helvetica",
             logo1: "",
-            logo2: ""
+            logo2: "",
+            templateImage: ""
         };
         let teacherNote = "Keep practicing word order every day.";
         let pendingCertLogo1 = "";
         let pendingCertLogo2 = "";
+        let pendingCertTemplate = "";
         let sentenceIdSeed = 1;
 
         // Mock Students for Admin Panel
@@ -1124,8 +1131,12 @@
             document.getElementById("cert-font-family").value = theme.fontFamily;
             pendingCertLogo1 = theme.logo1 || "";
             pendingCertLogo2 = theme.logo2 || "";
+            pendingCertTemplate = theme.templateImage || "";
+            const templateInput = document.getElementById("cert-template-upload");
             const p1 = document.getElementById("cert-logo1-preview");
             const p2 = document.getElementById("cert-logo2-preview");
+            const templatePreview = document.getElementById("cert-template-preview");
+            if (templateInput) templateInput.value = "";
             if (p1) {
                 if (pendingCertLogo1) {
                     p1.src = pendingCertLogo1;
@@ -1140,6 +1151,14 @@
                     p2.classList.remove("hidden");
                 } else {
                     p2.classList.add("hidden");
+                }
+            }
+            if (templatePreview) {
+                if (pendingCertTemplate) {
+                    templatePreview.src = pendingCertTemplate;
+                    templatePreview.classList.remove("hidden");
+                } else {
+                    templatePreview.classList.add("hidden");
                 }
             }
         }
@@ -1169,6 +1188,32 @@
             reader.readAsDataURL(file);
         }
 
+        function handleCertificateTemplateUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                pendingCertTemplate = String(reader.result || "");
+                const preview = document.getElementById("cert-template-preview");
+                if (preview) {
+                    preview.src = pendingCertTemplate;
+                    preview.classList.remove("hidden");
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearCertificateTemplate() {
+            pendingCertTemplate = "";
+            const input = document.getElementById("cert-template-upload");
+            const preview = document.getElementById("cert-template-preview");
+            if (input) input.value = "";
+            if (preview) {
+                preview.src = "";
+                preview.classList.add("hidden");
+            }
+        }
+
         function applyCertificateSettings() {
             if (currentUser.role !== "teacher") {
                 alert("Only teachers can change certificate style.");
@@ -1184,8 +1229,9 @@
                 borderColor: document.getElementById("cert-border-color").value,
                 titleColor: document.getElementById("cert-title-color").value,
                 fontFamily: document.getElementById("cert-font-family").value,
-                logo1: pendingCertLogo1 || (getCertificateTheme().logo1 || ""),
-                logo2: pendingCertLogo2 || (getCertificateTheme().logo2 || "")
+                logo1: pendingCertLogo1,
+                logo2: pendingCertLogo2,
+                templateImage: pendingCertTemplate
             };
             localStorage.setItem("jj_certificate_theme", JSON.stringify(theme));
             alert("Certificate settings saved.");
@@ -1787,12 +1833,30 @@
             const title = hexToRgb(certTheme.titleColor);
             doc.setFont(certTheme.fontFamily || "helvetica", "normal");
 
-            // Outer decorative borders
-            doc.setFillColor(border[0], border[1], border[2]);
-            doc.rect(0, 0, 630, 445, "F");
+            function detectImageType(dataUrl) {
+                if (String(dataUrl).startsWith("data:image/jpeg") || String(dataUrl).startsWith("data:image/jpg")) return "JPEG";
+                return "PNG";
+            }
 
-            doc.setFillColor(bg[0], bg[1], bg[2]);
-            doc.rect(20, 20, 590, 405, "F");
+            // If teacher uploaded a full A4 template, use it as the page background.
+            let templateApplied = false;
+            if (certTheme.templateImage) {
+                try {
+                    doc.addImage(certTheme.templateImage, detectImageType(certTheme.templateImage), 0, 0, 630, 445);
+                    templateApplied = true;
+                } catch (error) {
+                    console.warn("Certificate template could not be added.");
+                }
+            }
+
+            if (!templateApplied) {
+                // Fallback: generated certificate background.
+                doc.setFillColor(border[0], border[1], border[2]);
+                doc.rect(0, 0, 630, 445, "F");
+
+                doc.setFillColor(bg[0], bg[1], bg[2]);
+                doc.rect(20, 20, 590, 405, "F");
+            }
 
             // Add Header
             doc.setTextColor(title[0], title[1], title[2]);
