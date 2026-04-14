@@ -30,13 +30,12 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-             apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
-  authDomain: "jumblejump-prod.firebaseapp.com",
-  projectId: "jumblejump-prod",
-  storageBucket: "jumblejump-prod.firebasestorage.app",
-  messagingSenderId: "25185167776",
-  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
-  measurementId: "G-WWWQHS7WD3"
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
         };
 
         // Optional: Google Apps Script Web App URL for logging students to Google Sheets.
@@ -212,12 +211,36 @@
         <section id="game-view" class="flex flex-col gap-6">
 
             <!-- Progress Dashboard / Levels Overview -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Beginner Level Card -->
-                <div id="card-Beginner" onclick="selectLevel('Beginner')" class="bg-white rounded-3xl p-6 shadow-sm border-2 border-teal-500 cursor-pointer transition hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[140px]">
-                    <div id="target-label-Beginner" class="absolute top-0 right-0 bg-teal-500 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">100 Sentences</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <!-- Basic Level Card -->
+                <div id="card-Basic" onclick="selectLevel('Basic')" class="bg-white rounded-3xl p-6 shadow-sm border-2 border-teal-500 cursor-pointer transition hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+                    <div id="target-label-Basic" class="absolute top-0 right-0 bg-teal-500 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">0 Tasks</div>
                     <div>
-                        <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-lg font-bold">Level 1</span>
+                        <span class="bg-teal-100 text-teal-800 text-xs px-2.5 py-1 rounded-lg font-bold">Level 0</span>
+                        <h3 class="text-xl font-bold text-slate-800 mt-2">Basic</h3>
+                        <p class="text-slate-500 text-sm mt-1">Parts of speech matching: Verb, Adjective, Adverb, Noun.</p>
+                    </div>
+                    <div class="mt-4">
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                            <div id="prog-bar-Basic" class="bg-teal-500 h-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-400 mt-1 font-semibold">
+                            <span>Tasks Completed</span>
+                            <span id="prog-count-Basic">0 / 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Beginner Level Card -->
+                <div id="card-Beginner" onclick="selectLevel('Beginner')" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 cursor-pointer transition hover:shadow-md relative overflow-hidden flex flex-col justify-between min-h-[140px] opacity-75">
+                    <div id="lock-Beginner" class="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px] flex items-center justify-center z-10 transition">
+                        <div id="lock-text-Beginner" class="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg">
+                            <i class="fa-solid fa-lock"></i> Locked until Basic complete
+                        </div>
+                    </div>
+                    <div id="target-label-Beginner" class="absolute top-0 right-0 bg-slate-400 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">100 Sentences</div>
+                    <div>
+                        <span class="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-lg font-bold">Level 1</span>
                         <h3 class="text-xl font-bold text-slate-800 mt-2">Beginner</h3>
                         <p class="text-slate-500 text-sm mt-1">Simple subject, verb, and object ordering.</p>
                     </div>
@@ -290,9 +313,9 @@
                     <!-- Game Header & Controls -->
                     <div class="flex justify-between items-center border-b border-slate-100 pb-4">
                         <div>
-                            <span id="current-level-badge" class="bg-teal-100 text-teal-800 font-bold px-3 py-1 rounded-xl text-xs">Beginner Level</span>
-                            <h2 class="text-2xl font-bold text-slate-800 mt-1">Sentence Builder Workspace</h2>
-                            <p class="text-slate-500 text-sm">Drag and drop the word chips below to arrange them into a grammatically correct sentence.</p>
+                            <span id="current-level-badge" class="bg-teal-100 text-teal-800 font-bold px-3 py-1 rounded-xl text-xs">Basic Level</span>
+                            <h2 id="game-board-title" class="text-2xl font-bold text-slate-800 mt-1">Parts of Speech</h2>
+                            <p id="game-board-subtitle" class="text-slate-500 text-sm">Verb, Adjective, Adverb, Noun. Drag each word into the correct category.</p>
                         </div>
                     </div>
 
@@ -300,7 +323,7 @@
                     <div class="flex-grow flex flex-col justify-center my-8">
                         <div class="text-center mb-6">
                             <i class="fa-solid fa-puzzle-piece text-4xl text-orange-400 opacity-60 mb-2"></i>
-                            <p class="text-sm text-slate-400 font-medium">Drag the word cards and drop them in the correct order!</p>
+                            <p id="game-workspace-help" class="text-sm text-slate-400 font-medium">Drag each word card into its correct part of speech.</p>
                         </div>
 
                         <!-- Dropzone for Sorting Words -->
@@ -785,6 +808,56 @@
             ]
         };
 
+        const basicMatchingExercises = [
+            {
+                words: [
+                    { text: "reads", pos: "Verb" },
+                    { text: "clever", pos: "Adjective" },
+                    { text: "always", pos: "Adverb" },
+                    { text: "student", pos: "Noun" }
+                ],
+                rule: "Verbs show action, adjectives describe nouns, adverbs describe actions, and nouns name people or things."
+            },
+            {
+                words: [
+                    { text: "plays", pos: "Verb" },
+                    { text: "cold", pos: "Adjective" },
+                    { text: "quickly", pos: "Adverb" },
+                    { text: "juice", pos: "Noun" }
+                ],
+                rule: "Use the action word as verb, describing word as adjective, manner word as adverb, and object as noun."
+            },
+            {
+                words: [
+                    { text: "enjoys", pos: "Verb" },
+                    { text: "beautiful", pos: "Adjective" },
+                    { text: "yesterday", pos: "Adverb" },
+                    { text: "dress", pos: "Noun" }
+                ],
+                rule: "Time words like yesterday usually work as adverbials, while objects like dress are nouns."
+            },
+            {
+                words: [
+                    { text: "walking", pos: "Verb" },
+                    { text: "ancient", pos: "Adjective" },
+                    { text: "clearly", pos: "Adverb" },
+                    { text: "library", pos: "Noun" }
+                ],
+                rule: "-ly words are often adverbs, and naming words like library are nouns."
+            },
+            {
+                words: [
+                    { text: "study", pos: "Verb" },
+                    { text: "final", pos: "Adjective" },
+                    { text: "hard", pos: "Adverb" },
+                    { text: "exams", pos: "Noun" }
+                ],
+                rule: "In this activity, hard modifies study as an adverb, and exams is the noun."
+            }
+        ];
+
+        const allLevels = ["Basic", "Beginner", "Intermediate", "Advanced"];
+
         function shuffleArray(items) {
             const arr = [...items];
             for (let i = arr.length - 1; i > 0; i--) {
@@ -829,13 +902,14 @@
             stars: 0,
             medals: 0,
             progress: {
+                Basic: 0,
                 Beginner: 0,
                 Intermediate: 0,
                 Advanced: 0
             }
         };
 
-        let currentLevel = "Beginner";
+        let currentLevel = "Basic";
         let currentSentenceIdx = 0;
         let sentenceMasteryCount = 0;
         let sentenceTarget = 100;
@@ -941,8 +1015,17 @@
             return sentenceTarget;
         }
 
+        function isMatchingLevel(level) {
+            return level === "Basic";
+        }
+
+        function getLevelItems(level) {
+            return isMatchingLevel(level) ? basicMatchingExercises : (baseSentences[level] || []);
+        }
+
         function getLevelTarget(level) {
-            return Math.min(getSentenceTarget(), baseSentences[level].length);
+            if (isMatchingLevel(level)) return basicMatchingExercises.length;
+            return Math.min(getSentenceTarget(), (baseSentences[level] || []).length);
         }
 
         function updateRoleUI() {
@@ -952,12 +1035,17 @@
         }
 
         function updateSentenceTargetLabels() {
-            ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+            allLevels.forEach(level => {
                 const label = document.getElementById(`target-label-${level}`);
-                if (label) label.textContent = `${getLevelTarget(level)} Sentences`;
+                if (label) {
+                    const unit = level === "Basic" ? "Tasks" : "Sentences";
+                    label.textContent = `${getLevelTarget(level)} ${unit}`;
+                }
             });
+            const lockBeginner = document.getElementById("lock-text-Beginner");
             const lockIntermediate = document.getElementById("lock-text-Intermediate");
             const lockAdvanced = document.getElementById("lock-text-Advanced");
+            if (lockBeginner) lockBeginner.innerHTML = `<i class="fa-solid fa-lock"></i> Locked until Basic ${getLevelTarget("Basic")} complete`;
             if (lockIntermediate) lockIntermediate.innerHTML = `<i class="fa-solid fa-lock"></i> Locked until Beginner ${getLevelTarget("Beginner")} complete`;
             if (lockAdvanced) lockAdvanced.innerHTML = `<i class="fa-solid fa-lock"></i> Locked until Intermediate ${getLevelTarget("Intermediate")} complete`;
             const certNote = document.getElementById("certificate-target-note");
@@ -983,7 +1071,7 @@
                 alert("Enter a valid sentence target (50 or more).");
                 return;
             }
-            const hasEnoughForAll = ["Beginner", "Intermediate", "Advanced"].every(level => baseSentences[level].length >= nextTarget);
+            const hasEnoughForAll = ["Beginner", "Intermediate", "Advanced"].every(level => (baseSentences[level] || []).length >= nextTarget);
             if (!hasEnoughForAll) {
                 alert("Not enough real sentences in one or more levels. Upload more sentences first.");
                 return;
@@ -996,18 +1084,41 @@
         }
 
         function updateSentenceActionUI() {
+            const isBasic = isMatchingLevel(currentLevel);
             const mastered = sentenceMasteryCount >= 3;
             const nextBtn = document.getElementById("btn-next");
             const counter = document.getElementById("mastery-counter");
+            const checkBtn = document.getElementById("btn-check");
             nextBtn.disabled = !mastered;
             nextBtn.className = mastered
                 ? "px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2"
                 : "px-6 py-3 bg-orange-300 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2 cursor-not-allowed";
-            counter.textContent = `Correct Rearranges: ${sentenceMasteryCount}/3`;
+            counter.textContent = isBasic ? `Correct Matches: ${sentenceMasteryCount}/3` : `Correct Rearranges: ${sentenceMasteryCount}/3`;
+            if (checkBtn) {
+                checkBtn.innerHTML = isBasic
+                    ? '<i class="fa-solid fa-puzzle-piece"></i> Check Match'
+                    : '<i class="fa-solid fa-repeat"></i> Rearrange';
+            }
+        }
+
+        function updateGameBoardHeader() {
+            const titleEl = document.getElementById("game-board-title");
+            const subtitleEl = document.getElementById("game-board-subtitle");
+            const helpEl = document.getElementById("game-workspace-help");
+            if (isMatchingLevel(currentLevel)) {
+                titleEl.textContent = "Parts of Speech";
+                subtitleEl.textContent = "Verb, Adjective, Adverb, Noun. Drag each word into the correct category.";
+                helpEl.textContent = "Drag each word card into its correct part of speech.";
+            } else {
+                titleEl.textContent = "Sentence Builder Workspace";
+                subtitleEl.textContent = "Drag and drop the word chips below to arrange them into a grammatically correct sentence.";
+                helpEl.textContent = "Drag the word cards and drop them in the correct order!";
+            }
         }
 
         function showHint() {
-            const current = baseSentences[currentLevel][currentSentenceIdx];
+            const current = getActiveSentence();
+            if (!current) return;
             const feedbackBox = document.getElementById("game-feedback");
             feedbackBox.classList.remove("hidden", "bg-rose-100", "text-rose-700", "bg-emerald-100", "text-emerald-700");
             feedbackBox.classList.add("bg-amber-100", "text-amber-700");
@@ -1253,7 +1364,8 @@
         }
 
         function getActiveSentence() {
-            return baseSentences[currentLevel][currentSentenceIdx] || null;
+            const items = getLevelItems(currentLevel);
+            return items[currentSentenceIdx] || null;
         }
 
         function renderTeacherNoteForSentence() {
@@ -1325,7 +1437,9 @@
         function getStudentCurrentLevel(progress) {
             if ((progress.Advanced || 0) > 0) return "Advanced";
             if ((progress.Intermediate || 0) > 0) return "Intermediate";
-            return "Beginner";
+            if ((progress.Beginner || 0) > 0) return "Beginner";
+            if ((progress.Basic || 0) > 0) return "Basic";
+            return "Basic";
         }
 
         async function syncStudentToGoogleSheet(studentPayload) {
@@ -1438,6 +1552,7 @@
                 await db.collection("users").doc(cred.user.uid).set(userDoc);
 
                 await db.collection("userProgress").doc(cred.user.uid).set({
+                    Basic: 0,
                     Beginner: 0,
                     Intermediate: 0,
                     Advanced: 0,
@@ -1452,6 +1567,7 @@
                     grade,
                     level: "Beginner",
                     stars: 0,
+                    basic: 0,
                     beginner: 0,
                     intermediate: 0,
                     advanced: 0,
@@ -1594,6 +1710,7 @@
                 if (progressSnap.exists) {
                     const progress = progressSnap.data();
                     currentUser.progress = {
+                        Basic: progress.Basic || 0,
                         Beginner: progress.Beginner || 0,
                         Intermediate: progress.Intermediate || 0,
                         Advanced: progress.Advanced || 0
@@ -1630,6 +1747,10 @@
 
         function selectLevel(level) {
             // Verify lock conditions
+            if (level === "Beginner" && currentUser.progress.Basic < getLevelTarget("Basic")) {
+                alert(`Beginner level is locked until you complete ${getLevelTarget("Basic")} Basic tasks.`);
+                return;
+            }
             if (level === "Intermediate" && currentUser.progress.Beginner < getLevelTarget("Beginner")) {
                 alert(`Intermediate level is locked until you complete ${getLevelTarget("Beginner")} Beginner sentences.`);
                 return;
@@ -1648,18 +1769,24 @@
             document.getElementById(`card-${level}`).classList.add("border-4", "border-teal-500");
 
             document.getElementById("current-level-badge").innerText = `${level} Level`;
+            updateGameBoardHeader();
             loadSentence();
         }
 
         function updateProgressBars() {
             // Check locks & progress counters
-            ["Beginner", "Intermediate", "Advanced"].forEach(lvl => {
+            allLevels.forEach(lvl => {
                 const completed = currentUser.progress[lvl];
                 const levelTarget = getLevelTarget(lvl) || 1;
                 document.getElementById(`prog-count-${lvl}`).innerText = `${completed} / ${levelTarget}`;
                 document.getElementById(`prog-bar-${lvl}`).style.width = `${Math.min(100, (completed / levelTarget) * 100)}%`;
 
                 // Update Lock visibility & Certificate unlocking
+                if (lvl === "Beginner") {
+                    const isUnlocked = currentUser.progress.Basic >= getLevelTarget("Basic");
+                    const lock = document.getElementById("lock-Beginner");
+                    if (lock) lock.style.display = isUnlocked ? "none" : "flex";
+                }
                 if (lvl === "Intermediate") {
                     const isUnlocked = currentUser.progress.Beginner >= getLevelTarget("Beginner");
                     document.getElementById("lock-Intermediate").style.display = isUnlocked ? "none" : "flex";
@@ -1671,6 +1798,7 @@
 
                 // Certificates
                 const certBtn = document.getElementById(`cert-btn-${lvl}`);
+                if (!certBtn) return;
                 if (completed >= getLevelTarget(lvl)) {
                     certBtn.disabled = false;
                     certBtn.className = "w-full py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl text-sm transition shadow flex items-center justify-center gap-2 cursor-pointer animate-pulse";
@@ -1681,7 +1809,7 @@
             });
 
             // Update Star/Medal Scores
-            let totalSentencesDone = currentUser.progress.Beginner + currentUser.progress.Intermediate + currentUser.progress.Advanced;
+            let totalSentencesDone = currentUser.progress.Basic + currentUser.progress.Beginner + currentUser.progress.Intermediate + currentUser.progress.Advanced;
             currentUser.stars = totalSentencesDone;
             currentUser.medals = Math.floor(totalSentencesDone / 10);
 
@@ -1691,6 +1819,7 @@
             // Persist progress for authenticated students
             if (firebaseReady && currentUser.uid && currentUser.role === "student") {
                 db.collection("userProgress").doc(currentUser.uid).set({
+                    Basic: currentUser.progress.Basic,
                     Beginner: currentUser.progress.Beginner,
                     Intermediate: currentUser.progress.Intermediate,
                     Advanced: currentUser.progress.Advanced,
@@ -1708,6 +1837,7 @@
                         grade: currentUser.grade,
                         level: getStudentCurrentLevel(currentUser.progress),
                         stars: currentUser.stars,
+                        basic: currentUser.progress.Basic,
                         beginner: currentUser.progress.Beginner,
                         intermediate: currentUser.progress.Intermediate,
                         advanced: currentUser.progress.Advanced,
