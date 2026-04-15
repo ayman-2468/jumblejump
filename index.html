@@ -30,7 +30,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-          apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -794,6 +794,7 @@
                     <div class="min-w-[180px]">
                         <label class="block text-[11px] font-bold text-slate-500 mb-1">Competition Level</label>
                         <select id="compete-level" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            <option value="Basic">Basic</option>
                             <option value="Beginner">Beginner</option>
                             <option value="Intermediate">Intermediate</option>
                             <option value="Advanced">Advanced</option>
@@ -866,6 +867,18 @@
         </section>
 
     </main>
+
+    <div id="compete-winner-overlay" class="hidden fixed inset-0 z-[70] bg-slate-900/85 backdrop-blur-sm flex items-center justify-center px-4">
+        <div class="bg-white max-w-2xl w-full rounded-3xl p-8 text-center border-4 border-amber-400 shadow-2xl">
+            <p class="text-xs font-bold uppercase tracking-widest text-teal-600">Competition Winner</p>
+            <h2 id="compete-winner-title" class="text-4xl font-bold text-slate-800 mt-2">Congratulations</h2>
+            <p id="compete-winner-score" class="text-lg font-bold text-amber-600 mt-3">Score: 0.00</p>
+            <p class="text-sm text-slate-500 mt-2">Keep racing to improve grammar speed and accuracy.</p>
+            <button onclick="closeCompetitionWinnerOverlay()" class="mt-6 px-5 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-bold text-sm">
+                Continue
+            </button>
+        </div>
+    </div>
 
     <!-- FOOTER -->
     <footer class="bg-slate-100 border-t border-slate-200 py-6 text-center text-slate-500 text-xs mt-auto">
@@ -1075,7 +1088,8 @@
             level: "Beginner",
             rounds: 5,
             sentencePool: [],
-            sortables: { a: null, b: null },
+            sortables: { a: [], b: [] },
+            firstFinisher: "",
             players: {
                 a: { name: "Student A", round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null },
                 b: { name: "Student B", round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null }
@@ -2209,6 +2223,12 @@
             stopCompetitionTimer("b");
         }
 
+        function destroyCompetitionSortables(side) {
+            const instances = competitionState.sortables[side] || [];
+            instances.forEach(instance => instance.destroy());
+            competitionState.sortables[side] = [];
+        }
+
         function computeCompetitionScore(elapsedSeconds) {
             if (elapsedSeconds <= 30) return 5;
             const reduced = 5 - ((elapsedSeconds - 30) * (5 / 30));
@@ -2253,21 +2273,69 @@
             }
 
             zone.innerHTML = "";
-            const scramble = shuffleArray(sentence.scramble || []);
-            scramble.forEach(word => {
-                const chip = document.createElement("div");
-                chip.className = "drag-card px-4 py-2 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm";
-                chip.dataset.word = word;
-                chip.textContent = word;
-                zone.appendChild(chip);
-            });
+            destroyCompetitionSortables(side);
 
-            if (competitionState.sortables[side]) competitionState.sortables[side].destroy();
-            competitionState.sortables[side] = new Sortable(zone, {
-                animation: 150,
-                ghostClass: "bg-teal-50",
-                chosenClass: "scale-105"
-            });
+            if (competitionState.level === "Basic") {
+                const exercise = sentence;
+                const subcategoriesHtml = (exercise.subCategories || []).map((sub, index) => `
+                    <div class="rounded-lg border border-slate-200 p-2 bg-white">
+                        <p class="text-[11px] font-bold text-slate-700 mb-1">${sub}</p>
+                        <div data-side="${side}" data-category="${sub}" id="compete-drop-${side}-${index}" class="compete-basic-drop min-h-[42px] rounded-md border-2 border-dashed border-slate-300 p-1 flex flex-wrap gap-1 bg-slate-50"></div>
+                    </div>
+                `).join("");
+
+                zone.className = "p-3 bg-slate-50 rounded-2xl border border-slate-200 min-h-[120px] space-y-3";
+                zone.innerHTML = `
+                    <div class="bg-white border border-slate-200 rounded-xl p-3">
+                        <p class="text-[10px] uppercase tracking-wide text-slate-500 font-bold">The Main Category</p>
+                        <p class="text-sm font-bold text-teal-700 mt-1">${exercise.mainCategory || "Parts of Speech"}</p>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-3">
+                        <p class="text-[10px] uppercase tracking-wide text-slate-500 font-bold mb-2">Subcategory</p>
+                        <div class="grid grid-cols-1 gap-2">${subcategoriesHtml}</div>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-3">
+                        <p class="text-[10px] uppercase tracking-wide text-slate-500 font-bold mb-2">Jumbled Words</p>
+                        <div id="compete-bank-${side}" class="compete-basic-bank min-h-[44px] rounded-md border-2 border-dashed border-slate-300 p-2 flex flex-wrap gap-2"></div>
+                    </div>
+                `;
+
+                const bank = document.getElementById(`compete-bank-${side}`);
+                const shuffledWords = shuffleArray(exercise.words || []);
+                shuffledWords.forEach(item => {
+                    const chip = document.createElement("div");
+                    chip.className = "drag-card px-3 py-1.5 bg-white border-2 border-slate-200 text-slate-700 text-xs font-bold rounded-lg shadow-sm";
+                    chip.dataset.word = item.text;
+                    chip.dataset.category = item.pos;
+                    chip.textContent = item.text;
+                    bank.appendChild(chip);
+                });
+
+                const allZones = [bank, ...Array.from(zone.querySelectorAll(".compete-basic-drop"))];
+                allZones.forEach(target => {
+                    competitionState.sortables[side].push(new Sortable(target, {
+                        group: `compete-basic-${side}`,
+                        animation: 150,
+                        ghostClass: "bg-teal-50",
+                        chosenClass: "scale-105"
+                    }));
+                });
+            } else {
+                zone.className = "flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 min-h-[120px]";
+                const scramble = shuffleArray(sentence.scramble || []);
+                scramble.forEach(word => {
+                    const chip = document.createElement("div");
+                    chip.className = "drag-card px-4 py-2 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm";
+                    chip.dataset.word = word;
+                    chip.textContent = word;
+                    zone.appendChild(chip);
+                });
+                competitionState.sortables[side].push(new Sortable(zone, {
+                    animation: 150,
+                    ghostClass: "bg-teal-50",
+                    chosenClass: "scale-105"
+                }));
+            }
 
             feedback.classList.add("hidden");
             feedback.textContent = "";
@@ -2305,6 +2373,46 @@
             feedback.textContent = `Hint: ${sentence.rule || "Follow grammar order."}`;
         }
 
+        function isCompetitionBasicCorrect(side, exercise) {
+            const zone = document.getElementById(`compete-zone-${side}`);
+            if (!zone) return false;
+            const bank = zone.querySelector(`#compete-bank-${side}`);
+            if (!bank || bank.children.length > 0) return false;
+
+            const expected = {};
+            (exercise.words || []).forEach(item => {
+                if (!expected[item.pos]) expected[item.pos] = [];
+                expected[item.pos].push(String(item.text || "").toLowerCase());
+            });
+
+            const drops = Array.from(zone.querySelectorAll(".compete-basic-drop"));
+            for (const drop of drops) {
+                const category = drop.dataset.category || "";
+                const actual = Array.from(drop.children).map(chip => String(chip.dataset.word || "").toLowerCase()).sort();
+                const expectedWords = [...(expected[category] || [])].sort();
+                if (actual.length !== expectedWords.length) return false;
+                if (actual.join("|") !== expectedWords.join("|")) return false;
+            }
+            return true;
+        }
+
+        function showCompetitionWinnerOverlay(name, score) {
+            const overlay = document.getElementById("compete-winner-overlay");
+            const title = document.getElementById("compete-winner-title");
+            const scoreEl = document.getElementById("compete-winner-score");
+            if (!overlay || !title || !scoreEl) return;
+            title.textContent = `Congratulations to ${name}`;
+            scoreEl.textContent = `Current score: ${score.toFixed(2)}`;
+            overlay.classList.remove("hidden");
+            confetti({ particleCount: 180, spread: 90, origin: { y: 0.6 } });
+            setTimeout(() => confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } }), 350);
+        }
+
+        function closeCompetitionWinnerOverlay() {
+            const overlay = document.getElementById("compete-winner-overlay");
+            if (overlay) overlay.classList.add("hidden");
+        }
+
         function updateCompetitionSummary() {
             const summary = document.getElementById("compete-summary");
             if (!summary) return;
@@ -2338,9 +2446,15 @@
             const feedback = document.getElementById(`compete-feedback-${side}`);
             if (!sentence || !zone || !feedback) return;
 
-            const arrangedWords = Array.from(zone.children).map(chip => chip.dataset.word || chip.textContent || "");
-            const userSentence = arrangedWords.join(" ");
-            const isCorrect = !isTimeout && normalizeSentence(userSentence) === normalizeSentence(sentence.correct);
+            let isCorrect = false;
+            if (!isTimeout && competitionState.level === "Basic") {
+                isCorrect = isCompetitionBasicCorrect(side, sentence);
+            }
+            if (!isTimeout && competitionState.level !== "Basic") {
+                const arrangedWords = Array.from(zone.children).map(chip => chip.dataset.word || chip.textContent || "");
+                const userSentence = arrangedWords.join(" ");
+                isCorrect = normalizeSentence(userSentence) === normalizeSentence(sentence.correct);
+            }
             const elapsed = 60 - player.remaining;
             const roundScore = isCorrect ? computeCompetitionScore(elapsed) : 0;
             player.totalScore += roundScore;
@@ -2358,6 +2472,14 @@
             }
 
             player.round += 1;
+
+            const otherSide = side === "a" ? "b" : "a";
+            const otherPlayer = competitionState.players[otherSide];
+            if (!competitionState.firstFinisher && player.round >= competitionState.rounds && otherPlayer.round < competitionState.rounds) {
+                competitionState.firstFinisher = player.name;
+                showCompetitionWinnerOverlay(player.name, player.totalScore);
+            }
+
             updateCompetitionStatus(side);
             updateCompetitionSummary();
 
@@ -2376,7 +2498,7 @@
             const level = document.getElementById("compete-level").value;
             const roundsInput = Number(document.getElementById("compete-rounds").value || 5);
             const rounds = Math.max(1, Math.min(20, roundsInput));
-            const source = baseSentences[level] || [];
+            const source = getLevelItems(level) || [];
             if (!source.length) {
                 alert("No sentences available for selected level.");
                 return;
@@ -2392,6 +2514,8 @@
             competitionState.level = level;
             competitionState.rounds = rounds;
             competitionState.sentencePool = [];
+            competitionState.firstFinisher = "";
+            closeCompetitionWinnerOverlay();
 
             const shuffledSource = shuffleArray([...source]);
             for (let i = 0; i < rounds; i++) {
@@ -2411,11 +2535,10 @@
         function resetCompetition() {
             stopAllCompetitionTimers();
             competitionState.active = false;
+            competitionState.firstFinisher = "";
+            closeCompetitionWinnerOverlay();
             ["a", "b"].forEach(side => {
-                if (competitionState.sortables[side]) {
-                    competitionState.sortables[side].destroy();
-                    competitionState.sortables[side] = null;
-                }
+                destroyCompetitionSortables(side);
                 const zone = document.getElementById(`compete-zone-${side}`);
                 const feedback = document.getElementById(`compete-feedback-${side}`);
                 if (zone) zone.innerHTML = "";
