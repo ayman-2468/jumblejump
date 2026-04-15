@@ -30,7 +30,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+          apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -100,6 +100,9 @@
                     </button>
                     <button onclick="switchTab('admin-view')" id="tab-admin-view" class="tab-btn hidden px-4 py-2 rounded-lg font-semibold text-white hover:bg-white/10 transition">
                         <i class="fa-solid fa-chart-line mr-2"></i> Admin Panel
+                    </button>
+                    <button onclick="switchTab('compete-view')" id="tab-compete-view" class="tab-btn hidden px-4 py-2 rounded-lg font-semibold text-white hover:bg-white/10 transition">
+                        <i class="fa-solid fa-stopwatch mr-2"></i> Compete
                     </button>
                 </div>
 
@@ -782,6 +785,86 @@
 
         </section>
 
+        <!-- ============================================== -->
+        <!-- 3. COMPETE MODE (Teacher Two-Student Arena)   -->
+        <!-- ============================================== -->
+        <section id="compete-view" class="hidden flex flex-col gap-6">
+            <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div class="min-w-[180px]">
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">Competition Level</label>
+                        <select id="compete-level" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+                    <div class="min-w-[140px]">
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">Rounds</label>
+                        <input id="compete-rounds" type="number" min="1" max="20" value="5" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div class="min-w-[180px]">
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">Student A</label>
+                        <input id="compete-student-a" type="text" value="Student A" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div class="min-w-[180px]">
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">Student B</label>
+                        <input id="compete-student-b" type="text" value="Student B" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <button onclick="startCompetition()" class="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold">
+                        <i class="fa-solid fa-flag-checkered mr-1"></i> Start Competition
+                    </button>
+                    <button onclick="resetCompetition()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm" id="compete-col-a">
+                    <div class="flex justify-between items-start gap-3 mb-4">
+                        <div>
+                            <h3 id="compete-name-a" class="text-lg font-bold text-slate-800">Student A</h3>
+                            <p id="compete-round-a" class="text-xs text-slate-500">Round 0 / 0</p>
+                        </div>
+                        <div class="text-right">
+                            <p id="compete-timer-a" class="text-xl font-bold text-teal-600">60s</p>
+                            <p id="compete-score-a" class="text-sm font-bold text-amber-600">Score: 0.0</p>
+                        </div>
+                    </div>
+                    <div id="compete-zone-a" class="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 min-h-[120px]"></div>
+                    <div id="compete-feedback-a" class="mt-3 text-sm font-bold p-3 rounded-xl hidden"></div>
+                    <div class="mt-4 flex gap-2">
+                        <button onclick="showCompetitionHint('a')" class="px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-bold">Hint</button>
+                        <button id="compete-submit-a" onclick="submitCompetition('a')" class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs font-bold">Submit</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm" id="compete-col-b">
+                    <div class="flex justify-between items-start gap-3 mb-4">
+                        <div>
+                            <h3 id="compete-name-b" class="text-lg font-bold text-slate-800">Student B</h3>
+                            <p id="compete-round-b" class="text-xs text-slate-500">Round 0 / 0</p>
+                        </div>
+                        <div class="text-right">
+                            <p id="compete-timer-b" class="text-xl font-bold text-teal-600">60s</p>
+                            <p id="compete-score-b" class="text-sm font-bold text-amber-600">Score: 0.0</p>
+                        </div>
+                    </div>
+                    <div id="compete-zone-b" class="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 min-h-[120px]"></div>
+                    <div id="compete-feedback-b" class="mt-3 text-sm font-bold p-3 rounded-xl hidden"></div>
+                    <div class="mt-4 flex gap-2">
+                        <button onclick="showCompetitionHint('b')" class="px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-bold">Hint</button>
+                        <button id="compete-submit-b" onclick="submitCompetition('b')" class="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs font-bold">Submit</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compete-summary" class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm text-sm font-semibold text-slate-600">
+                Start a competition to see live winner summary.
+            </div>
+        </section>
+
     </main>
 
     <!-- FOOTER -->
@@ -987,6 +1070,17 @@
         let pendingCertLogo2 = "";
         let pendingCertTemplate = "";
         let sentenceIdSeed = 1;
+        let competitionState = {
+            active: false,
+            level: "Beginner",
+            rounds: 5,
+            sentencePool: [],
+            sortables: { a: null, b: null },
+            players: {
+                a: { name: "Student A", round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null },
+                b: { name: "Student B", round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null }
+            }
+        };
 
         // Mock Students for Admin Panel
         let roster = [
@@ -1057,8 +1151,9 @@
 
         function updateRoleUI() {
             const adminTab = document.getElementById("tab-admin-view");
-            if (!adminTab) return;
-            adminTab.classList.toggle("hidden", currentUser.role !== "teacher");
+            const competeTab = document.getElementById("tab-compete-view");
+            if (adminTab) adminTab.classList.toggle("hidden", currentUser.role !== "teacher");
+            if (competeTab) competeTab.classList.toggle("hidden", currentUser.role !== "teacher");
         }
 
         function updateSentenceTargetLabels() {
@@ -1849,11 +1944,13 @@
             populateDatabaseTable();
             populateRosterTable();
             loadTeacherNote();
+            updateRoleUI();
 
             switchTab(currentUser.role === "teacher" ? "admin-view" : "game-view");
         }
 
         function logout() {
+            stopAllCompetitionTimers();
             if (firebaseReady) {
                 auth.signOut().finally(() => location.reload());
                 return;
@@ -2093,6 +2190,245 @@
             loadSentence();
         }
 
+        function getCompetitionSentence(side) {
+            const player = competitionState.players[side];
+            const idx = player.round;
+            return competitionState.sentencePool[idx] || null;
+        }
+
+        function stopCompetitionTimer(side) {
+            const player = competitionState.players[side];
+            if (player.timer) {
+                clearInterval(player.timer);
+                player.timer = null;
+            }
+        }
+
+        function stopAllCompetitionTimers() {
+            stopCompetitionTimer("a");
+            stopCompetitionTimer("b");
+        }
+
+        function computeCompetitionScore(elapsedSeconds) {
+            if (elapsedSeconds <= 30) return 5;
+            const reduced = 5 - ((elapsedSeconds - 30) * (5 / 30));
+            return Math.max(0, Number(reduced.toFixed(2)));
+        }
+
+        function updateCompetitionStatus(side) {
+            const player = competitionState.players[side];
+            const roundEl = document.getElementById(`compete-round-${side}`);
+            const timerEl = document.getElementById(`compete-timer-${side}`);
+            const scoreEl = document.getElementById(`compete-score-${side}`);
+            const submitBtn = document.getElementById(`compete-submit-${side}`);
+            if (roundEl) {
+                roundEl.textContent = competitionState.active
+                    ? `Round ${Math.min(player.round + 1, competitionState.rounds)} / ${competitionState.rounds}`
+                    : "Round 0 / 0";
+            }
+            if (timerEl) timerEl.textContent = `${player.remaining}s`;
+            if (scoreEl) scoreEl.textContent = `Score: ${player.totalScore.toFixed(2)}`;
+            if (submitBtn) {
+                const disabled = !competitionState.active || player.submitted;
+                submitBtn.disabled = disabled;
+                submitBtn.className = disabled
+                    ? "px-4 py-2 bg-teal-200 text-white rounded-lg text-xs font-bold cursor-not-allowed"
+                    : "px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs font-bold";
+            }
+        }
+
+        function renderCompetitionBoard(side) {
+            const zone = document.getElementById(`compete-zone-${side}`);
+            const feedback = document.getElementById(`compete-feedback-${side}`);
+            const sentence = getCompetitionSentence(side);
+            if (!zone || !feedback) return;
+
+            if (!sentence) {
+                zone.innerHTML = "<p class='text-sm font-bold text-emerald-600'>Finished all rounds.</p>";
+                feedback.classList.remove("hidden", "bg-rose-100", "text-rose-700");
+                feedback.classList.add("bg-emerald-100", "text-emerald-700");
+                feedback.textContent = "Competition complete for this student.";
+                updateCompetitionSummary();
+                return;
+            }
+
+            zone.innerHTML = "";
+            const scramble = shuffleArray(sentence.scramble || []);
+            scramble.forEach(word => {
+                const chip = document.createElement("div");
+                chip.className = "drag-card px-4 py-2 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm";
+                chip.dataset.word = word;
+                chip.textContent = word;
+                zone.appendChild(chip);
+            });
+
+            if (competitionState.sortables[side]) competitionState.sortables[side].destroy();
+            competitionState.sortables[side] = new Sortable(zone, {
+                animation: 150,
+                ghostClass: "bg-teal-50",
+                chosenClass: "scale-105"
+            });
+
+            feedback.classList.add("hidden");
+            feedback.textContent = "";
+            competitionState.players[side].remaining = 60;
+            competitionState.players[side].submitted = false;
+            updateCompetitionStatus(side);
+            startCompetitionTimer(side);
+        }
+
+        function startCompetitionTimer(side) {
+            stopCompetitionTimer(side);
+            const player = competitionState.players[side];
+            player.timer = setInterval(() => {
+                if (!competitionState.active || player.submitted) {
+                    stopCompetitionTimer(side);
+                    return;
+                }
+                player.remaining -= 1;
+                if (player.remaining <= 0) {
+                    player.remaining = 0;
+                    updateCompetitionStatus(side);
+                    submitCompetition(side, true);
+                    return;
+                }
+                updateCompetitionStatus(side);
+            }, 1000);
+        }
+
+        function showCompetitionHint(side) {
+            const sentence = getCompetitionSentence(side);
+            const feedback = document.getElementById(`compete-feedback-${side}`);
+            if (!sentence || !feedback) return;
+            feedback.classList.remove("hidden", "bg-rose-100", "text-rose-700", "bg-emerald-100", "text-emerald-700");
+            feedback.classList.add("bg-amber-100", "text-amber-700");
+            feedback.textContent = `Hint: ${sentence.rule || "Follow grammar order."}`;
+        }
+
+        function updateCompetitionSummary() {
+            const summary = document.getElementById("compete-summary");
+            if (!summary) return;
+            const a = competitionState.players.a;
+            const b = competitionState.players.b;
+            const doneA = a.round >= competitionState.rounds;
+            const doneB = b.round >= competitionState.rounds;
+            if (!(doneA && doneB)) {
+                summary.textContent = `Live: ${a.name} (${a.totalScore.toFixed(2)}) vs ${b.name} (${b.totalScore.toFixed(2)})`;
+                return;
+            }
+            if (a.totalScore === b.totalScore) {
+                summary.textContent = `Final Result: Draw (${a.totalScore.toFixed(2)} - ${b.totalScore.toFixed(2)}).`;
+                return;
+            }
+            const winner = a.totalScore > b.totalScore ? a.name : b.name;
+            summary.textContent = `Winner: ${winner}. Final Score ${a.name} ${a.totalScore.toFixed(2)} - ${b.name} ${b.totalScore.toFixed(2)}.`;
+        }
+
+        function submitCompetition(side, isTimeout = false) {
+            if (!competitionState.active) return;
+            const player = competitionState.players[side];
+            if (player.submitted || player.round >= competitionState.rounds) return;
+
+            player.submitted = true;
+            stopCompetitionTimer(side);
+            updateCompetitionStatus(side);
+
+            const sentence = getCompetitionSentence(side);
+            const zone = document.getElementById(`compete-zone-${side}`);
+            const feedback = document.getElementById(`compete-feedback-${side}`);
+            if (!sentence || !zone || !feedback) return;
+
+            const arrangedWords = Array.from(zone.children).map(chip => chip.dataset.word || chip.textContent || "");
+            const userSentence = arrangedWords.join(" ");
+            const isCorrect = !isTimeout && normalizeSentence(userSentence) === normalizeSentence(sentence.correct);
+            const elapsed = 60 - player.remaining;
+            const roundScore = isCorrect ? computeCompetitionScore(elapsed) : 0;
+            player.totalScore += roundScore;
+
+            feedback.classList.remove("hidden", "bg-rose-100", "text-rose-700", "bg-emerald-100", "text-emerald-700", "bg-amber-100", "text-amber-700");
+            if (isCorrect) {
+                feedback.classList.add("bg-emerald-100", "text-emerald-700");
+                feedback.textContent = `Correct. +${roundScore.toFixed(2)} points in ${elapsed}s.`;
+            } else if (isTimeout) {
+                feedback.classList.add("bg-rose-100", "text-rose-700");
+                feedback.textContent = "Time ended (60s). Score for this sentence: 0.";
+            } else {
+                feedback.classList.add("bg-rose-100", "text-rose-700");
+                feedback.textContent = `Incorrect. Score for this sentence: 0. Rule: ${sentence.rule || "Follow sentence order."}`;
+            }
+
+            player.round += 1;
+            updateCompetitionStatus(side);
+            updateCompetitionSummary();
+
+            setTimeout(() => {
+                if (!competitionState.active) return;
+                renderCompetitionBoard(side);
+            }, 650);
+        }
+
+        function startCompetition() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can start competition mode.");
+                return;
+            }
+
+            const level = document.getElementById("compete-level").value;
+            const roundsInput = Number(document.getElementById("compete-rounds").value || 5);
+            const rounds = Math.max(1, Math.min(20, roundsInput));
+            const source = baseSentences[level] || [];
+            if (!source.length) {
+                alert("No sentences available for selected level.");
+                return;
+            }
+
+            const nameA = document.getElementById("compete-student-a").value.trim() || "Student A";
+            const nameB = document.getElementById("compete-student-b").value.trim() || "Student B";
+            document.getElementById("compete-name-a").textContent = nameA;
+            document.getElementById("compete-name-b").textContent = nameB;
+
+            stopAllCompetitionTimers();
+            competitionState.active = true;
+            competitionState.level = level;
+            competitionState.rounds = rounds;
+            competitionState.sentencePool = [];
+
+            const shuffledSource = shuffleArray([...source]);
+            for (let i = 0; i < rounds; i++) {
+                competitionState.sentencePool.push(shuffledSource[i % shuffledSource.length]);
+            }
+
+            competitionState.players.a = { name: nameA, round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null };
+            competitionState.players.b = { name: nameB, round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null };
+
+            updateCompetitionStatus("a");
+            updateCompetitionStatus("b");
+            renderCompetitionBoard("a");
+            renderCompetitionBoard("b");
+            updateCompetitionSummary();
+        }
+
+        function resetCompetition() {
+            stopAllCompetitionTimers();
+            competitionState.active = false;
+            ["a", "b"].forEach(side => {
+                if (competitionState.sortables[side]) {
+                    competitionState.sortables[side].destroy();
+                    competitionState.sortables[side] = null;
+                }
+                const zone = document.getElementById(`compete-zone-${side}`);
+                const feedback = document.getElementById(`compete-feedback-${side}`);
+                if (zone) zone.innerHTML = "";
+                if (feedback) feedback.classList.add("hidden");
+            });
+            competitionState.players.a = { name: "Student A", round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null };
+            competitionState.players.b = { name: "Student B", round: 0, totalScore: 0, remaining: 60, submitted: false, timer: null };
+            updateCompetitionStatus("a");
+            updateCompetitionStatus("b");
+            const summary = document.getElementById("compete-summary");
+            if (summary) summary.textContent = "Start a competition to see live winner summary.";
+        }
+
 
         // ==========================================
         // 6. CERTIFICATE GENERATION via jsPDF
@@ -2214,17 +2550,25 @@
         // ==========================================
 
         function switchTab(targetId) {
-            if (targetId === "admin-view" && currentUser.role !== "teacher") {
+            if ((targetId === "admin-view" || targetId === "compete-view") && currentUser.role !== "teacher") {
                 return;
             }
 
-            ["game-view", "admin-view"].forEach(id => {
+            ["game-view", "admin-view", "compete-view"].forEach(id => {
                 document.getElementById(id).classList.add("hidden");
-                document.getElementById(`tab-${id}`).className = "tab-btn px-4 py-2 rounded-lg font-semibold text-white hover:bg-white/10 transition";
+                const tab = document.getElementById(`tab-${id}`);
+                if (!tab) return;
+                tab.classList.remove("bg-white", "text-teal-600", "shadow-sm");
+                tab.classList.add("text-white", "hover:bg-white/10");
             });
 
             document.getElementById(targetId).classList.remove("hidden");
-            document.getElementById(`tab-${targetId}`).className = "tab-btn px-4 py-2 rounded-lg font-semibold bg-white text-teal-600 shadow-sm transition";
+            const activeTab = document.getElementById(`tab-${targetId}`);
+            if (activeTab) {
+                activeTab.classList.remove("text-white", "hover:bg-white/10");
+                activeTab.classList.add("bg-white", "text-teal-600", "shadow-sm");
+            }
+            updateRoleUI();
         }
 
         // SheetJS (Excel) - Download Template
@@ -2648,6 +2992,7 @@
         loadSheetsConfig();
         populateDatabaseTable();
         populateRosterTable();
+        resetCompetition();
 
     </script>
 
