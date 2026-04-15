@@ -30,13 +30,12 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
-  authDomain: "jumblejump-prod.firebaseapp.com",
-  projectId: "jumblejump-prod",
-  storageBucket: "jumblejump-prod.firebasestorage.app",
-  messagingSenderId: "25185167776",
-  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
-  measurementId: "G-WWWQHS7WD3"
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
         };
 
         // Keep empty. Each teacher saves their own Google Sheet URL in their own dashboard settings.
@@ -144,9 +143,7 @@
                     <i class="fa-solid fa-user-graduate text-4xl animate-pulse"></i>
                 </div>
                 <h2 class="text-3xl font-bold text-slate-800">Welcome to Jumble<span class="text-orange-500">Jump</span></h2>
-                <p class="text-slate-500 mt-2 text-sm leading-relaxed">
-                    Designed for Saudi 8th & 9th Grade English learners. Sign in or create your account to start.
-                </p>
+                <p class="text-slate-500 mt-2 text-sm leading-relaxed">English Sentence Builder</p>
             </div>
 
             <div class="space-y-4">
@@ -175,17 +172,13 @@
                 <div id="auth-signup-pane" class="space-y-3 hidden">
                     <input type="text" id="signup-name" placeholder="Full Name" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                     <input type="email" id="signup-email" placeholder="Email" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
-                    <input type="email" id="signup-teacher-email" placeholder="Teacher Email (required)" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                    <input type="text" id="signup-teacher-code" placeholder="Teacher Code (required)" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium uppercase">
                     <div class="relative">
                         <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                         <button type="button" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <select id="signup-grade" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
-                        <option value="8th Grade">8th Grade</option>
-                        <option value="9th Grade">9th Grade</option>
-                    </select>
                     <button onclick="handleSignup()" class="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i> Create Student Account
                     </button>
@@ -193,7 +186,7 @@
 
                 <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <p id="auth-status" class="text-xs text-amber-800">
-                        Students use Sign Up first, then Sign In. Ask your teacher for their email before creating your account.
+                        Students use Sign Up first, then Sign In. Ask your teacher for the signup code before creating your account.
                     </p>
                 </div>
             </div>
@@ -707,6 +700,22 @@
                         <button onclick="syncAllStudentsToGoogleSheet()" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-2.5 rounded-xl text-sm transition">
                             Sync All Students Now
                         </button>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="fa-solid fa-key text-2xl text-teal-600"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Student Signup Code</h4>
+                                <p class="text-xs text-slate-500">Share this code with your students so they can register under your account.</p>
+                            </div>
+                        </div>
+                        <label class="block text-[11px] font-bold text-slate-500 mb-1">Your Teacher Code</label>
+                        <input id="teacher-signup-code" type="text" placeholder="Example: JJ-AB12CD" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm uppercase mb-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="saveTeacherSignupCode()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2.5 rounded-xl text-sm transition">Save Code</button>
+                            <button onclick="loadTeacherSignupCode()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-sm transition">Refresh</button>
+                        </div>
                     </div>
 
                 </div>
@@ -1642,6 +1651,15 @@
             return `jj_sheets_webhook_url_${teacherUid || ""}`;
         }
 
+        function getTeacherCodeStorageKey(teacherUid) {
+            return `jj_teacher_signup_code_${teacherUid || ""}`;
+        }
+
+        function createDefaultTeacherCode(teacherUid) {
+            const tail = String(teacherUid || "").replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase();
+            return `JJ-${tail || "TEACH"}`;
+        }
+
         async function getTeacherWebhookByUid(teacherUid) {
             if (!teacherUid) return "";
             if (teacherWebhookCache.has(teacherUid)) return teacherWebhookCache.get(teacherUid);
@@ -1695,6 +1713,80 @@
             teacherWebhookCache.set(currentUser.uid, sheetsWebhookUrl);
             localStorage.setItem(localKey, sheetsWebhookUrl);
             if (input) input.value = sheetsWebhookUrl;
+        }
+
+        async function loadTeacherSignupCode() {
+            const input = document.getElementById("teacher-signup-code");
+            if (!input) return;
+
+            if (currentUser.role !== "teacher" || !currentUser.uid) {
+                input.value = "";
+                return;
+            }
+
+            const localKey = getTeacherCodeStorageKey(currentUser.uid);
+            let teacherCode = (localStorage.getItem(localKey) || "").trim().toUpperCase();
+
+            if (firebaseReady) {
+                try {
+                    const userSnap = await db.collection("users").doc(currentUser.uid).get();
+                    const remoteCode = String(userSnap.data()?.signupCode || "").trim().toUpperCase();
+                    if (remoteCode) teacherCode = remoteCode;
+                } catch (error) {
+                    console.warn("Failed to load teacher code:", error.message);
+                }
+            }
+
+            if (!teacherCode) {
+                teacherCode = createDefaultTeacherCode(currentUser.uid);
+                if (firebaseReady) {
+                    try {
+                        await db.collection("users").doc(currentUser.uid).set({
+                            signupCode: teacherCode,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    } catch (error) {
+                        console.warn("Failed to auto-create teacher code:", error.message);
+                    }
+                }
+            }
+
+            localStorage.setItem(localKey, teacherCode);
+            input.value = teacherCode;
+        }
+
+        async function saveTeacherSignupCode() {
+            if (currentUser.role !== "teacher" || !currentUser.uid) {
+                alert("Only teachers can save signup codes.");
+                return;
+            }
+
+            const input = document.getElementById("teacher-signup-code");
+            if (!input) return;
+
+            const signupCode = String(input.value || "").trim().toUpperCase();
+            if (signupCode.length < 4) {
+                alert("Teacher code must be at least 4 characters.");
+                return;
+            }
+
+            const localKey = getTeacherCodeStorageKey(currentUser.uid);
+            localStorage.setItem(localKey, signupCode);
+            input.value = signupCode;
+
+            if (firebaseReady) {
+                try {
+                    await db.collection("users").doc(currentUser.uid).set({
+                        signupCode,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    alert(`Could not save code to Firestore: ${error.message}`);
+                    return;
+                }
+            }
+
+            alert("Teacher signup code saved.");
         }
 
         async function saveSheetsWebhook() {
@@ -1823,11 +1915,11 @@
             const role = "student";
             const name = document.getElementById("signup-name").value.trim();
             const email = document.getElementById("signup-email").value.trim().toLowerCase();
-            const teacherEmail = document.getElementById("signup-teacher-email").value.trim().toLowerCase();
+            const teacherCode = document.getElementById("signup-teacher-code").value.trim().toUpperCase();
             const password = document.getElementById("signup-password").value;
-            const grade = document.getElementById("signup-grade").value;
+            const grade = "Not Set";
 
-            if (!name || !email || !password || !teacherEmail) {
+            if (!name || !email || !password || !teacherCode) {
                 setAuthStatus("Please fill all required signup fields.", true);
                 return;
             }
@@ -1835,24 +1927,22 @@
                 setAuthStatus("Please enter a valid email address.", true);
                 return;
             }
-            if (!isValidEmail(teacherEmail)) {
-                setAuthStatus("Please enter a valid teacher email.", true);
+            if (teacherCode.length < 4) {
+                setAuthStatus("Please enter a valid teacher code.", true);
                 return;
             }
 
             try {
                 const teacherSnap = await db.collection("users")
-                    .where("role", "==", "teacher")
+                    .where("signupCode", "==", teacherCode)
                     .get();
-                const teacherDoc = teacherSnap.docs.find(docItem => {
-                    const teacherData = docItem.data() || {};
-                    return String(teacherData.email || "").trim().toLowerCase() === teacherEmail;
-                });
+                const teacherDoc = teacherSnap.docs.find(docItem => (docItem.data()?.role || "") === "teacher");
                 if (!teacherDoc) {
-                    setAuthStatus("Teacher email not found. Ask your teacher to create/sign in their account first.", true);
+                    setAuthStatus("Teacher code not found. Ask your teacher for the correct signup code.", true);
                     return;
                 }
                 const teacherUid = teacherDoc.id;
+                const teacherEmail = String(teacherDoc.data()?.email || "").trim().toLowerCase();
 
                 const cred = await auth.createUserWithEmailAndPassword(email, password);
                 const userDoc = {
@@ -1862,6 +1952,7 @@
                     grade,
                     teacherUid,
                     teacherEmail,
+                    assignedTeacherCode: teacherCode,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 await db.collection("users").doc(cred.user.uid).set(userDoc);
@@ -2012,6 +2103,7 @@
             loadTeacherNote();
             updateRoleUI();
             await loadSheetsConfig();
+            await loadTeacherSignupCode();
 
             switchTab(currentUser.role === "teacher" ? "admin-view" : "game-view");
         }
