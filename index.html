@@ -30,13 +30,12 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
-  authDomain: "jumblejump-prod.firebaseapp.com",
-  projectId: "jumblejump-prod",
-  storageBucket: "jumblejump-prod.firebasestorage.app",
-  messagingSenderId: "25185167776",
-  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
-  measurementId: "G-WWWQHS7WD3"
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
         };
 
         // Optional: Google Apps Script Web App URL for logging students to Google Sheets.
@@ -2229,13 +2228,25 @@
 
         // SheetJS (Excel) - Download Template
         function downloadExcelTemplate() {
-            const worksheet = XLSX.utils.json_to_sheet([
+            const sentenceSheet = XLSX.utils.json_to_sheet([
                 { Level: "Beginner", Scrambled_Words: "apple,red,The,is", Correct_Sentence: "The apple is red", Grammar_Rule: "Adjective follows linking verb.", Teacher_Note: "Focus on subject then verb." },
                 { Level: "Intermediate", Scrambled_Words: "fast,ran,very,dog,The", Correct_Sentence: "The dog ran very fast", Grammar_Rule: "Adverbs follow action verbs.", Teacher_Note: "Watch adverb placement." }
             ]);
 
+            const basicSheet = XLSX.utils.json_to_sheet([
+                { Main_Category: "Parts of Speech", Subcategory: "Verb", Jumbled_Words: "play", Hint: "Verbs show action.", Teacher_Note: "Check action words first.", Question_ID: "BASIC_1" },
+                { Main_Category: "Parts of Speech", Subcategory: "Adjective", Jumbled_Words: "red", Hint: "Adjectives describe nouns.", Teacher_Note: "Look for describing words.", Question_ID: "BASIC_1" },
+                { Main_Category: "Parts of Speech", Subcategory: "Preposition", Jumbled_Words: "on", Hint: "Prepositions show relation.", Teacher_Note: "Find location relation words.", Question_ID: "BASIC_1" }
+            ]);
+
+            const noteSheet = XLSX.utils.json_to_sheet([
+                { Level: "Beginner", Correct_Sentence: "The apple is red", Teacher_Note: "Start with subject, then verb." }
+            ]);
+
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Sentences");
+            XLSX.utils.book_append_sheet(workbook, sentenceSheet, "Sentences");
+            XLSX.utils.book_append_sheet(workbook, basicSheet, "BasicLevel");
+            XLSX.utils.book_append_sheet(workbook, noteSheet, "TeacherNotes");
             XLSX.writeFile(workbook, "JumbleJump_Import_Template.xlsx");
         }
 
@@ -2265,8 +2276,34 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: "array" });
 
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(firstSheet);
+                if (!workbook.SheetNames || !workbook.SheetNames.length) {
+                    alert("No Excel sheet found in this workbook. Add at least one sheet and try again.");
+                    return;
+                }
+
+                const findSheet = (possibleNames) => {
+                    const normalized = workbook.SheetNames.map(name => ({
+                        raw: name,
+                        key: String(name || "").trim().toLowerCase().replace(/\s+/g, "")
+                    }));
+                    for (const candidate of possibleNames) {
+                        const key = candidate.toLowerCase().replace(/\s+/g, "");
+                        const hit = normalized.find(item => item.key === key);
+                        if (hit) return workbook.Sheets[hit.raw];
+                    }
+                    return null;
+                };
+
+                const sentenceSheet = findSheet(["Sentences", "Sentence", "Sheet1"]);
+                const basicSheet = findSheet(["BasicLevel", "Basic", "PartsOfSpeech"]);
+
+                const sentenceRows = sentenceSheet ? XLSX.utils.sheet_to_json(sentenceSheet) : [];
+                const basicRows = basicSheet ? XLSX.utils.sheet_to_json(basicSheet) : [];
+
+                if (!sentenceRows.length && !basicRows.length) {
+                    alert("No valid rows found. Use sheet 'Sentences' and/or 'BasicLevel' with the required headers.");
+                    return;
+                }
 
                 let importedCount = 0;
 
@@ -2275,34 +2312,43 @@
                 // 2) Basic matching rows: Level=Basic | Main_Category | Sub_Category | Word | Hint | Question_ID(optional)
                 const groupedBasic = new Map();
 
-                for (const row of rows) {
-                    if (String(row.Level || "").trim() === "Basic" && row.Main_Category && row.Sub_Category && row.Word) {
-                        const groupId = String(row.Question_ID || `${row.Main_Category}|${row.Hint || ""}`).trim();
+                for (const row of basicRows) {
+                    const mainCategory = String(row.Main_Category || row["Main category"] || "").trim();
+                    const subCategory = String(row.Subcategory || row.Sub_Category || row["Sub category"] || "").trim();
+                    const word = String(row.Jumbled_Words || row.Word || row["Jumbled words"] || "").trim();
+                    const hint = String(row.Hint || row.Grammar_Rule || "Use Hint to see the grammar rule.").trim();
+                    const questionId = String(row.Question_ID || `${mainCategory}|${hint}`).trim();
+
+                    if (mainCategory && subCategory && word) {
+                        const groupId = questionId;
                         if (!groupedBasic.has(groupId)) {
                             groupedBasic.set(groupId, {
-                                mainCategory: String(row.Main_Category || "Parts of Speech").trim(),
+                                mainCategory: mainCategory || "Parts of Speech",
                                 subCategories: [],
                                 words: [],
-                                rule: String(row.Hint || "Use Hint to see the grammar rule.").trim()
+                                rule: hint
                             });
                         }
                         const entry = groupedBasic.get(groupId);
-                        const sub = String(row.Sub_Category).trim();
+                        const sub = subCategory;
                         if (!entry.subCategories.includes(sub)) entry.subCategories.push(sub);
-                        entry.words.push({ text: String(row.Word).trim(), pos: sub });
+                        entry.words.push({ text: word, pos: sub });
                         continue;
                     }
+                }
 
-                    if (row.Level && row.Scrambled_Words && row.Correct_Sentence && baseSentences[row.Level]) {
+                for (const row of sentenceRows) {
+                    const level = String(row.Level || "").trim();
+                    if (level && row.Scrambled_Words && row.Correct_Sentence && baseSentences[level]) {
                         const payload = {
-                            level: row.Level,
+                            level,
                             correct: row.Correct_Sentence,
                             scramble: row.Scrambled_Words.split(",").map(w => w.trim()),
                             rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
                             teacherNote: row.Teacher_Note || ""
                         };
                         let firestoreId = "";
-                        baseSentences[row.Level].push({
+                        baseSentences[level].push({
                             id: `local-${sentenceIdSeed++}`,
                             correct: payload.correct,
                             scramble: payload.scramble,
@@ -2315,7 +2361,7 @@
                                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
                             firestoreId = ref.id;
-                            const last = baseSentences[row.Level][baseSentences[row.Level].length - 1];
+                            const last = baseSentences[level][baseSentences[level].length - 1];
                             last.firestoreId = firestoreId;
                         }
                         importedCount++;
@@ -2333,7 +2379,12 @@
                     importedCount++;
                 }
 
-                alert(`✅ Success! Imported ${importedCount} custom sentences into the database.`);
+                if (!importedCount) {
+                    alert("No importable rows were found. Check your headers and sheet names.");
+                    return;
+                }
+
+                alert(`✅ Success! Imported ${importedCount} items from Excel.`);
                 populateDatabaseTable();
             };
 
@@ -2360,8 +2411,23 @@
             reader.onload = async function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: "array" });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(firstSheet);
+                if (!workbook.SheetNames || !workbook.SheetNames.length) {
+                    alert("No Excel sheet found in this workbook.");
+                    return;
+                }
+
+                const sheetName = workbook.SheetNames.find(name => {
+                    const key = String(name || "").trim().toLowerCase().replace(/\s+/g, "");
+                    return ["teachernotes", "notes", "sheet1"].includes(key);
+                }) || workbook.SheetNames[0];
+
+                const noteSheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(noteSheet);
+
+                if (!rows.length) {
+                    alert("Teacher notes sheet is empty.");
+                    return;
+                }
 
                 let updated = 0;
                 for (const row of rows) {
