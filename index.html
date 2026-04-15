@@ -30,7 +30,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-          apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -39,15 +39,8 @@
   measurementId: "G-WWWQHS7WD3"
         };
 
-        // Optional: Google Apps Script Web App URL for logging students to Google Sheets.
-        window.JJ_SHEETS_WEBHOOK_URL = window.JJ_SHEETS_WEBHOOK_URL || "";
-
-        // Requested teacher login bootstrap account.
-        window.JJ_DEFAULT_TEACHER = window.JJ_DEFAULT_TEACHER || {
-            name: "Ayman Nasser",
-            email: "aym.naser78@gmail.com",
-            password: "1234Qwer@"
-        };
+        // Keep empty. Each teacher saves their own Google Sheet URL in their own dashboard settings.
+        window.JJ_SHEETS_WEBHOOK_URL = "";
     </script>
 
     <style>
@@ -182,6 +175,7 @@
                 <div id="auth-signup-pane" class="space-y-3 hidden">
                     <input type="text" id="signup-name" placeholder="Full Name" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                     <input type="email" id="signup-email" placeholder="Email" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
+                    <input type="email" id="signup-teacher-email" placeholder="Teacher Email (required)" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                     <div class="relative">
                         <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                         <button type="button" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700">
@@ -199,7 +193,7 @@
 
                 <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <p id="auth-status" class="text-xs text-amber-800">
-                        Students use Sign Up first, then Sign In. Teacher login: aym.naser78@gmail.com / 1234Qwer@
+                        Students use Sign Up first, then Sign In. Ask your teacher for their email before creating your account.
                     </p>
                 </div>
             </div>
@@ -702,7 +696,7 @@
                             <i class="fa-brands fa-google text-2xl text-sky-500"></i>
                             <div>
                                 <h4 class="font-bold text-slate-800 text-lg">Google Sheet Sync</h4>
-                                <p class="text-xs text-slate-500">Save signed students with their scores and level to your Google Sheet.</p>
+                                <p class="text-xs text-slate-500">Each teacher can save only their own students and scores to their own Google Sheet.</p>
                             </div>
                         </div>
                         <label class="block text-[11px] font-bold text-slate-500 mb-1">Apps Script Web App URL</label>
@@ -1011,6 +1005,8 @@
             uid: null,
             name: "Guest Student",
             email: "",
+            teacherUid: "",
+            teacherEmail: "",
             grade: "8th Grade",
             role: "student",
             photoDataUrl: "",
@@ -1042,12 +1038,8 @@
         let db = null;
         let sheetsWebhookUrl = "";
         let lastSheetSyncAt = 0;
+        const teacherWebhookCache = new Map();
         let pendingThemeLogoData = "";
-        const defaultTeacherAccount = window.JJ_DEFAULT_TEACHER || {
-            name: "Ayman Nasser",
-            email: "aym.naser78@gmail.com",
-            password: "1234Qwer@"
-        };
         const motivationalQuotes = [
             "Every correct sentence makes your writing shine brighter!",
             "Great grammar creates great confidence.",
@@ -1646,21 +1638,90 @@
             buttonElement.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
         }
 
-        function loadSheetsConfig() {
-            const stored = localStorage.getItem("jj_sheets_webhook_url") || "";
-            sheetsWebhookUrl = stored || window.JJ_SHEETS_WEBHOOK_URL || "";
+        function getTeacherSheetsStorageKey(teacherUid) {
+            return `jj_sheets_webhook_url_${teacherUid || ""}`;
+        }
+
+        async function getTeacherWebhookByUid(teacherUid) {
+            if (!teacherUid) return "";
+            if (teacherWebhookCache.has(teacherUid)) return teacherWebhookCache.get(teacherUid);
+
+            const localKey = getTeacherSheetsStorageKey(teacherUid);
+            const localValue = localStorage.getItem(localKey) || "";
+            if (localValue) {
+                teacherWebhookCache.set(teacherUid, localValue);
+                return localValue;
+            }
+
+            if (firebaseReady) {
+                try {
+                    const snap = await db.collection("teacherSettings").doc(teacherUid).get();
+                    const remoteValue = String(snap.data()?.sheetsWebhookUrl || "").trim();
+                    if (remoteValue) {
+                        teacherWebhookCache.set(teacherUid, remoteValue);
+                        localStorage.setItem(localKey, remoteValue);
+                        return remoteValue;
+                    }
+                } catch (error) {
+                    console.warn("Teacher webhook lookup failed:", error.message);
+                }
+            }
+
+            return "";
+        }
+
+        async function loadSheetsConfig() {
             const input = document.getElementById("sheets-webhook");
+            if (currentUser.role !== "teacher" || !currentUser.uid) {
+                sheetsWebhookUrl = "";
+                if (input) input.value = "";
+                return;
+            }
+
+            const localKey = getTeacherSheetsStorageKey(currentUser.uid);
+            const localValue = localStorage.getItem(localKey) || "";
+            sheetsWebhookUrl = localValue;
+
+            if (firebaseReady) {
+                try {
+                    const settingsSnap = await db.collection("teacherSettings").doc(currentUser.uid).get();
+                    const remoteValue = String(settingsSnap.data()?.sheetsWebhookUrl || "").trim();
+                    if (remoteValue) sheetsWebhookUrl = remoteValue;
+                } catch (error) {
+                    console.warn("Failed to load teacher sheet URL:", error.message);
+                }
+            }
+
+            teacherWebhookCache.set(currentUser.uid, sheetsWebhookUrl);
+            localStorage.setItem(localKey, sheetsWebhookUrl);
             if (input) input.value = sheetsWebhookUrl;
         }
 
-        function saveSheetsWebhook() {
+        async function saveSheetsWebhook() {
             if (currentUser.role !== "teacher") {
                 alert("Only teachers can configure Google Sheet sync.");
                 return;
             }
             const input = document.getElementById("sheets-webhook");
             sheetsWebhookUrl = input ? input.value.trim() : "";
-            localStorage.setItem("jj_sheets_webhook_url", sheetsWebhookUrl);
+            const localKey = getTeacherSheetsStorageKey(currentUser.uid);
+            localStorage.setItem(localKey, sheetsWebhookUrl);
+            teacherWebhookCache.set(currentUser.uid, sheetsWebhookUrl);
+
+            if (firebaseReady && currentUser.uid) {
+                try {
+                    await db.collection("teacherSettings").doc(currentUser.uid).set({
+                        teacherUid: currentUser.uid,
+                        teacherEmail: currentUser.email || "",
+                        sheetsWebhookUrl,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    alert(`Could not save URL to Firestore: ${error.message}`);
+                    return;
+                }
+            }
+
             alert(sheetsWebhookUrl ? "Google Sheet URL saved." : "Google Sheet URL cleared.");
         }
 
@@ -1673,9 +1734,14 @@
         }
 
         async function syncStudentToGoogleSheet(studentPayload) {
-            if (!sheetsWebhookUrl) return;
+            const teacherUid = studentPayload.teacherUid || currentUser.teacherUid || "";
+            if (!teacherUid) return;
+
+            const webhookUrl = await getTeacherWebhookByUid(teacherUid);
+            if (!webhookUrl) return;
+
             try {
-                await fetch(sheetsWebhookUrl, {
+                await fetch(webhookUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(studentPayload)
@@ -1703,12 +1769,14 @@
             for (const student of latestStudents.values()) {
                 await syncStudentToGoogleSheet({
                     type: "student_progress",
+                    teacherUid: currentUser.uid,
                     uid: student.uid,
                     name: student.name,
                     email: student.email || "",
                     grade: student.grade,
                     level: student.level,
                     stars: student.stars,
+                    basic: student.progress?.Basic || 0,
                     beginner: student.progress?.Beginner || 0,
                     intermediate: student.progress?.Intermediate || 0,
                     advanced: student.progress?.Advanced || 0,
@@ -1731,17 +1799,14 @@
                 auth = firebase.auth();
                 db = firebase.firestore();
                 firebaseReady = true;
-                setAuthStatus("Firebase connected. Students can Sign Up. Teachers should Sign In with existing Firebase accounts.");
+                setAuthStatus("Firebase connected. Sign In is required each session.");
                 setFirebaseBadge(true);
 
-                auth.onAuthStateChanged(async (user) => {
-                    if (!user) return;
-                    try {
-                        await completeLogin(user.uid, user.email || "");
-                    } catch (error) {
-                        setAuthStatus(error.message, true);
-                    }
-                });
+                auth.setPersistence(firebase.auth.Auth.Persistence.NONE)
+                    .then(() => auth.signOut())
+                    .catch(() => {
+                        // If persistence setup fails, still keep app usable.
+                    });
             } catch (error) {
                 firebaseReady = false;
                 setFirebaseBadge(false);
@@ -1757,11 +1822,12 @@
 
             const role = "student";
             const name = document.getElementById("signup-name").value.trim();
-            const email = document.getElementById("signup-email").value.trim();
+            const email = document.getElementById("signup-email").value.trim().toLowerCase();
+            const teacherEmail = document.getElementById("signup-teacher-email").value.trim().toLowerCase();
             const password = document.getElementById("signup-password").value;
             const grade = document.getElementById("signup-grade").value;
 
-            if (!name || !email || !password) {
+            if (!name || !email || !password || !teacherEmail) {
                 setAuthStatus("Please fill all required signup fields.", true);
                 return;
             }
@@ -1769,14 +1835,33 @@
                 setAuthStatus("Please enter a valid email address.", true);
                 return;
             }
+            if (!isValidEmail(teacherEmail)) {
+                setAuthStatus("Please enter a valid teacher email.", true);
+                return;
+            }
 
             try {
+                const teacherSnap = await db.collection("users")
+                    .where("role", "==", "teacher")
+                    .get();
+                const teacherDoc = teacherSnap.docs.find(docItem => {
+                    const teacherData = docItem.data() || {};
+                    return String(teacherData.email || "").trim().toLowerCase() === teacherEmail;
+                });
+                if (!teacherDoc) {
+                    setAuthStatus("Teacher email not found. Ask your teacher to create/sign in their account first.", true);
+                    return;
+                }
+                const teacherUid = teacherDoc.id;
+
                 const cred = await auth.createUserWithEmailAndPassword(email, password);
                 const userDoc = {
                     name,
                     email,
                     role,
                     grade,
+                    teacherUid,
+                    teacherEmail,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 await db.collection("users").doc(cred.user.uid).set(userDoc);
@@ -1791,11 +1876,12 @@
 
                 await syncStudentToGoogleSheet({
                     type: "student_signup",
+                    teacherUid,
                     uid: cred.user.uid,
                     name,
                     email,
                     grade,
-                    level: "Beginner",
+                    level: "Basic",
                     stars: 0,
                     basic: 0,
                     beginner: 0,
@@ -1881,48 +1967,12 @@
                 const cred = await auth.signInWithEmailAndPassword(email, password);
                 await completeLogin(cred.user.uid, cred.user.email || email);
             } catch (error) {
-                const isDefaultTeacher =
-                    email.toLowerCase() === (defaultTeacherAccount.email || "").toLowerCase() &&
-                    password === defaultTeacherAccount.password;
-
-                // If teacher account does not exist yet in Firebase Auth, bootstrap it once.
-                if (isDefaultTeacher && error && error.code === "auth/user-not-found") {
-                    try {
-                        const teacherCred = await auth.createUserWithEmailAndPassword(email, password);
-                        await db.collection("users").doc(teacherCred.user.uid).set({
-                            name: defaultTeacherAccount.name || "Ayman Nasser",
-                            email,
-                            role: "teacher",
-                            grade: "Teacher",
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                        setAuthStatus("Teacher account created in Firebase. You are now signed in.");
-                        await completeLogin(teacherCred.user.uid, email);
-                        return;
-                    } catch (bootstrapError) {
-                        setAuthStatus(bootstrapError.message, true);
-                        return;
-                    }
-                }
                 setAuthStatus(error.message, true);
             }
         }
 
         async function completeLogin(uid, fallbackEmail = "") {
             let userSnap = await db.collection("users").doc(uid).get();
-            if (!userSnap.exists) {
-                const isDefaultTeacher = fallbackEmail.toLowerCase() === (defaultTeacherAccount.email || "").toLowerCase();
-                if (isDefaultTeacher) {
-                    await db.collection("users").doc(uid).set({
-                        name: defaultTeacherAccount.name || "Ayman Nasser",
-                        email: fallbackEmail,
-                        role: "teacher",
-                        grade: "Teacher",
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-                    userSnap = await db.collection("users").doc(uid).get();
-                }
-            }
             if (!userSnap.exists) {
                 throw new Error("User profile not found in Firestore users collection.");
             }
@@ -1931,9 +1981,11 @@
 
             currentUser.uid = uid;
             currentUser.name = profile.name;
-            currentUser.email = profile.email;
+            currentUser.email = profile.email || fallbackEmail;
             currentUser.grade = profile.grade || "8th Grade";
             currentUser.role = profile.role;
+            currentUser.teacherUid = profile.teacherUid || "";
+            currentUser.teacherEmail = profile.teacherEmail || "";
 
             if (currentUser.role === "student") {
                 const progressSnap = await db.collection("userProgress").doc(uid).get();
@@ -1959,6 +2011,7 @@
             populateRosterTable();
             loadTeacherNote();
             updateRoleUI();
+            await loadSheetsConfig();
 
             switchTab(currentUser.role === "teacher" ? "admin-view" : "game-view");
         }
@@ -2063,6 +2116,7 @@
                     lastSheetSyncAt = now;
                     syncStudentToGoogleSheet({
                         type: "student_progress",
+                        teacherUid: currentUser.teacherUid || "",
                         uid: currentUser.uid,
                         name: currentUser.name,
                         email: currentUser.email,
@@ -3068,9 +3122,10 @@
                 const studentsSnap = await db.collection("users").where("role", "==", "student").get();
                 roster = await Promise.all(studentsSnap.docs.map(async (docSnap) => {
                     const profile = docSnap.data();
+                    if ((profile.teacherUid || "") !== currentUser.uid) return null;
                     const progSnap = await db.collection("userProgress").doc(docSnap.id).get();
-                    const p = progSnap.exists ? progSnap.data() : { Beginner: 0, Intermediate: 0, Advanced: 0 };
-                    const stars = (p.Beginner || 0) + (p.Intermediate || 0) + (p.Advanced || 0);
+                    const p = progSnap.exists ? progSnap.data() : { Basic: 0, Beginner: 0, Intermediate: 0, Advanced: 0 };
+                    const stars = (p.Basic || 0) + (p.Beginner || 0) + (p.Intermediate || 0) + (p.Advanced || 0);
                     return {
                         uid: docSnap.id,
                         name: profile.name,
@@ -3079,12 +3134,14 @@
                         stars,
                         level: getStudentCurrentLevel(p),
                         progress: {
+                            Basic: p.Basic || 0,
                             Beginner: p.Beginner || 0,
                             Intermediate: p.Intermediate || 0,
                             Advanced: p.Advanced || 0
                         }
                     };
                 }));
+                roster = roster.filter(Boolean);
             }
 
             roster.forEach((student) => {
