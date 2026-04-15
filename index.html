@@ -30,7 +30,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -316,7 +316,7 @@
                         <div>
                             <span id="current-level-badge" class="bg-teal-100 text-teal-800 font-bold px-3 py-1 rounded-xl text-xs">Basic Level</span>
                             <h2 id="game-board-title" class="text-2xl font-bold text-slate-800 mt-1">Parts of Speech</h2>
-                            <p id="game-board-subtitle" class="text-slate-500 text-sm">Verb, Adjective, Adverb, Noun. Drag each word into the correct category.</p>
+                            <p id="game-board-subtitle" class="text-slate-500 text-sm">Drage and drop the correct word under its title.</p>
                         </div>
                     </div>
 
@@ -324,7 +324,7 @@
                     <div class="flex-grow flex flex-col justify-center my-8">
                         <div class="text-center mb-6">
                             <i class="fa-solid fa-puzzle-piece text-4xl text-orange-400 opacity-60 mb-2"></i>
-                            <p id="game-workspace-help" class="text-sm text-slate-400 font-medium">Drag each word card into its correct part of speech.</p>
+                            <p id="game-workspace-help" class="text-sm text-slate-400 font-medium">Use the Main Category and Subcategory blocks, then drop each jumbled word in the correct place.</p>
                         </div>
 
                         <!-- Dropzone for Sorting Words -->
@@ -636,7 +636,7 @@
 
                         <!-- Actual Upload Form via SheetJS -->
                         <div class="space-y-3">
-                            <label class="block text-slate-600 text-xs font-bold mb-1">Upload Sentences File (include Grammar_Rule and Teacher_Note columns)</label>
+                            <label class="block text-slate-600 text-xs font-bold mb-1">Upload Sentences File (sentence format or Basic matching format with Main_Category, Sub_Category, Word, Hint)</label>
                             <input type="file" id="excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-xl">
                             
                             <button onclick="processExcelUpload()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition">
@@ -811,49 +811,59 @@
 
         const basicMatchingExercises = [
             {
+                mainCategory: "Parts of Speech",
+                subCategories: ["Verb", "Adjective", "Preposition", "Noun"],
                 words: [
-                    { text: "reads", pos: "Verb" },
-                    { text: "clever", pos: "Adjective" },
-                    { text: "always", pos: "Adverb" },
-                    { text: "student", pos: "Noun" }
+                    { text: "play", pos: "Verb" },
+                    { text: "red", pos: "Adjective" },
+                    { text: "on", pos: "Preposition" },
+                    { text: "book", pos: "Noun" }
                 ],
-                rule: "Verbs show action, adjectives describe nouns, adverbs describe actions, and nouns name people or things."
+                rule: "Verb = action, adjective = description, preposition = relation (on/in/under), noun = person/place/thing."
             },
             {
+                mainCategory: "Parts of Speech",
+                subCategories: ["Verb", "Adverb", "Noun", "Preposition"],
                 words: [
-                    { text: "plays", pos: "Verb" },
-                    { text: "cold", pos: "Adjective" },
+                    { text: "eat", pos: "Verb" },
                     { text: "quickly", pos: "Adverb" },
-                    { text: "juice", pos: "Noun" }
+                    { text: "table", pos: "Noun" },
+                    { text: "under", pos: "Preposition" }
                 ],
-                rule: "Use the action word as verb, describing word as adjective, manner word as adverb, and object as noun."
+                rule: "Adverbs often answer how (quickly), while prepositions show position (under)."
             },
             {
+                mainCategory: "Parts of Speech",
+                subCategories: ["Adjective", "Verb", "Noun", "Adverb"],
                 words: [
-                    { text: "enjoys", pos: "Verb" },
-                    { text: "beautiful", pos: "Adjective" },
-                    { text: "yesterday", pos: "Adverb" },
-                    { text: "dress", pos: "Noun" }
+                    { text: "happy", pos: "Adjective" },
+                    { text: "run", pos: "Verb" },
+                    { text: "school", pos: "Noun" },
+                    { text: "yesterday", pos: "Adverb" }
                 ],
-                rule: "Time words like yesterday usually work as adverbials, while objects like dress are nouns."
+                rule: "Time words like yesterday can act as adverbs, and naming words like school are nouns."
             },
             {
+                mainCategory: "Parts of Speech",
+                subCategories: ["Verb", "Adjective", "Adverb", "Noun"],
                 words: [
-                    { text: "walking", pos: "Verb" },
-                    { text: "ancient", pos: "Adjective" },
-                    { text: "clearly", pos: "Adverb" },
-                    { text: "library", pos: "Noun" }
+                    { text: "write", pos: "Verb" },
+                    { text: "blue", pos: "Adjective" },
+                    { text: "softly", pos: "Adverb" },
+                    { text: "class", pos: "Noun" }
                 ],
-                rule: "-ly words are often adverbs, and naming words like library are nouns."
+                rule: "Many adverbs end in -ly (softly), and adjectives describe nouns (blue classbook, blue pen)."
             },
             {
+                mainCategory: "Parts of Speech",
+                subCategories: ["Preposition", "Noun", "Verb", "Adverb"],
                 words: [
-                    { text: "study", pos: "Verb" },
-                    { text: "final", pos: "Adjective" },
-                    { text: "hard", pos: "Adverb" },
-                    { text: "exams", pos: "Noun" }
+                    { text: "in", pos: "Preposition" },
+                    { text: "teacher", pos: "Noun" },
+                    { text: "teach", pos: "Verb" },
+                    { text: "carefully", pos: "Adverb" }
                 ],
-                rule: "In this activity, hard modifies study as an adverb, and exams is the noun."
+                rule: "Prepositions link words (in/on/at), verbs show action (teach), and adverbs modify verbs (carefully)."
             }
         ];
 
@@ -915,6 +925,7 @@
         let sentenceMasteryCount = 0;
         let sentenceTarget = 100;
         let sortableInstance = null;
+        let basicSortables = [];
         let firebaseReady = false;
         let auth = null;
         let db = null;
@@ -1108,13 +1119,107 @@
             const helpEl = document.getElementById("game-workspace-help");
             if (isMatchingLevel(currentLevel)) {
                 titleEl.textContent = "Parts of Speech";
-                subtitleEl.textContent = "Verb, Adjective, Adverb, Noun. Drag each word into the correct category.";
-                helpEl.textContent = "Drag each word card into its correct part of speech.";
+                subtitleEl.textContent = "Drage and drop the correct word under its title.";
+                helpEl.textContent = "The Main Category is Parts of Speech. Move each jumbled word into the right Subcategory box.";
             } else {
                 titleEl.textContent = "Sentence Builder Workspace";
                 subtitleEl.textContent = "Drag and drop the word chips below to arrange them into a grammatically correct sentence.";
                 helpEl.textContent = "Drag the word cards and drop them in the correct order!";
             }
+        }
+
+        function destroyBasicSortables() {
+            basicSortables.forEach(instance => instance.destroy());
+            basicSortables = [];
+        }
+
+        function renderBasicMatchingBoard(exercise) {
+            const container = document.getElementById("word-sorting-zone");
+            if (!container) return;
+            const subCats = exercise.subCategories || [];
+
+            container.className = "w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4";
+            container.innerHTML = `
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">The Main Category</p>
+                    <p class="text-lg font-bold text-teal-700 mt-1">${exercise.mainCategory || "Parts of Speech"}</p>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-3">Subcategory</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="basic-sub-grid"></div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-3">Jumbled Words</p>
+                    <div id="basic-word-bank" class="min-h-[72px] p-3 rounded-xl border-2 border-dashed border-slate-300 flex flex-wrap gap-2"></div>
+                </div>
+            `;
+
+            const subGrid = document.getElementById("basic-sub-grid");
+            subCats.forEach(sub => {
+                const safeId = sub.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+                const block = document.createElement("div");
+                block.className = "rounded-xl border border-slate-200 p-3 bg-slate-50";
+                block.innerHTML = `
+                    <p class="text-sm font-bold text-slate-700 mb-2">${sub}</p>
+                    <div id="drop-${safeId}" data-category="${sub}" class="basic-dropzone min-h-[56px] rounded-lg border-2 border-dashed border-slate-300 bg-white p-2 flex flex-wrap gap-2"></div>
+                `;
+                subGrid.appendChild(block);
+            });
+
+            const bank = document.getElementById("basic-word-bank");
+            const shuffledWords = shuffleArray(exercise.words || []);
+            shuffledWords.forEach(item => {
+                const chip = document.createElement("div");
+                chip.className = "drag-card px-4 py-2 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:border-teal-400";
+                chip.dataset.word = item.text;
+                chip.dataset.category = item.pos;
+                chip.textContent = item.text;
+                bank.appendChild(chip);
+            });
+
+            destroyBasicSortables();
+            const allZones = [bank, ...Array.from(document.querySelectorAll(".basic-dropzone"))];
+            allZones.forEach(zone => {
+                basicSortables.push(new Sortable(zone, {
+                    group: "basic-pos",
+                    animation: 150,
+                    ghostClass: "bg-teal-50",
+                    chosenClass: "scale-105"
+                }));
+            });
+        }
+
+        function resetBasicRound() {
+            const bank = document.getElementById("basic-word-bank");
+            if (!bank) return;
+            const drops = Array.from(document.querySelectorAll(".basic-dropzone"));
+            drops.forEach(zone => {
+                while (zone.firstChild) bank.appendChild(zone.firstChild);
+            });
+            const chips = Array.from(bank.children);
+            shuffleArray(chips).forEach(chip => bank.appendChild(chip));
+        }
+
+        function isBasicAnswerCorrect(exercise) {
+            const bank = document.getElementById("basic-word-bank");
+            if (!bank) return false;
+            if (bank.children.length > 0) return false;
+
+            const expected = {};
+            (exercise.words || []).forEach(item => {
+                if (!expected[item.pos]) expected[item.pos] = [];
+                expected[item.pos].push(item.text.toLowerCase());
+            });
+
+            const drops = Array.from(document.querySelectorAll(".basic-dropzone"));
+            for (const zone of drops) {
+                const category = zone.dataset.category || "";
+                const actualWords = Array.from(zone.children).map(chip => String(chip.dataset.word || "").toLowerCase()).sort();
+                const expectedWords = [...(expected[category] || [])].sort();
+                if (actualWords.length !== expectedWords.length) return false;
+                if (actualWords.join("|") !== expectedWords.join("|")) return false;
+            }
+            return true;
         }
 
         function showHint() {
@@ -1853,34 +1958,44 @@
         // ==========================================
 
         function loadSentence() {
-            const list = baseSentences[currentLevel];
+            const list = getLevelItems(currentLevel);
             const levelTarget = getLevelTarget(currentLevel);
             if (currentSentenceIdx >= levelTarget || currentSentenceIdx >= list.length) {
-                document.getElementById("word-sorting-zone").innerHTML = `<div class="text-teal-600 font-bold text-xl"><i class="fa-solid fa-trophy mr-2 text-amber-500"></i> Level Complete! Great job.</div>`;
+                destroyBasicSortables();
+                const doneZone = document.getElementById("word-sorting-zone");
+                doneZone.className = "flex flex-wrap gap-3 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 min-h-[120px] items-center justify-center";
+                doneZone.innerHTML = `<div class="text-teal-600 font-bold text-xl"><i class="fa-solid fa-trophy mr-2 text-amber-500"></i> Level Complete! Great job.</div>`;
                 return;
             }
 
             const current = list[currentSentenceIdx];
 
-            // Render Scrambled Words
             const container = document.getElementById("word-sorting-zone");
-            container.innerHTML = "";
+            if (isMatchingLevel(currentLevel)) {
+                if (sortableInstance) {
+                    sortableInstance.destroy();
+                    sortableInstance = null;
+                }
+                renderBasicMatchingBoard(current);
+            } else {
+                destroyBasicSortables();
+                container.className = "flex flex-wrap gap-3 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 min-h-[120px] items-center justify-center";
+                container.innerHTML = "";
+                current.scramble.forEach(word => {
+                    const chip = document.createElement("div");
+                    chip.className = "drag-card px-5 py-3 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:border-teal-400 flex items-center gap-2 select-none";
+                    chip.dataset.word = word;
+                    chip.innerHTML = `<i class="fa-solid fa-grip-vertical text-slate-300"></i> <span>${word}</span>`;
+                    container.appendChild(chip);
+                });
 
-            current.scramble.forEach(word => {
-                const chip = document.createElement("div");
-                chip.className = "drag-card px-5 py-3 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:border-teal-400 flex items-center gap-2 select-none";
-                chip.dataset.word = word;
-                chip.innerHTML = `<i class="fa-solid fa-grip-vertical text-slate-300"></i> <span>${word}</span>`;
-                container.appendChild(chip);
-            });
-
-            // Initialize SortableJS
-            if (sortableInstance) sortableInstance.destroy();
-            sortableInstance = new Sortable(container, {
-                animation: 150,
-                ghostClass: 'bg-teal-50',
-                chosenClass: 'scale-105'
-            });
+                if (sortableInstance) sortableInstance.destroy();
+                sortableInstance = new Sortable(container, {
+                    animation: 150,
+                    ghostClass: "bg-teal-50",
+                    chosenClass: "scale-105"
+                });
+            }
 
             // Reset UI states
             sentenceMasteryCount = 0;
@@ -1895,6 +2010,10 @@
         }
 
         function shuffleCurrentSentence() {
+            if (isMatchingLevel(currentLevel)) {
+                resetBasicRound();
+                return;
+            }
             const container = document.getElementById("word-sorting-zone");
             for (let i = container.children.length; i >= 0; i--) {
                 container.appendChild(container.children[Math.random() * i | 0]);
@@ -1902,13 +2021,19 @@
         }
 
         function checkAnswer() {
-            const container = document.getElementById("word-sorting-zone");
-            const arrangedWords = Array.from(container.children).map(chip => chip.dataset.word || chip.innerText.trim());
-            const userSentence = arrangedWords.join(" ");
+            const current = getActiveSentence();
+            if (!current) return;
 
-            const correctSentence = baseSentences[currentLevel][currentSentenceIdx].correct;
+            let isCorrect = false;
+            if (isMatchingLevel(currentLevel)) {
+                isCorrect = isBasicAnswerCorrect(current);
+            } else {
+                const container = document.getElementById("word-sorting-zone");
+                const arrangedWords = Array.from(container.children).map(chip => chip.dataset.word || chip.innerText.trim());
+                const userSentence = arrangedWords.join(" ");
+                isCorrect = normalizeSentence(userSentence) === normalizeSentence(current.correct);
+            }
 
-            const isCorrect = normalizeSentence(userSentence) === normalizeSentence(correctSentence);
             const feedbackBox = document.getElementById("game-feedback");
             feedbackBox.classList.remove("hidden", "bg-rose-100", "text-rose-700", "bg-emerald-100", "text-emerald-700", "bg-amber-100", "text-amber-700");
 
@@ -1917,10 +2042,14 @@
                 feedbackBox.classList.add("bg-emerald-100", "text-emerald-700");
                 document.getElementById("btn-hint").classList.add("hidden");
                 if (sentenceMasteryCount < 3) {
-                    feedbackBox.innerHTML = `Correct! Great job (${sentenceMasteryCount}/3). Rearrange the same sentence again.`;
+                    feedbackBox.innerHTML = isMatchingLevel(currentLevel)
+                        ? `Correct match! Great job (${sentenceMasteryCount}/3). Do it again.`
+                        : `Correct! Great job (${sentenceMasteryCount}/3). Rearrange the same sentence again.`;
                     shuffleCurrentSentence();
                 } else {
-                    feedbackBox.innerHTML = "Excellent! 3/3 correct. Submit is now enabled for the next sentence.";
+                    feedbackBox.innerHTML = isMatchingLevel(currentLevel)
+                        ? "Excellent! 3/3 correct matches. Submit is now enabled for the next task."
+                        : "Excellent! 3/3 correct. Submit is now enabled for the next sentence.";
                     confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
                     setMotivationalQuote();
                 }
@@ -1928,7 +2057,9 @@
             } else {
                 sentenceMasteryCount = 0;
                 feedbackBox.classList.add("bg-rose-100", "text-rose-700");
-                feedbackBox.innerHTML = "Incorrect order. Try rearranging again. You can use Hint to see the grammar rule.";
+                feedbackBox.innerHTML = isMatchingLevel(currentLevel)
+                    ? "Some words are in the wrong subcategory. Try again, then use Hint for the grammar rule."
+                    : "Incorrect order. Try rearranging again. You can use Hint to see the grammar rule.";
                 document.getElementById("btn-hint").classList.remove("hidden");
                 updateSentenceActionUI();
             }
@@ -1936,7 +2067,9 @@
 
         function nextSentence() {
             if (sentenceMasteryCount < 3) {
-                alert("Complete 3 correct rearranges before submitting this sentence.");
+                alert(isMatchingLevel(currentLevel)
+                    ? "Complete 3 correct matches before submitting this task."
+                    : "Complete 3 correct rearranges before submitting this sentence.");
                 return;
             }
             currentUser.progress[currentLevel] = Math.min(getLevelTarget(currentLevel), currentUser.progress[currentLevel] + 1);
@@ -2121,36 +2254,68 @@
                 const rows = XLSX.utils.sheet_to_json(firstSheet);
 
                 let importedCount = 0;
+
+                // Supports two formats:
+                // 1) Sentence builder rows: Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note
+                // 2) Basic matching rows: Level=Basic | Main_Category | Sub_Category | Word | Hint | Question_ID(optional)
+                const groupedBasic = new Map();
+
                 for (const row of rows) {
-                    if (row.Level && row.Scrambled_Words && row.Correct_Sentence) {
-                        if (baseSentences[row.Level]) {
-                            const payload = {
-                                level: row.Level,
-                                correct: row.Correct_Sentence,
-                                scramble: row.Scrambled_Words.split(",").map(w => w.trim()),
-                                rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
-                                teacherNote: row.Teacher_Note || ""
-                            };
-                            let firestoreId = "";
-                            baseSentences[row.Level].push({
-                                id: `local-${sentenceIdSeed++}`,
-                                correct: payload.correct,
-                                scramble: payload.scramble,
-                                rule: payload.rule,
-                                teacherNote: payload.teacherNote
+                    if (String(row.Level || "").trim() === "Basic" && row.Main_Category && row.Sub_Category && row.Word) {
+                        const groupId = String(row.Question_ID || `${row.Main_Category}|${row.Hint || ""}`).trim();
+                        if (!groupedBasic.has(groupId)) {
+                            groupedBasic.set(groupId, {
+                                mainCategory: String(row.Main_Category || "Parts of Speech").trim(),
+                                subCategories: [],
+                                words: [],
+                                rule: String(row.Hint || "Use Hint to see the grammar rule.").trim()
                             });
-                            if (firebaseReady) {
-                                const ref = await db.collection("sentences").add({
-                                    ...payload,
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                                firestoreId = ref.id;
-                                const last = baseSentences[row.Level][baseSentences[row.Level].length - 1];
-                                last.firestoreId = firestoreId;
-                            }
-                            importedCount++;
                         }
+                        const entry = groupedBasic.get(groupId);
+                        const sub = String(row.Sub_Category).trim();
+                        if (!entry.subCategories.includes(sub)) entry.subCategories.push(sub);
+                        entry.words.push({ text: String(row.Word).trim(), pos: sub });
+                        continue;
                     }
+
+                    if (row.Level && row.Scrambled_Words && row.Correct_Sentence && baseSentences[row.Level]) {
+                        const payload = {
+                            level: row.Level,
+                            correct: row.Correct_Sentence,
+                            scramble: row.Scrambled_Words.split(",").map(w => w.trim()),
+                            rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
+                            teacherNote: row.Teacher_Note || ""
+                        };
+                        let firestoreId = "";
+                        baseSentences[row.Level].push({
+                            id: `local-${sentenceIdSeed++}`,
+                            correct: payload.correct,
+                            scramble: payload.scramble,
+                            rule: payload.rule,
+                            teacherNote: payload.teacherNote
+                        });
+                        if (firebaseReady) {
+                            const ref = await db.collection("sentences").add({
+                                ...payload,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            firestoreId = ref.id;
+                            const last = baseSentences[row.Level][baseSentences[row.Level].length - 1];
+                            last.firestoreId = firestoreId;
+                        }
+                        importedCount++;
+                    }
+                }
+
+                for (const value of groupedBasic.values()) {
+                    if (value.words.length < 2) continue;
+                    basicMatchingExercises.push({
+                        mainCategory: value.mainCategory,
+                        subCategories: value.subCategories,
+                        words: value.words,
+                        rule: value.rule
+                    });
+                    importedCount++;
                 }
 
                 alert(`✅ Success! Imported ${importedCount} custom sentences into the database.`);
