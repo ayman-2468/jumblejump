@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -2160,6 +2160,7 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 await db.collection("users").doc(cred.user.uid).set(userDoc);
+                writeCachedProfile(cred.user.uid, userDoc);
 
                 await db.collection("userProgress").doc(cred.user.uid).set({
                     Basic: 0,
@@ -2262,17 +2263,66 @@
                 const cred = await auth.signInWithEmailAndPassword(email, password);
                 await completeLogin(cred.user.uid, cred.user.email || email);
             } catch (error) {
-                setAuthStatus(error.message, true);
+                if (String(error.message || "").toLowerCase().includes("missing or insufficient permissions")) {
+                    setAuthStatus("Login blocked by Firestore permissions. Please update Firestore rules for users/{uid} and userProgress/{uid}.", true);
+                } else {
+                    setAuthStatus(error.message, true);
+                }
+            }
+        }
+
+        function isFirestorePermissionError(error) {
+            return String(error?.message || "").toLowerCase().includes("missing or insufficient permissions");
+        }
+
+        function getProfileCacheKey(uid) {
+            return `jj_profile_${uid}`;
+        }
+
+        function writeCachedProfile(uid, profile) {
+            if (!uid || !profile) return;
+            localStorage.setItem(getProfileCacheKey(uid), JSON.stringify(profile));
+        }
+
+        function readCachedProfile(uid) {
+            if (!uid) return null;
+            const raw = localStorage.getItem(getProfileCacheKey(uid));
+            if (!raw) return null;
+            try {
+                return JSON.parse(raw);
+            } catch (_) {
+                return null;
             }
         }
 
         async function completeLogin(uid, fallbackEmail = "") {
-            let userSnap = await db.collection("users").doc(uid).get();
-            if (!userSnap.exists) {
-                throw new Error("User profile not found in Firestore users collection.");
-            }
+            let profile = null;
+            try {
+                const userSnap = await db.collection("users").doc(uid).get();
+                if (!userSnap.exists) {
+                    throw new Error("User profile not found in Firestore users collection.");
+                }
+                profile = userSnap.data();
+                writeCachedProfile(uid, profile);
+            } catch (error) {
+                if (!isFirestorePermissionError(error)) {
+                    throw error;
+                }
 
-            const profile = userSnap.data();
+                // Fallback keeps students able to enter if rules were tightened accidentally.
+                profile = readCachedProfile(uid);
+                if (!profile) {
+                    profile = {
+                        name: (auth.currentUser?.displayName || "Student"),
+                        email: fallbackEmail || auth.currentUser?.email || "",
+                        role: "student",
+                        grade: "Not Set",
+                        teacherUid: "",
+                        teacherEmail: ""
+                    };
+                }
+                setAuthStatus("Logged in with limited profile access due to Firestore permissions.", true);
+            }
 
             currentUser.uid = uid;
             currentUser.name = profile.name;
@@ -2283,15 +2333,20 @@
             currentUser.teacherEmail = profile.teacherEmail || "";
 
             if (currentUser.role === "student") {
-                const progressSnap = await db.collection("userProgress").doc(uid).get();
-                if (progressSnap.exists) {
-                    const progress = progressSnap.data();
-                    currentUser.progress = {
-                        Basic: progress.Basic || 0,
-                        Beginner: progress.Beginner || 0,
-                        Intermediate: progress.Intermediate || 0,
-                        Advanced: progress.Advanced || 0
-                    };
+                try {
+                    const progressSnap = await db.collection("userProgress").doc(uid).get();
+                    if (progressSnap.exists) {
+                        const progress = progressSnap.data();
+                        currentUser.progress = {
+                            Basic: progress.Basic || 0,
+                            Beginner: progress.Beginner || 0,
+                            Intermediate: progress.Intermediate || 0,
+                            Advanced: progress.Advanced || 0
+                        };
+                    }
+                } catch (error) {
+                    if (!isFirestorePermissionError(error)) throw error;
+                    currentUser.progress = { Basic: 0, Beginner: 0, Intermediate: 0, Advanced: 0 };
                 }
             }
 
