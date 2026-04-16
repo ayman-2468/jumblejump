@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-             apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -642,9 +642,14 @@
                             </div>
                         </div>
 
-                        <button onclick="triggerExcelPicker()" class="w-full mb-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-file-circle-plus"></i> Upload New Sentences + Grammar Hint
-                        </button>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                            <button onclick="triggerSentenceExcelPicker()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-file-lines"></i> Upload Sentences Excel
+                            </button>
+                            <button onclick="triggerBasicExcelPicker()" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-layer-group"></i> Upload Basic Level Excel
+                            </button>
+                        </div>
 
                         <!-- Template Structure Download -->
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
@@ -664,11 +669,15 @@
 
                         <!-- Actual Upload Form via SheetJS -->
                         <div class="space-y-3">
-                            <label class="block text-slate-600 text-xs font-bold mb-1">Upload Workbook (.xlsx) with sheet "Sentences" and optional sheet "BasicLevel"</label>
-                            <input type="file" id="excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-xl">
-                            
-                            <button onclick="processExcelUpload()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition">
-                                Process Excel File & Sync Firestore
+                            <label class="block text-slate-600 text-xs font-bold mb-1">Sentence Workbook (.xlsx), sheet: "Sentences"</label>
+                            <input type="file" id="sentence-excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-xl">
+                            <button onclick="processSentenceExcelUpload()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                                Sync Sentences Sheet
+                            </button>
+                            <label class="block text-slate-600 text-xs font-bold mb-1 mt-2">Basic Workbook (.xlsx), sheet: "BasicLevel"</label>
+                            <input type="file" id="basic-excel-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 border border-slate-200 rounded-xl">
+                            <button onclick="processBasicExcelUpload()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                                Sync Basic Sheet
                             </button>
                             <label class="block text-slate-600 text-xs font-bold mb-1 mt-2">Upload Teacher Notes File (Level, Correct_Sentence, Teacher_Note)</label>
                             <input type="file" id="teacher-note-upload" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-200 rounded-xl">
@@ -1088,6 +1097,48 @@
                 .split(",")
                 .map(token => token.trim())
                 .filter(Boolean);
+        }
+
+        function stableHash(input) {
+            const text = String(input || "");
+            let hash = 2166136261;
+            for (let i = 0; i < text.length; i++) {
+                hash ^= text.charCodeAt(i);
+                hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+            }
+            return (hash >>> 0).toString(36);
+        }
+
+        function buildSentenceDocId(teacherUid, payload) {
+            const type = String(payload.type || "sentence").toLowerCase();
+            if (type === "basic") {
+                const wordsKey = (payload.words || [])
+                    .map(item => `${String(item.text || "").trim().toLowerCase()}:${String(item.pos || "").trim().toLowerCase()}`)
+                    .sort()
+                    .join("|");
+                const subKey = (payload.subCategories || [])
+                    .map(item => String(item || "").trim().toLowerCase())
+                    .sort()
+                    .join("|");
+                const raw = [
+                    "basic",
+                    teacherUid,
+                    String(payload.mainCategory || "").trim().toLowerCase(),
+                    String(payload.promptSentence || "").trim().toLowerCase(),
+                    subKey,
+                    wordsKey
+                ].join("#");
+                return `jjb_${stableHash(raw)}`;
+            }
+
+            const raw = [
+                "sentence",
+                teacherUid,
+                String(payload.level || "").trim().toLowerCase(),
+                normalizeSentence(payload.correct),
+                (payload.scramble || []).map(item => String(item || "").trim().toLowerCase()).join("|")
+            ].join("#");
+            return `jjs_${stableHash(raw)}`;
         }
 
         async function loadSentenceBankFromFirestore() {
@@ -3271,69 +3322,218 @@
             XLSX.writeFile(workbook, "JumbleJump_Import_Template.xlsx");
         }
 
-        function triggerExcelPicker() {
+        function canTeacherUploadExcel() {
             if (currentUser.role !== "teacher") {
                 alert("Only teachers can upload Excel files.");
-                return;
+                return false;
             }
-            document.getElementById("excel-upload").click();
+            return true;
         }
 
-        // SheetJS (Excel) - Process Scrambled Files
-        async function processExcelUpload() {
-            if (currentUser.role !== "teacher") {
-                alert("Only teachers can upload Excel files.");
+        function triggerSentenceExcelPicker() {
+            if (!canTeacherUploadExcel()) return;
+            document.getElementById("sentence-excel-upload").click();
+        }
+
+        function triggerBasicExcelPicker() {
+            if (!canTeacherUploadExcel()) return;
+            document.getElementById("basic-excel-upload").click();
+        }
+
+        function readWorkbookFromInput(inputId) {
+            return new Promise((resolve, reject) => {
+                const fileInput = document.getElementById(inputId);
+                if (!fileInput || !fileInput.files.length) {
+                    reject(new Error("Please select a valid .xlsx file first."));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: "array" });
+                        if (!workbook.SheetNames || !workbook.SheetNames.length) {
+                            reject(new Error("No Excel sheet found in this workbook. Add at least one sheet and try again."));
+                            return;
+                        }
+                        resolve(workbook);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = () => reject(new Error("Unable to read the selected Excel file."));
+                reader.readAsArrayBuffer(fileInput.files[0]);
+            });
+        }
+
+        function findWorkbookSheet(workbook, possibleNames) {
+            const normalized = workbook.SheetNames.map(name => ({
+                raw: name,
+                key: String(name || "").trim().toLowerCase().replace(/\s+/g, "")
+            }));
+            for (const candidate of possibleNames) {
+                const key = candidate.toLowerCase().replace(/\s+/g, "");
+                const hit = normalized.find(item => item.key === key);
+                if (hit) return workbook.Sheets[hit.raw];
+            }
+            return null;
+        }
+
+        async function commitImportedContent(stagedSentenceAdds, stagedBasicAdds, pendingFirestoreWrites, importedCount, sourceLabel) {
+            const teacherUid = currentUser.uid || "";
+            const teacherEmail = currentUser.email || "";
+
+            if (!importedCount) {
+                alert(`No importable rows were found in ${sourceLabel}. Check your headers and sheet names.`);
                 return;
             }
 
-            const fileInput = document.getElementById("excel-upload");
-            if (!fileInput.files.length) {
-                alert("Please select a valid .xlsx file first.");
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: "array" });
-
-                if (!workbook.SheetNames || !workbook.SheetNames.length) {
-                    alert("No Excel sheet found in this workbook. Add at least one sheet and try again.");
+            if (firebaseReady && pendingFirestoreWrites.length) {
+                const maxOpsPerBatch = 350;
+                let synced = 0;
+                try {
+                    for (let i = 0; i < pendingFirestoreWrites.length; i += maxOpsPerBatch) {
+                        const chunk = pendingFirestoreWrites.slice(i, i + maxOpsPerBatch);
+                        const batch = db.batch();
+                        chunk.forEach(({ docId, localItem, payload }) => {
+                            const ref = docId ? db.collection("sentences").doc(docId) : db.collection("sentences").doc();
+                            localItem.firestoreId = ref.id;
+                            batch.set(ref, {
+                                ...payload,
+                                docId: ref.id,
+                                ownerTeacherUid: payload.ownerTeacherUid || teacherUid,
+                                ownerTeacherEmail: payload.ownerTeacherEmail || teacherEmail,
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+                        });
+                        await batch.commit();
+                        synced += chunk.length;
+                    }
+                } catch (error) {
+                    alert(`Firestore sync failed. Nothing was committed locally in this import: ${error.message}`);
                     return;
                 }
 
-                const findSheet = (possibleNames) => {
-                    const normalized = workbook.SheetNames.map(name => ({
-                        raw: name,
-                        key: String(name || "").trim().toLowerCase().replace(/\s+/g, "")
-                    }));
-                    for (const candidate of possibleNames) {
-                        const key = candidate.toLowerCase().replace(/\s+/g, "");
-                        const hit = normalized.find(item => item.key === key);
-                        if (hit) return workbook.Sheets[hit.raw];
-                    }
-                    return null;
-                };
+                ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                    baseSentences[level].push(...stagedSentenceAdds[level]);
+                });
+                basicMatchingExercises.push(...stagedBasicAdds);
+                await loadSentenceBankFromFirestore();
+                alert(`Success! Imported ${importedCount} item(s) from ${sourceLabel}. Synced ${synced} item(s) to Firestore.`);
+            } else if (!firebaseReady) {
+                ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                    baseSentences[level].push(...stagedSentenceAdds[level]);
+                });
+                basicMatchingExercises.push(...stagedBasicAdds);
+                alert(`Imported ${importedCount} item(s) from ${sourceLabel} in browser memory only. Connect Firebase to keep them after logout.`);
+            } else {
+                ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                    baseSentences[level].push(...stagedSentenceAdds[level]);
+                });
+                basicMatchingExercises.push(...stagedBasicAdds);
+                alert(`Success! Imported ${importedCount} item(s) from ${sourceLabel}.`);
+            }
 
-                const sentenceSheet = findSheet(["Sentences", "Sentence", "Sheet1"]);
-                const basicSheet = findSheet(["BasicLevel", "Basic", "PartsOfSpeech"]);
+            populateDatabaseTable();
+            loadSentence();
+        }
 
-                const sentenceRows = sentenceSheet ? XLSX.utils.sheet_to_json(sentenceSheet) : [];
-                const basicRows = basicSheet ? XLSX.utils.sheet_to_json(basicSheet) : [];
+        // Upload only the Sentences sheet so it does not depend on BasicLevel presence.
+        async function processSentenceExcelUpload() {
+            if (!canTeacherUploadExcel()) return;
+            if (firebaseReady && !currentUser.uid) {
+                alert("Unable to resolve teacher account. Please sign out and sign in again.");
+                return;
+            }
 
-                if (!sentenceRows.length && !basicRows.length) {
-                    alert("No valid rows found. Use sheet 'Sentences' and/or 'BasicLevel' with the required headers.");
+            try {
+                const workbook = await readWorkbookFromInput("sentence-excel-upload");
+                const sentenceSheet = findWorkbookSheet(workbook, ["Sentences", "Sentence", "Sheet1"]);
+                if (!sentenceSheet) {
+                    alert("Sentences sheet was not found. Use sheet name 'Sentences'.");
+                    return;
+                }
+                const sentenceRows = XLSX.utils.sheet_to_json(sentenceSheet);
+                if (!sentenceRows.length) {
+                    alert("Sentences sheet is empty.");
                     return;
                 }
 
                 let importedCount = 0;
                 const teacherUid = currentUser.uid || "";
                 const teacherEmail = currentUser.email || "";
+                const stagedSentenceAdds = { Beginner: [], Intermediate: [], Advanced: [] };
+                const stagedBasicAdds = [];
                 const pendingFirestoreWrites = [];
 
-                // Supports two formats:
-                // 1) Sentence builder rows: Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note
-                // 2) Basic matching rows: Level=Basic | Main_Category | Sub_Category | Word | Hint | Question_ID(optional)
+                for (const row of sentenceRows) {
+                    const level = String(row.Level || "").trim();
+                    if (!level || !baseSentences[level] || !row.Scrambled_Words || !row.Correct_Sentence) continue;
+
+                    const payload = {
+                        level,
+                        correct: row.Correct_Sentence,
+                        scramble: String(row.Scrambled_Words).split(",").map(w => w.trim()).filter(Boolean),
+                        rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
+                        teacherNote: row.Teacher_Note || "",
+                        ownerTeacherUid: teacherUid,
+                        ownerTeacherEmail: teacherEmail,
+                        type: "sentence"
+                    };
+                    if (!payload.scramble.length) continue;
+
+                    const localItem = {
+                        id: `local-${sentenceIdSeed++}`,
+                        correct: payload.correct,
+                        scramble: payload.scramble,
+                        rule: payload.rule,
+                        teacherNote: payload.teacherNote
+                    };
+                    stagedSentenceAdds[level].push(localItem);
+                    if (firebaseReady) {
+                        pendingFirestoreWrites.push({
+                            docId: buildSentenceDocId(teacherUid, payload),
+                            localItem,
+                            payload
+                        });
+                    }
+                    importedCount++;
+                }
+
+                await commitImportedContent(stagedSentenceAdds, stagedBasicAdds, pendingFirestoreWrites, importedCount, "Sentences sheet");
+            } catch (error) {
+                alert(error.message || "Sentence upload failed.");
+            }
+        }
+
+        // Upload only the BasicLevel sheet so basic content can be managed independently.
+        async function processBasicExcelUpload() {
+            if (!canTeacherUploadExcel()) return;
+            if (firebaseReady && !currentUser.uid) {
+                alert("Unable to resolve teacher account. Please sign out and sign in again.");
+                return;
+            }
+
+            try {
+                const workbook = await readWorkbookFromInput("basic-excel-upload");
+                const basicSheet = findWorkbookSheet(workbook, ["BasicLevel", "Basic", "PartsOfSpeech", "Sheet1"]);
+                if (!basicSheet) {
+                    alert("Basic sheet was not found. Use sheet name 'BasicLevel'.");
+                    return;
+                }
+                const basicRows = XLSX.utils.sheet_to_json(basicSheet);
+                if (!basicRows.length) {
+                    alert("BasicLevel sheet is empty.");
+                    return;
+                }
+
+                let importedCount = 0;
+                const teacherUid = currentUser.uid || "";
+                const teacherEmail = currentUser.email || "";
+                const stagedSentenceAdds = { Beginner: [], Intermediate: [], Advanced: [] };
+                const stagedBasicAdds = [];
+                const pendingFirestoreWrites = [];
                 const groupedBasic = new Map();
 
                 for (const row of basicRows) {
@@ -3341,55 +3541,23 @@
                     const subCategory = String(row.Subcategory || row.Sub_Category || row["Sub category"] || "").trim();
                     const word = String(row.Jumbled_Words || row.Word || row["Jumbled words"] || "").trim();
                     const hint = String(row.Hint || row.Grammar_Rule || "Use Hint to see the grammar rule.").trim();
-                    const questionId = String(row.Question_ID || `${mainCategory}|${hint}`).trim();
+                    const promptSentence = String(row.Prompt_Sentence || row.Sentence || "").trim();
+                    const questionId = String(row.Question_ID || `${mainCategory}|${promptSentence}|${hint}`).trim();
 
-                    if (mainCategory && subCategory && word) {
-                        const groupId = questionId;
-                        if (!groupedBasic.has(groupId)) {
-                            groupedBasic.set(groupId, {
-                                mainCategory: mainCategory || "Parts of Speech",
-                                subCategories: [],
-                                words: [],
-                                rule: hint
-                            });
-                        }
-                        const entry = groupedBasic.get(groupId);
-                        const sub = subCategory;
-                        if (!entry.subCategories.includes(sub)) entry.subCategories.push(sub);
-                        entry.words.push({ text: word, pos: sub });
-                        continue;
-                    }
-                }
+                    if (!mainCategory || !subCategory || !word) continue;
 
-                for (const row of sentenceRows) {
-                    const level = String(row.Level || "").trim();
-                    if (level && row.Scrambled_Words && row.Correct_Sentence && baseSentences[level]) {
-                        const payload = {
-                            level,
-                            correct: row.Correct_Sentence,
-                            scramble: row.Scrambled_Words.split(",").map(w => w.trim()),
-                            rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
-                            teacherNote: row.Teacher_Note || "",
-                            ownerTeacherUid: teacherUid,
-                            ownerTeacherEmail: teacherEmail,
-                            type: "sentence"
-                        };
-                        const localItem = {
-                            id: `local-${sentenceIdSeed++}`,
-                            correct: payload.correct,
-                            scramble: payload.scramble,
-                            rule: payload.rule,
-                            teacherNote: payload.teacherNote
-                        };
-                        baseSentences[level].push(localItem);
-                        if (firebaseReady) {
-                            pendingFirestoreWrites.push({
-                                localItem,
-                                payload
-                            });
-                        }
-                        importedCount++;
+                    if (!groupedBasic.has(questionId)) {
+                        groupedBasic.set(questionId, {
+                            mainCategory,
+                            promptSentence,
+                            subCategories: [],
+                            words: [],
+                            rule: hint
+                        });
                     }
+                    const entry = groupedBasic.get(questionId);
+                    if (!entry.subCategories.includes(subCategory)) entry.subCategories.push(subCategory);
+                    entry.words.push({ text: word, pos: subCategory });
                 }
 
                 for (const value of groupedBasic.values()) {
@@ -3397,68 +3565,37 @@
                     const localItem = {
                         id: `local-${sentenceIdSeed++}`,
                         mainCategory: value.mainCategory,
+                        promptSentence: value.promptSentence || "",
                         subCategories: value.subCategories,
                         words: value.words,
                         rule: value.rule
                     };
-                    basicMatchingExercises.push(localItem);
+                    stagedBasicAdds.push(localItem);
                     if (firebaseReady) {
+                        const payload = {
+                            type: "basic",
+                            level: "Basic",
+                            mainCategory: value.mainCategory,
+                            promptSentence: value.promptSentence || "",
+                            subCategories: value.subCategories,
+                            words: value.words,
+                            rule: value.rule,
+                            ownerTeacherUid: teacherUid,
+                            ownerTeacherEmail: teacherEmail
+                        };
                         pendingFirestoreWrites.push({
+                            docId: buildSentenceDocId(teacherUid, payload),
                             localItem,
-                            payload: {
-                                type: "basic",
-                                level: "Basic",
-                                mainCategory: value.mainCategory,
-                                subCategories: value.subCategories,
-                                words: value.words,
-                                rule: value.rule,
-                                ownerTeacherUid: teacherUid,
-                                ownerTeacherEmail: teacherEmail
-                            }
+                            payload
                         });
                     }
                     importedCount++;
                 }
 
-                if (!importedCount) {
-                    alert("No importable rows were found. Check your headers and sheet names.");
-                    return;
-                }
-
-                if (firebaseReady && pendingFirestoreWrites.length) {
-                    const maxOpsPerBatch = 350;
-                    let synced = 0;
-                    try {
-                        for (let i = 0; i < pendingFirestoreWrites.length; i += maxOpsPerBatch) {
-                            const chunk = pendingFirestoreWrites.slice(i, i + maxOpsPerBatch);
-                            const batch = db.batch();
-                            chunk.forEach(({ localItem, payload }) => {
-                                const ref = db.collection("sentences").doc();
-                                localItem.firestoreId = ref.id;
-                                batch.set(ref, {
-                                    ...payload,
-                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                            });
-                            await batch.commit();
-                            synced += chunk.length;
-                        }
-                    } catch (error) {
-                        alert(`Imported locally, but Firestore sync failed: ${error.message}`);
-                        populateDatabaseTable();
-                        return;
-                    }
-                    alert(`Success! Imported ${importedCount} items. Synced ${synced} items to Firestore.`);
-                } else if (!firebaseReady) {
-                    alert(`Imported ${importedCount} items in browser memory only. Connect Firebase to keep them after logout.`);
-                } else {
-                    alert(`Success! Imported ${importedCount} items from Excel.`);
-                }
-
-                populateDatabaseTable();
-            };
-
-            reader.readAsArrayBuffer(fileInput.files[0]);
+                await commitImportedContent(stagedSentenceAdds, stagedBasicAdds, pendingFirestoreWrites, importedCount, "BasicLevel sheet");
+            } catch (error) {
+                alert(error.message || "Basic level upload failed.");
+            }
         }
 
         function findSentenceByLevelAndCorrect(level, correctSentence) {
