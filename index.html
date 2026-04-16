@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+             apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -1115,6 +1115,10 @@
             docs.forEach(docSnap => {
                 const data = docSnap.data() || {};
                 const level = String(data.level || "").trim();
+                const ownerTeacherUid = String(data.ownerTeacherUid || "").trim();
+
+                // If owner is present, never mix content across teachers.
+                if (ownerTeacherUid && ownerTeacherUid !== teacherScopeUid) return;
 
                 if (String(data.type || "").toLowerCase() === "basic" || level === "Basic" || data.mainCategory) {
                     const subCategories = Array.isArray(data.subCategories) ? data.subCategories : [];
@@ -3323,6 +3327,9 @@
                 }
 
                 let importedCount = 0;
+                const teacherUid = currentUser.uid || "";
+                const teacherEmail = currentUser.email || "";
+                const pendingFirestoreWrites = [];
 
                 // Supports two formats:
                 // 1) Sentence builder rows: Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note
@@ -3362,24 +3369,24 @@
                             correct: row.Correct_Sentence,
                             scramble: row.Scrambled_Words.split(",").map(w => w.trim()),
                             rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
-                            teacherNote: row.Teacher_Note || ""
+                            teacherNote: row.Teacher_Note || "",
+                            ownerTeacherUid: teacherUid,
+                            ownerTeacherEmail: teacherEmail,
+                            type: "sentence"
                         };
-                        let firestoreId = "";
-                        baseSentences[level].push({
+                        const localItem = {
                             id: `local-${sentenceIdSeed++}`,
                             correct: payload.correct,
                             scramble: payload.scramble,
                             rule: payload.rule,
                             teacherNote: payload.teacherNote
-                        });
+                        };
+                        baseSentences[level].push(localItem);
                         if (firebaseReady) {
-                            const ref = await db.collection("sentences").add({
-                                ...payload,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            pendingFirestoreWrites.push({
+                                localItem,
+                                payload
                             });
-                            firestoreId = ref.id;
-                            const last = baseSentences[level][baseSentences[level].length - 1];
-                            last.firestoreId = firestoreId;
                         }
                         importedCount++;
                     }
@@ -3387,12 +3394,29 @@
 
                 for (const value of groupedBasic.values()) {
                     if (value.words.length < 2) continue;
-                    basicMatchingExercises.push({
+                    const localItem = {
+                        id: `local-${sentenceIdSeed++}`,
                         mainCategory: value.mainCategory,
                         subCategories: value.subCategories,
                         words: value.words,
                         rule: value.rule
-                    });
+                    };
+                    basicMatchingExercises.push(localItem);
+                    if (firebaseReady) {
+                        pendingFirestoreWrites.push({
+                            localItem,
+                            payload: {
+                                type: "basic",
+                                level: "Basic",
+                                mainCategory: value.mainCategory,
+                                subCategories: value.subCategories,
+                                words: value.words,
+                                rule: value.rule,
+                                ownerTeacherUid: teacherUid,
+                                ownerTeacherEmail: teacherEmail
+                            }
+                        });
+                    }
                     importedCount++;
                 }
 
@@ -3401,7 +3425,36 @@
                     return;
                 }
 
-                alert(`✅ Success! Imported ${importedCount} items from Excel.`);
+                if (firebaseReady && pendingFirestoreWrites.length) {
+                    const maxOpsPerBatch = 350;
+                    let synced = 0;
+                    try {
+                        for (let i = 0; i < pendingFirestoreWrites.length; i += maxOpsPerBatch) {
+                            const chunk = pendingFirestoreWrites.slice(i, i + maxOpsPerBatch);
+                            const batch = db.batch();
+                            chunk.forEach(({ localItem, payload }) => {
+                                const ref = db.collection("sentences").doc();
+                                localItem.firestoreId = ref.id;
+                                batch.set(ref, {
+                                    ...payload,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                            });
+                            await batch.commit();
+                            synced += chunk.length;
+                        }
+                    } catch (error) {
+                        alert(`Imported locally, but Firestore sync failed: ${error.message}`);
+                        populateDatabaseTable();
+                        return;
+                    }
+                    alert(`Success! Imported ${importedCount} items. Synced ${synced} items to Firestore.`);
+                } else if (!firebaseReady) {
+                    alert(`Imported ${importedCount} items in browser memory only. Connect Firebase to keep them after logout.`);
+                } else {
+                    alert(`Success! Imported ${importedCount} items from Excel.`);
+                }
+
                 populateDatabaseTable();
             };
 
@@ -3511,6 +3564,9 @@
                     scramble,
                     rule: rule || "Custom rule",
                     teacherNote,
+                    type: "sentence",
+                    ownerTeacherUid: currentUser.uid || "",
+                    ownerTeacherEmail: currentUser.email || "",
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 item.firestoreId = ref.id;
@@ -3593,10 +3649,13 @@
                 try {
                     await db.collection("sentences").doc(item.firestoreId).set({
                         level,
+                        type: "sentence",
                         correct: item.correct,
                         scramble: item.scramble,
                         rule: item.rule,
                         teacherNote: item.teacherNote,
+                        ownerTeacherUid: currentUser.uid || "",
+                        ownerTeacherEmail: currentUser.email || "",
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 } catch (error) {
