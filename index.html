@@ -1099,6 +1099,25 @@
                 .filter(Boolean);
         }
 
+        function normalizeHeaderKey(key) {
+            return String(key || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        }
+
+        function getRowField(row, aliases) {
+            const rowObj = row || {};
+            const normalizedMap = {};
+            Object.keys(rowObj).forEach(key => {
+                normalizedMap[normalizeHeaderKey(key)] = rowObj[key];
+            });
+            for (const alias of aliases) {
+                const value = normalizedMap[normalizeHeaderKey(alias)];
+                if (value !== undefined && value !== null && String(value).trim() !== "") {
+                    return value;
+                }
+            }
+            return "";
+        }
+
         function getLevelTargetsStorageKey(scopeUid = "") {
             return `jj_level_targets_${scopeUid || "global"}`;
         }
@@ -1154,6 +1173,69 @@
             return `jjs_${stableHash(raw)}`;
         }
 
+        function getSentenceBankStorageKey(teacherUid = "") {
+            return `jj_sentence_bank_${teacherUid || "global"}`;
+        }
+
+        function saveSentenceBankCache(teacherUid = "") {
+            const cachePayload = {
+                savedAt: Date.now(),
+                sentenceBank: {
+                    Beginner: baseSentences.Beginner || [],
+                    Intermediate: baseSentences.Intermediate || [],
+                    Advanced: baseSentences.Advanced || []
+                },
+                basicBank: basicMatchingExercises || []
+            };
+            localStorage.setItem(getSentenceBankStorageKey(teacherUid), JSON.stringify(cachePayload));
+        }
+
+        function loadSentenceBankCache(teacherUid = "") {
+            try {
+                const raw = localStorage.getItem(getSentenceBankStorageKey(teacherUid));
+                if (!raw) return false;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== "object") return false;
+
+                resetSentenceBanksToStarter();
+
+                ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                    const items = Array.isArray(parsed?.sentenceBank?.[level]) ? parsed.sentenceBank[level] : [];
+                    items.forEach(item => {
+                        if (!item?.correct || !Array.isArray(item?.scramble)) return;
+                        baseSentences[level].push({
+                            id: item.id || `local-${sentenceIdSeed++}`,
+                            firestoreId: item.firestoreId || "",
+                            correct: item.correct,
+                            scramble: item.scramble,
+                            rule: item.rule || "Custom uploaded sentence structure rule.",
+                            teacherNote: item.teacherNote || ""
+                        });
+                    });
+                });
+
+                const basics = Array.isArray(parsed.basicBank) ? parsed.basicBank : [];
+                basics.forEach(item => {
+                    if (!Array.isArray(item?.subCategories) || !Array.isArray(item?.words)) return;
+                    if (!item.subCategories.length || !item.words.length) return;
+                    basicMatchingExercises.push({
+                        id: item.id || `local-${sentenceIdSeed++}`,
+                        firestoreId: item.firestoreId || "",
+                        mainCategory: item.mainCategory || "Basic Matching",
+                        promptSentence: item.promptSentence || "",
+                        subCategories: item.subCategories,
+                        words: item.words,
+                        rule: item.rule || "",
+                        teacherNote: item.teacherNote || ""
+                    });
+                });
+                return true;
+            } catch (error) {
+                console.warn("Could not read sentence cache:", error.message);
+                return false;
+            }
+        }
+
         async function loadSentenceBankFromFirestore() {
             if (!firebaseReady || !currentUser.uid) return;
 
@@ -1178,10 +1260,18 @@
                 }
             } catch (error) {
                 console.warn("Sentence bank load failed:", error.message);
+                const cacheLoaded = loadSentenceBankCache(teacherScopeUid);
+                if (cacheLoaded) {
+                    populateDatabaseTable();
+                    updateSentenceTargetLabels();
+                    loadSentence();
+                }
                 return;
             }
 
             resetSentenceBanksToStarter();
+
+            const legacyOwnerFixes = [];
 
             docs.forEach(docSnap => {
                 const data = docSnap.data() || {};
@@ -1190,6 +1280,10 @@
 
                 // If owner is present, never mix content across teachers.
                 if (ownerTeacherUid && ownerTeacherUid !== teacherScopeUid) return;
+
+                if (!ownerTeacherUid && currentUser.role === "teacher") {
+                    legacyOwnerFixes.push(docSnap.id);
+                }
 
                 if (String(data.type || "").toLowerCase() === "basic" || level === "Basic" || data.mainCategory) {
                     const subCategories = Array.isArray(data.subCategories) ? data.subCategories : [];
@@ -1219,6 +1313,24 @@
                     teacherNote: data.teacherNote || ""
                 });
             });
+
+            if (firebaseReady && currentUser.role === "teacher" && legacyOwnerFixes.length) {
+                try {
+                    const patchBatch = db.batch();
+                    legacyOwnerFixes.forEach(docId => {
+                        patchBatch.set(db.collection("sentences").doc(docId), {
+                            ownerTeacherUid: currentUser.uid,
+                            ownerTeacherEmail: currentUser.email || "",
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    });
+                    await patchBatch.commit();
+                } catch (error) {
+                    console.warn("Could not migrate legacy sentence ownership:", error.message);
+                }
+            }
+
+            saveSentenceBankCache(teacherScopeUid);
         }
 
         // ==========================================
@@ -1573,15 +1685,31 @@
             if (firebaseReady && currentUser?.uid) {
                 const remoteOwnerUid = currentUser.role === "teacher" ? currentUser.uid : (currentUser.teacherUid || "");
                 if (remoteOwnerUid) {
+                    let remoteTargetsLoaded = false;
                     try {
                         const settingSnap = await db.collection("teacherSettings").doc(remoteOwnerUid).get();
                         const remoteTargets = settingSnap.data()?.levelTargets;
                         if (remoteTargets && typeof remoteTargets === "object") {
                             levelTargets = sanitizeTargets(remoteTargets);
                             localStorage.setItem(getLevelTargetsStorageKey(remoteOwnerUid), JSON.stringify(levelTargets));
+                            remoteTargetsLoaded = true;
                         }
                     } catch (error) {
                         console.warn("Level target load from Firestore failed:", error.message);
+                    }
+
+                    // Fallback for environments where teacherSettings is blocked by rules.
+                    if (!remoteTargetsLoaded) {
+                        try {
+                            const userSnap = await db.collection("users").doc(remoteOwnerUid).get();
+                            const userTargets = userSnap.data()?.levelTargets;
+                            if (userTargets && typeof userTargets === "object") {
+                                levelTargets = sanitizeTargets(userTargets);
+                                localStorage.setItem(getLevelTargetsStorageKey(remoteOwnerUid), JSON.stringify(levelTargets));
+                            }
+                        } catch (error) {
+                            console.warn("Level target fallback load failed:", error.message);
+                        }
                     }
                 }
             }
@@ -1625,6 +1753,15 @@
                     }, { merge: true });
                 } catch (error) {
                     console.warn("Could not store level targets in Firestore:", error.message);
+                }
+
+                try {
+                    await db.collection("users").doc(currentUser.uid).set({
+                        levelTargets,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Could not store level targets on user profile:", error.message);
                 }
             }
 
@@ -3438,6 +3575,20 @@
             return null;
         }
 
+        function findWorkbookSheetByHeaderGroups(workbook, headerGroups) {
+            for (const sheetName of workbook.SheetNames) {
+                const sheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+                const firstRow = Array.isArray(rows[0]) ? rows[0] : [];
+                const headerSet = new Set(firstRow.map(normalizeHeaderKey));
+                const isMatch = headerGroups.every(group =>
+                    group.some(alias => headerSet.has(normalizeHeaderKey(alias)))
+                );
+                if (isMatch) return sheet;
+            }
+            return null;
+        }
+
         async function commitImportedContent(stagedSentenceAdds, stagedBasicAdds, pendingFirestoreWrites, importedCount, sourceLabel) {
             const teacherUid = currentUser.uid || "";
             const teacherEmail = currentUser.email || "";
@@ -3479,18 +3630,21 @@
                 });
                 basicMatchingExercises.push(...stagedBasicAdds);
                 await loadSentenceBankFromFirestore();
+                saveSentenceBankCache(teacherUid);
                 alert(`Success! Imported ${importedCount} item(s) from ${sourceLabel}. Synced ${synced} item(s) to Firestore.`);
             } else if (!firebaseReady) {
                 ["Beginner", "Intermediate", "Advanced"].forEach(level => {
                     baseSentences[level].push(...stagedSentenceAdds[level]);
                 });
                 basicMatchingExercises.push(...stagedBasicAdds);
+                saveSentenceBankCache(teacherUid);
                 alert(`Imported ${importedCount} item(s) from ${sourceLabel} in browser memory only. Connect Firebase to keep them after logout.`);
             } else {
                 ["Beginner", "Intermediate", "Advanced"].forEach(level => {
                     baseSentences[level].push(...stagedSentenceAdds[level]);
                 });
                 basicMatchingExercises.push(...stagedBasicAdds);
+                saveSentenceBankCache(teacherUid);
                 alert(`Success! Imported ${importedCount} item(s) from ${sourceLabel}.`);
             }
 
@@ -3508,7 +3662,14 @@
 
             try {
                 const workbook = await readWorkbookFromInput("sentence-excel-upload");
-                const sentenceSheet = findWorkbookSheet(workbook, ["Sentences", "Sentence", "Sheet1"]);
+                let sentenceSheet = findWorkbookSheet(workbook, ["Sentences", "Sentence", "Sheet1"]);
+                if (!sentenceSheet) {
+                    sentenceSheet = findWorkbookSheetByHeaderGroups(workbook, [
+                        ["Level", "Tier", "Stage"],
+                        ["Correct_Sentence", "Correct Sentence", "Sentence"],
+                        ["Scrambled_Words", "Scrambled Words", "Jumbled_Words", "Jumbled Words", "Words"]
+                    ]);
+                }
                 if (!sentenceSheet) {
                     alert("Sentences sheet was not found. Use sheet name 'Sentences'.");
                     return;
@@ -3527,15 +3688,22 @@
                 const pendingFirestoreWrites = [];
 
                 for (const row of sentenceRows) {
-                    const level = String(row.Level || "").trim();
-                    if (!level || !baseSentences[level] || !row.Scrambled_Words || !row.Correct_Sentence) continue;
+                    const rawLevel = String(getRowField(row, ["Level", "Tier", "Stage"]) || "").trim();
+                    const normalizedLevel = rawLevel ? (rawLevel.charAt(0).toUpperCase() + rawLevel.slice(1).toLowerCase()) : "";
+                    const level = ["Beginner", "Intermediate", "Advanced"].includes(normalizedLevel) ? normalizedLevel : rawLevel;
+                    const scrambledField = getRowField(row, ["Scrambled_Words", "Scrambled Words", "Jumbled_Words", "Jumbled Words", "Words"]);
+                    const correctField = getRowField(row, ["Correct_Sentence", "Correct Sentence", "Sentence"]);
+                    const grammarRuleField = getRowField(row, ["Grammar_Rule", "Grammar Rule", "Hint", "Rule"]);
+                    const teacherNoteField = getRowField(row, ["Teacher_Note", "Teacher Note", "Note"]);
+
+                    if (!level || !baseSentences[level] || !scrambledField || !correctField) continue;
 
                     const payload = {
                         level,
-                        correct: row.Correct_Sentence,
-                        scramble: String(row.Scrambled_Words).split(",").map(w => w.trim()).filter(Boolean),
-                        rule: row.Grammar_Rule || "Custom uploaded sentence structure rule.",
-                        teacherNote: row.Teacher_Note || "",
+                        correct: String(correctField).trim(),
+                        scramble: String(scrambledField).split(",").map(w => w.trim()).filter(Boolean),
+                        rule: String(grammarRuleField || "").trim() || "Custom uploaded sentence structure rule.",
+                        teacherNote: String(teacherNoteField || "").trim(),
                         ownerTeacherUid: teacherUid,
                         ownerTeacherEmail: teacherEmail,
                         type: "sentence"
@@ -3576,7 +3744,14 @@
 
             try {
                 const workbook = await readWorkbookFromInput("basic-excel-upload");
-                const basicSheet = findWorkbookSheet(workbook, ["BasicLevel", "Basic", "PartsOfSpeech", "Sheet1"]);
+                let basicSheet = findWorkbookSheet(workbook, ["BasicLevel", "Basic", "PartsOfSpeech", "Sheet1"]);
+                if (!basicSheet) {
+                    basicSheet = findWorkbookSheetByHeaderGroups(workbook, [
+                        ["Main_Category", "Main Category", "Category", "Topic", "Title"],
+                        ["Subcategory", "Sub_Category", "Sub Category", "Sucategory", "Part", "Type"],
+                        ["Jumbled_Words", "Jumbled Words", "Word", "Words", "Items"]
+                    ]);
+                }
                 if (!basicSheet) {
                     alert("Basic sheet was not found. Use sheet name 'BasicLevel'.");
                     return;
@@ -3597,21 +3772,21 @@
 
                 for (let rowIndex = 0; rowIndex < basicRows.length; rowIndex++) {
                     const row = basicRows[rowIndex];
-                    const mainCategory = String(row.Main_Category || row["Main category"] || "").trim();
-                    const subCategoryRaw = String(row.Subcategory || row.Sub_Category || row["Sub category"] || row.Sucategory || "").trim();
-                    const wordRaw = String(row.Jumbled_Words || row.Word || row["Jumbled words"] || "").trim();
-                    const hint = String(row.Hint || row.Grammar_Rule || "Use Hint to see the grammar rule.").trim();
-                    const promptSentence = String(row.Prompt_Sentence || row.Sentence || "").trim();
-                    const questionId = String(row.Question_ID || "").trim();
+                    const mainCategory = String(getRowField(row, ["Main_Category", "Main Category", "Category", "Topic", "Title"]) || "").trim();
+                    const subCategoryRaw = String(getRowField(row, ["Subcategory", "Sub_Category", "Sub Category", "Sucategory", "Part", "Type"]) || "").trim();
+                    const wordRaw = String(getRowField(row, ["Jumbled_Words", "Jumbled Words", "Word", "Words", "Items"]) || "").trim();
+                    const hint = String(getRowField(row, ["Hint", "Grammar_Rule", "Grammar Rule", "Rule"]) || "Use Hint to see the grammar rule.").trim();
+                    const promptSentence = String(getRowField(row, ["Prompt_Sentence", "Prompt Sentence", "Sentence", "Question", "Example Sentence"]) || "").trim();
+                    const questionId = String(getRowField(row, ["Question_ID", "Question ID", "QID", "Group_ID", "Group ID"]) || "").trim();
+                    const teacherNoteFromRow = String(getRowField(row, ["Teacher_Note", "Teacher Note", "Note"]) || "").trim();
 
                     const subCategories = splitCsvValues(subCategoryRaw);
                     const words = splitCsvValues(wordRaw);
 
                     if (!mainCategory || !subCategories.length || !words.length) continue;
 
-                    const fallbackQuestionKey = promptSentence
-                        ? `${mainCategory}|${promptSentence}|${hint}`
-                        : `row-${rowIndex + 1}-${mainCategory}`;
+                    // If Question_ID is missing, each row is treated as a separate question by default.
+                    const fallbackQuestionKey = `row-${rowIndex + 1}-${mainCategory}`;
                     const questionKey = questionId || fallbackQuestionKey;
 
                     if (!groupedBasic.has(questionKey)) {
@@ -3620,10 +3795,12 @@
                             promptSentence,
                             subCategories: [],
                             words: [],
-                            rule: hint
+                            rule: hint,
+                            teacherNote: teacherNoteFromRow
                         });
                     }
                     const entry = groupedBasic.get(questionKey);
+                    if (!entry.teacherNote && teacherNoteFromRow) entry.teacherNote = teacherNoteFromRow;
 
                     if (subCategories.length === words.length) {
                         words.forEach((word, idx) => {
@@ -3657,7 +3834,8 @@
                         promptSentence: value.promptSentence || "",
                         subCategories: value.subCategories,
                         words: value.words,
-                        rule: value.rule
+                        rule: value.rule,
+                        teacherNote: value.teacherNote || ""
                     };
                     stagedBasicAdds.push(localItem);
                     if (firebaseReady) {
@@ -3669,6 +3847,7 @@
                             subCategories: value.subCategories,
                             words: value.words,
                             rule: value.rule,
+                            teacherNote: value.teacherNote || "",
                             ownerTeacherUid: teacherUid,
                             ownerTeacherEmail: teacherEmail
                         };
