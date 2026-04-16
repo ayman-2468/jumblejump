@@ -1099,6 +1099,19 @@
                 .filter(Boolean);
         }
 
+        function getLevelTargetsStorageKey(scopeUid = "") {
+            return `jj_level_targets_${scopeUid || "global"}`;
+        }
+
+        function sanitizeTargets(rawTargets) {
+            return {
+                Basic: Math.max(1, Number(rawTargets?.Basic) || 5),
+                Beginner: Math.max(1, Number(rawTargets?.Beginner) || 100),
+                Intermediate: Math.max(1, Number(rawTargets?.Intermediate) || 100),
+                Advanced: Math.max(1, Number(rawTargets?.Advanced) || 100)
+            };
+        }
+
         function stableHash(input) {
             const text = String(input || "");
             let hash = 2166136261;
@@ -1147,21 +1160,28 @@
             const teacherScopeUid = currentUser.role === "teacher" ? currentUser.uid : currentUser.teacherUid;
             if (!teacherScopeUid) return;
 
-            resetSentenceBanksToStarter();
-
             let docs = [];
             try {
                 const scopedSnap = await db.collection("sentences").where("ownerTeacherUid", "==", teacherScopeUid).get();
-                docs = scopedSnap.docs;
-                if (!docs.length) {
-                    // Backward compatibility with old uploads missing ownerTeacherUid.
+                docs = [...scopedSnap.docs];
+
+                // Backward compatibility for old data that missed ownerTeacherUid.
+                if (currentUser.role === "teacher") {
                     const legacySnap = await db.collection("sentences").get();
-                    docs = legacySnap.docs;
+                    legacySnap.docs.forEach(docSnap => {
+                        const data = docSnap.data() || {};
+                        const ownerTeacherUid = String(data.ownerTeacherUid || "").trim();
+                        if (!ownerTeacherUid || ownerTeacherUid === teacherScopeUid) {
+                            if (!docs.some(item => item.id === docSnap.id)) docs.push(docSnap);
+                        }
+                    });
                 }
             } catch (error) {
                 console.warn("Sentence bank load failed:", error.message);
                 return;
             }
+
+            resetSentenceBanksToStarter();
 
             docs.forEach(docSnap => {
                 const data = docSnap.data() || {};
@@ -1485,6 +1505,11 @@
             return levelTargets[level] || 1;
         }
 
+        function getTargetScopeUid() {
+            if (!currentUser?.uid) return "";
+            return currentUser.role === "teacher" ? currentUser.uid : (currentUser.teacherUid || "");
+        }
+
         function isMatchingLevel(level) {
             return level === "Basic";
         }
@@ -1531,24 +1556,40 @@
             if (targetAdvanced) targetAdvanced.value = String(getSentenceTarget("Advanced"));
         }
 
-        function loadSentenceTarget() {
+        async function loadSentenceTarget() {
             const legacySaved = Number(localStorage.getItem("jj_sentence_target"));
-            const savedTargets = JSON.parse(localStorage.getItem("jj_level_targets") || "null");
+            const scopeUid = getTargetScopeUid();
+            const scopedRaw = JSON.parse(localStorage.getItem(getLevelTargetsStorageKey(scopeUid)) || "null");
+            const globalRaw = JSON.parse(localStorage.getItem("jj_level_targets") || "null");
+            const savedTargets = scopedRaw || globalRaw;
+
             if (savedTargets && typeof savedTargets === "object") {
-                levelTargets = {
-                    Basic: Number(savedTargets.Basic) || 5,
-                    Beginner: Number(savedTargets.Beginner) || 100,
-                    Intermediate: Number(savedTargets.Intermediate) || 100,
-                    Advanced: Number(savedTargets.Advanced) || 100
-                };
+                levelTargets = sanitizeTargets(savedTargets);
             } else {
                 const fallback = Number.isFinite(legacySaved) && legacySaved >= 10 ? legacySaved : 100;
                 levelTargets = { Basic: 5, Beginner: fallback, Intermediate: fallback, Advanced: fallback };
             }
+
+            if (firebaseReady && currentUser?.uid) {
+                const remoteOwnerUid = currentUser.role === "teacher" ? currentUser.uid : (currentUser.teacherUid || "");
+                if (remoteOwnerUid) {
+                    try {
+                        const settingSnap = await db.collection("teacherSettings").doc(remoteOwnerUid).get();
+                        const remoteTargets = settingSnap.data()?.levelTargets;
+                        if (remoteTargets && typeof remoteTargets === "object") {
+                            levelTargets = sanitizeTargets(remoteTargets);
+                            localStorage.setItem(getLevelTargetsStorageKey(remoteOwnerUid), JSON.stringify(levelTargets));
+                        }
+                    } catch (error) {
+                        console.warn("Level target load from Firestore failed:", error.message);
+                    }
+                }
+            }
+
             updateSentenceTargetLabels();
         }
 
-        function applySentenceTarget() {
+        async function applySentenceTarget() {
             if (currentUser.role !== "teacher") {
                 alert("Only teachers can change sentence target.");
                 return;
@@ -1573,7 +1614,20 @@
             }
 
             levelTargets = nextTargets;
+            localStorage.setItem(getLevelTargetsStorageKey(currentUser.uid), JSON.stringify(levelTargets));
             localStorage.setItem("jj_level_targets", JSON.stringify(levelTargets));
+
+            if (firebaseReady && currentUser.uid) {
+                try {
+                    await db.collection("teacherSettings").doc(currentUser.uid).set({
+                        levelTargets,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Could not store level targets in Firestore:", error.message);
+                }
+            }
+
             updateSentenceTargetLabels();
             updateProgressBars();
             loadSentence();
@@ -2547,6 +2601,7 @@
                 }
             }
 
+            await loadSentenceTarget();
             await loadSentenceBankFromFirestore();
 
             document.getElementById("auth-modal").classList.add("hidden");
@@ -3327,6 +3382,10 @@
                 alert("Only teachers can upload Excel files.");
                 return false;
             }
+            if (!firebaseReady) {
+                alert("Firebase is not connected. Upload is blocked to prevent data loss after logout.");
+                return false;
+            }
             return true;
         }
 
@@ -3536,18 +3595,27 @@
                 const pendingFirestoreWrites = [];
                 const groupedBasic = new Map();
 
-                for (const row of basicRows) {
+                for (let rowIndex = 0; rowIndex < basicRows.length; rowIndex++) {
+                    const row = basicRows[rowIndex];
                     const mainCategory = String(row.Main_Category || row["Main category"] || "").trim();
-                    const subCategory = String(row.Subcategory || row.Sub_Category || row["Sub category"] || "").trim();
-                    const word = String(row.Jumbled_Words || row.Word || row["Jumbled words"] || "").trim();
+                    const subCategoryRaw = String(row.Subcategory || row.Sub_Category || row["Sub category"] || row.Sucategory || "").trim();
+                    const wordRaw = String(row.Jumbled_Words || row.Word || row["Jumbled words"] || "").trim();
                     const hint = String(row.Hint || row.Grammar_Rule || "Use Hint to see the grammar rule.").trim();
                     const promptSentence = String(row.Prompt_Sentence || row.Sentence || "").trim();
-                    const questionId = String(row.Question_ID || `${mainCategory}|${promptSentence}|${hint}`).trim();
+                    const questionId = String(row.Question_ID || "").trim();
 
-                    if (!mainCategory || !subCategory || !word) continue;
+                    const subCategories = splitCsvValues(subCategoryRaw);
+                    const words = splitCsvValues(wordRaw);
 
-                    if (!groupedBasic.has(questionId)) {
-                        groupedBasic.set(questionId, {
+                    if (!mainCategory || !subCategories.length || !words.length) continue;
+
+                    const fallbackQuestionKey = promptSentence
+                        ? `${mainCategory}|${promptSentence}|${hint}`
+                        : `row-${rowIndex + 1}-${mainCategory}`;
+                    const questionKey = questionId || fallbackQuestionKey;
+
+                    if (!groupedBasic.has(questionKey)) {
+                        groupedBasic.set(questionKey, {
                             mainCategory,
                             promptSentence,
                             subCategories: [],
@@ -3555,13 +3623,34 @@
                             rule: hint
                         });
                     }
-                    const entry = groupedBasic.get(questionId);
-                    if (!entry.subCategories.includes(subCategory)) entry.subCategories.push(subCategory);
-                    entry.words.push({ text: word, pos: subCategory });
+                    const entry = groupedBasic.get(questionKey);
+
+                    if (subCategories.length === words.length) {
+                        words.forEach((word, idx) => {
+                            const sub = subCategories[idx];
+                            if (!entry.subCategories.includes(sub)) entry.subCategories.push(sub);
+                            entry.words.push({ text: word, pos: sub });
+                        });
+                    } else if (subCategories.length === 1) {
+                        const sub = subCategories[0];
+                        if (!entry.subCategories.includes(sub)) entry.subCategories.push(sub);
+                        words.forEach(word => {
+                            entry.words.push({ text: word, pos: sub });
+                        });
+                    } else {
+                        words.forEach((word, idx) => {
+                            const sub = subCategories[idx % subCategories.length];
+                            if (!entry.subCategories.includes(sub)) entry.subCategories.push(sub);
+                            entry.words.push({ text: word, pos: sub });
+                        });
+                    }
                 }
 
                 for (const value of groupedBasic.values()) {
-                    if (value.words.length < 2) continue;
+                    if (!value.words.length) continue;
+                    if (!value.subCategories.length) {
+                        value.subCategories = [...new Set(value.words.map(item => item.pos).filter(Boolean))];
+                    }
                     const localItem = {
                         id: `local-${sentenceIdSeed++}`,
                         mainCategory: value.mainCategory,
@@ -3725,7 +3814,7 @@
             tbody.innerHTML = "";
 
             ["Beginner", "Intermediate", "Advanced"].forEach(level => {
-                baseSentences[level].slice(0, 15).forEach((item, idx) => { // show top 15 each to keep view performant
+                baseSentences[level].forEach((item, idx) => {
                     const row = document.createElement("tr");
                     row.className = "hover:bg-slate-100";
                     row.innerHTML = `
@@ -3862,6 +3951,7 @@
         initFirebase();
         initPWA();
         initInstallUX();
+        loadSentenceTarget();
         loadSheetsConfig();
         populateDatabaseTable();
         populateRosterTable();
