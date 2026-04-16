@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-             apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -3561,6 +3561,13 @@
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: "array" });
+                        // Some exported files keep the real range in !fullref; promote it to avoid one-row imports.
+                        (workbook.SheetNames || []).forEach(sheetName => {
+                            const sheet = workbook.Sheets[sheetName];
+                            if (sheet && sheet["!fullref"] && (!sheet["!ref"] || sheet["!fullref"] !== sheet["!ref"])) {
+                                sheet["!ref"] = sheet["!fullref"];
+                            }
+                        });
                         if (!workbook.SheetNames || !workbook.SheetNames.length) {
                             reject(new Error("No Excel sheet found in this workbook. Add at least one sheet and try again."));
                             return;
@@ -3600,6 +3607,49 @@
                 if (isMatch) return sheet;
             }
             return null;
+        }
+
+        function sheetMatchesHeaderGroups(sheet, headerGroups) {
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+            const firstRow = Array.isArray(rows[0]) ? rows[0] : [];
+            const headerSet = new Set(firstRow.map(normalizeHeaderKey));
+            return headerGroups.every(group =>
+                group.some(alias => headerSet.has(normalizeHeaderKey(alias)))
+            );
+        }
+
+        function getSheetDataRowCount(sheet) {
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+            return Math.max(0, rows.length - 1);
+        }
+
+        function resolveWorkbookSheet(workbook, preferredNames, requiredHeaderGroups) {
+            const candidates = [];
+
+            // Prefer named sheets, but only if they actually match the required headers.
+            preferredNames.forEach(name => {
+                const namedSheet = findWorkbookSheet(workbook, [name]);
+                if (!namedSheet) return;
+                if (!sheetMatchesHeaderGroups(namedSheet, requiredHeaderGroups)) return;
+                candidates.push({
+                    sheet: namedSheet,
+                    rowCount: getSheetDataRowCount(namedSheet)
+                });
+            });
+
+            // Also scan all sheets and pick the richest matching sheet.
+            workbook.SheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                if (!sheetMatchesHeaderGroups(sheet, requiredHeaderGroups)) return;
+                candidates.push({
+                    sheet,
+                    rowCount: getSheetDataRowCount(sheet)
+                });
+            });
+
+            if (!candidates.length) return null;
+            candidates.sort((a, b) => b.rowCount - a.rowCount);
+            return candidates[0].sheet;
         }
 
         async function commitImportedContent(stagedSentenceAdds, stagedBasicAdds, pendingFirestoreWrites, importedCount, sourceLabel) {
@@ -3675,19 +3725,17 @@
 
             try {
                 const workbook = await readWorkbookFromInput("sentence-excel-upload");
-                let sentenceSheet = findWorkbookSheet(workbook, ["Sentences", "Sentence", "Sheet1"]);
-                if (!sentenceSheet) {
-                    sentenceSheet = findWorkbookSheetByHeaderGroups(workbook, [
-                        ["Level", "Tier", "Stage"],
-                        ["Correct_Sentence", "Correct Sentence", "Sentence"],
-                        ["Scrambled_Words", "Scrambled Words", "Jumbled_Words", "Jumbled Words", "Words"]
-                    ]);
-                }
+                const sentenceHeaderGroups = [
+                    ["Level", "Tier", "Stage"],
+                    ["Correct_Sentence", "Correct Sentence", "Sentence"],
+                    ["Scrambled_Words", "Scrambled Words", "Jumbled_Words", "Jumbled Words", "Words"]
+                ];
+                let sentenceSheet = resolveWorkbookSheet(workbook, ["Sentences", "Sentence"], sentenceHeaderGroups);
                 if (!sentenceSheet) {
                     alert("Sentences sheet was not found. Use sheet name 'Sentences'.");
                     return;
                 }
-                const sentenceRows = XLSX.utils.sheet_to_json(sentenceSheet);
+                const sentenceRows = XLSX.utils.sheet_to_json(sentenceSheet, { defval: "" });
                 if (!sentenceRows.length) {
                     alert("Sentences sheet is empty.");
                     return;
@@ -3757,14 +3805,12 @@
 
             try {
                 const workbook = await readWorkbookFromInput("basic-excel-upload");
-                let basicSheet = findWorkbookSheet(workbook, ["BasicLevel", "Basic", "PartsOfSpeech", "Sheet1"]);
-                if (!basicSheet) {
-                    basicSheet = findWorkbookSheetByHeaderGroups(workbook, [
-                        ["Main_Category", "Main Category", "Category", "Topic", "Title"],
-                        ["Subcategory", "Sub_Category", "Sub Category", "Sucategory", "Part", "Type"],
-                        ["Jumbled_Words", "Jumbled Words", "Word", "Words", "Items"]
-                    ]);
-                }
+                const basicHeaderGroups = [
+                    ["Main_Category", "Main Category", "Category", "Topic", "Title"],
+                    ["Subcategory", "Sub_Category", "Sub Category", "Sucategory", "Part", "Type"],
+                    ["Jumbled_Words", "Jumbled Words", "Jumbeled_Words", "Jumbeled Words", "Word", "Words", "Items"]
+                ];
+                let basicSheet = resolveWorkbookSheet(workbook, ["BasicLevel", "Basic", "PartsOfSpeech"], basicHeaderGroups);
                 if (!basicSheet) {
                     alert("Basic sheet was not found. Use sheet name 'BasicLevel'.");
                     return;
@@ -3786,10 +3832,10 @@
                     const row = basicRows[rowIndex];
                     const mainCategory = String(getRowField(row, ["Main_Category", "Main Category", "Category", "Topic", "Title"]) || "").trim();
                     const subCategoryRaw = String(getRowField(row, ["Subcategory", "Sub_Category", "Sub Category", "Sucategory", "Part", "Type"]) || "").trim();
-                    const wordRaw = String(getRowField(row, ["Jumbled_Words", "Jumbled Words", "Word", "Words", "Items"]) || "").trim();
+                    const wordRaw = String(getRowField(row, ["Jumbled_Words", "Jumbled Words", "Jumbeled_Words", "Jumbeled Words", "Word", "Words", "Items"]) || "").trim();
                     const hint = String(getRowField(row, ["Hint", "Grammar_Rule", "Grammar Rule", "Rule"]) || "Use Hint to see the grammar rule.").trim();
                     const promptSentence = String(getRowField(row, ["Prompt_Sentence", "Prompt Sentence", "Sentence", "Question", "Example Sentence"]) || "").trim();
-                    const questionId = String(getRowField(row, ["Question_ID", "Question ID", "QID", "Group_ID", "Group ID"]) || "").trim();
+                    const questionId = String(getRowField(row, ["Question_ID", "Question ID", "QID", "Group_ID", "Group ID", "ID"]) || "").trim();
                     const teacherNoteFromRow = String(getRowField(row, ["Teacher_Note", "Teacher Note", "Note"]) || "").trim();
 
                     const subCategories = splitCsvValues(subCategoryRaw);
