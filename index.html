@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -395,7 +395,7 @@
                             <i class="fa-solid fa-award text-3xl"></i>
                         </div>
                         <h4 class="font-bold text-slate-800 text-lg">Official Certificates</h4>
-                        <p id="certificate-target-note" class="text-slate-500 text-xs mt-1 mb-4">Complete 100 sentences in a level to download your colorful, stamped accomplishment certificate.</p>
+                        <p id="certificate-target-note" class="text-slate-500 text-xs mt-1 mb-4">Complete the level target to download your colorful, stamped accomplishment certificate.</p>
                         <div class="w-full text-left mb-4">
                             <label class="block text-[11px] font-bold text-slate-500 mb-1">Optional Photo for Certificate</label>
                             <input id="student-photo-upload" type="file" accept="image/*" onchange="handleStudentPhotoUpload(event)" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 border border-slate-200 rounded-xl">
@@ -532,7 +532,7 @@
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 mb-1">Achievement Line 1</label>
-                                <input id="cert-achievement-line1" type="text" value="For successfully mastering 100 sentences in the Beginner Tier" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                <input id="cert-achievement-line1" type="text" value="For successfully mastering the {level} Tier sentence target" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 mb-1">Achievement Line 2</label>
@@ -590,12 +590,31 @@
                             </div>
                         </div>
                         <div class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input id="target-basic" type="number" min="1" step="1" value="5" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Basic target">
+                                <input id="target-beginner" type="number" min="1" step="1" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Beginner target">
+                                <input id="target-intermediate" type="number" min="1" step="1" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Intermediate target">
+                                <input id="target-advanced" type="number" min="1" step="1" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Advanced target">
+                            </div>
                             <div class="flex gap-2">
-                                <input id="sentence-target" type="number" min="10" step="10" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Sentence levels target">
-                                <input id="basic-target" type="number" min="1" step="1" value="5" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Basic target">
                                 <button onclick="applySentenceTarget()" class="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold">Apply</button>
                             </div>
                             <p class="text-[11px] text-slate-500">Certificates unlock only after a student completes the full level target once.</p>
+                            <div class="border-t border-slate-200 pt-3 space-y-2">
+                                <p class="text-[11px] font-bold text-slate-500">Teacher Quick Finish + Certificate</p>
+                                <select id="finish-student-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="">Select student</option>
+                                </select>
+                                <div class="flex gap-2">
+                                    <select id="finish-level-select" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                        <option value="Basic">Basic</option>
+                                        <option value="Beginner">Beginner</option>
+                                        <option value="Intermediate">Intermediate</option>
+                                        <option value="Advanced">Advanced</option>
+                                    </select>
+                                    <button onclick="teacherFinishLevelAndPrint()" class="px-3 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold">Finish + Print</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -950,60 +969,61 @@
         const basicMatchingExercises = [
             {
                 mainCategory: "Parts of Speech",
-                subCategories: ["Verb", "Adjective", "Preposition", "Noun"],
+                promptSentence: "Students play football today.",
+                subCategories: ["Noun", "Verb", "Adverb"],
                 words: [
+                    { text: "Students", pos: "Noun" },
                     { text: "play", pos: "Verb" },
-                    { text: "red", pos: "Adjective" },
+                    { text: "today", pos: "Adverb" }
+                ],
+                rule: "Nouns name people or things, verbs show action, and adverbs add time or manner."
+            },
+            {
+                mainCategory: "Personal Pronouns",
+                promptSentence: "She helps us in class.",
+                subCategories: ["Subject Pronoun", "Object Pronoun"],
+                words: [
+                    { text: "She", pos: "Subject Pronoun" },
+                    { text: "us", pos: "Object Pronoun" }
+                ],
+                rule: "Subject pronouns do the action (I, you, he, she, we, they) and object pronouns receive it (me, him, her, us, them)."
+            },
+            {
+                mainCategory: "Auxiliary Verbs",
+                promptSentence: "They are studying now.",
+                subCategories: ["Auxiliary Verb", "Main Verb"],
+                words: [
+                    { text: "are", pos: "Auxiliary Verb" },
+                    { text: "studying", pos: "Main Verb" }
+                ],
+                rule: "Auxiliary verbs support tense and structure, while the main verb carries the action meaning."
+            },
+            {
+                mainCategory: "Demonstratives",
+                promptSentence: "These books are useful.",
+                subCategories: ["Demonstrative", "Noun", "Adjective"],
+                words: [
+                    { text: "These", pos: "Demonstrative" },
+                    { text: "books", pos: "Noun" },
+                    { text: "useful", pos: "Adjective" }
+                ],
+                rule: "This/that/these/those point to nouns. Use these/those with plural nouns."
+            },
+            {
+                mainCategory: "Prepositions",
+                promptSentence: "The pen is on the desk.",
+                subCategories: ["Subject Noun", "Preposition", "Object Noun"],
+                words: [
+                    { text: "pen", pos: "Subject Noun" },
                     { text: "on", pos: "Preposition" },
-                    { text: "book", pos: "Noun" }
+                    { text: "desk", pos: "Object Noun" }
                 ],
-                rule: "Verb = action, adjective = description, preposition = relation (on/in/under), noun = person/place/thing."
-            },
-            {
-                mainCategory: "Parts of Speech",
-                subCategories: ["Verb", "Adverb", "Noun", "Preposition"],
-                words: [
-                    { text: "eat", pos: "Verb" },
-                    { text: "quickly", pos: "Adverb" },
-                    { text: "table", pos: "Noun" },
-                    { text: "under", pos: "Preposition" }
-                ],
-                rule: "Adverbs often answer how (quickly), while prepositions show position (under)."
-            },
-            {
-                mainCategory: "Parts of Speech",
-                subCategories: ["Adjective", "Verb", "Noun", "Adverb"],
-                words: [
-                    { text: "happy", pos: "Adjective" },
-                    { text: "run", pos: "Verb" },
-                    { text: "school", pos: "Noun" },
-                    { text: "yesterday", pos: "Adverb" }
-                ],
-                rule: "Time words like yesterday can act as adverbs, and naming words like school are nouns."
-            },
-            {
-                mainCategory: "Parts of Speech",
-                subCategories: ["Verb", "Adjective", "Adverb", "Noun"],
-                words: [
-                    { text: "write", pos: "Verb" },
-                    { text: "blue", pos: "Adjective" },
-                    { text: "softly", pos: "Adverb" },
-                    { text: "class", pos: "Noun" }
-                ],
-                rule: "Many adverbs end in -ly (softly), and adjectives describe nouns (blue classbook, blue pen)."
-            },
-            {
-                mainCategory: "Parts of Speech",
-                subCategories: ["Preposition", "Noun", "Verb", "Adverb"],
-                words: [
-                    { text: "in", pos: "Preposition" },
-                    { text: "teacher", pos: "Noun" },
-                    { text: "teach", pos: "Verb" },
-                    { text: "carefully", pos: "Adverb" }
-                ],
-                rule: "Prepositions link words (in/on/at), verbs show action (teach), and adverbs modify verbs (carefully)."
+                rule: "Prepositions like on, in, under, and beside connect nouns to place or time information."
             }
         ];
+
+        const starterSentenceBank = JSON.parse(JSON.stringify(baseSentences));
+        const starterBasicExercises = JSON.parse(JSON.stringify(basicMatchingExercises));
 
         const allLevels = ["Basic", "Beginner", "Intermediate", "Advanced"];
 
@@ -1038,6 +1058,94 @@
                 .toLowerCase();
         }
 
+        function resetSentenceBanksToStarter() {
+            sentenceIdSeed = 1;
+            ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                baseSentences[level] = (starterSentenceBank[level] || []).map(item => ({
+                    id: `local-${sentenceIdSeed++}`,
+                    correct: item.correct,
+                    scramble: [...(item.scramble || [])],
+                    rule: item.rule || "",
+                    teacherNote: item.teacherNote || ""
+                }));
+            });
+
+            basicMatchingExercises.length = 0;
+            starterBasicExercises.forEach(item => {
+                basicMatchingExercises.push({
+                    mainCategory: item.mainCategory || "Basic Matching",
+                    promptSentence: item.promptSentence || "",
+                    subCategories: [...(item.subCategories || [])],
+                    words: (item.words || []).map(word => ({ text: word.text, pos: word.pos })),
+                    rule: item.rule || "",
+                    teacherNote: item.teacherNote || ""
+                });
+            });
+        }
+
+        function splitCsvValues(value) {
+            return String(value || "")
+                .split(",")
+                .map(token => token.trim())
+                .filter(Boolean);
+        }
+
+        async function loadSentenceBankFromFirestore() {
+            if (!firebaseReady || !currentUser.uid) return;
+
+            const teacherScopeUid = currentUser.role === "teacher" ? currentUser.uid : currentUser.teacherUid;
+            if (!teacherScopeUid) return;
+
+            resetSentenceBanksToStarter();
+
+            let docs = [];
+            try {
+                const scopedSnap = await db.collection("sentences").where("ownerTeacherUid", "==", teacherScopeUid).get();
+                docs = scopedSnap.docs;
+                if (!docs.length) {
+                    // Backward compatibility with old uploads missing ownerTeacherUid.
+                    const legacySnap = await db.collection("sentences").get();
+                    docs = legacySnap.docs;
+                }
+            } catch (error) {
+                console.warn("Sentence bank load failed:", error.message);
+                return;
+            }
+
+            docs.forEach(docSnap => {
+                const data = docSnap.data() || {};
+                const level = String(data.level || "").trim();
+
+                if (String(data.type || "").toLowerCase() === "basic" || level === "Basic" || data.mainCategory) {
+                    const subCategories = Array.isArray(data.subCategories) ? data.subCategories : [];
+                    const words = Array.isArray(data.words) ? data.words : [];
+                    if (!subCategories.length || !words.length) return;
+                    basicMatchingExercises.push({
+                        firestoreId: docSnap.id,
+                        mainCategory: data.mainCategory || "Basic Matching",
+                        promptSentence: data.promptSentence || "",
+                        subCategories,
+                        words,
+                        rule: data.rule || "",
+                        teacherNote: data.teacherNote || ""
+                    });
+                    return;
+                }
+
+                if (!["Beginner", "Intermediate", "Advanced"].includes(level)) return;
+                if (!data.correct || !Array.isArray(data.scramble)) return;
+
+                baseSentences[level].push({
+                    id: `local-${sentenceIdSeed++}`,
+                    firestoreId: docSnap.id,
+                    correct: data.correct,
+                    scramble: data.scramble,
+                    rule: data.rule || "Custom uploaded sentence structure rule.",
+                    teacherNote: data.teacherNote || ""
+                });
+            });
+        }
+
         // ==========================================
         // 2. STATE VARIABLES + FIREBASE CONNECTIVITY
         // ==========================================
@@ -1069,8 +1177,12 @@
         let currentLevel = "Basic";
         let currentSentenceIdx = 0;
         let sentenceMasteryCount = 0;
-        let sentenceTarget = 100;
-        let basicTarget = 5;
+        let levelTargets = {
+            Basic: 5,
+            Beginner: 100,
+            Intermediate: 100,
+            Advanced: 100
+        };
         let sortableInstance = null;
         let basicSortables = [];
         let firebaseReady = false;
@@ -1100,7 +1212,7 @@
             title: "CERTIFICATE OF EXCELLENCE",
             awardLine: "This official certificate is proudly presented to:",
             footerLine: "Authorized by: JumbleJump Grammar Board",
-            achievementLine1: "For successfully mastering {target} sentences in the {level} Tier",
+            achievementLine1: "For successfully mastering the {level} Tier sentence target",
             achievementLine2: "conforming perfectly to Saudi 8th & 9th Grade English standards.",
             bgColor: "#ffffff",
             borderColor: "#0d9488",
@@ -1314,8 +1426,8 @@
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         }
 
-        function getSentenceTarget() {
-            return sentenceTarget;
+        function getSentenceTarget(level) {
+            return levelTargets[level] || 1;
         }
 
         function isMatchingLevel(level) {
@@ -1327,8 +1439,8 @@
         }
 
         function getLevelTarget(level) {
-            if (isMatchingLevel(level)) return basicMatchingExercises.length;
-            return Math.min(getSentenceTarget(), (baseSentences[level] || []).length);
+            const configuredTarget = getSentenceTarget(level);
+            return Math.min(configuredTarget, getLevelItems(level).length);
         }
 
         function updateRoleUI() {
@@ -1354,13 +1466,30 @@
             if (lockAdvanced) lockAdvanced.innerHTML = `<i class="fa-solid fa-lock"></i> Locked until Intermediate ${getLevelTarget("Intermediate")} complete`;
             const certNote = document.getElementById("certificate-target-note");
             if (certNote) certNote.textContent = "Complete each level target to download your colorful certificate.";
-            const targetInput = document.getElementById("sentence-target");
-            if (targetInput) targetInput.value = getSentenceTarget();
+            const targetBasic = document.getElementById("target-basic");
+            const targetBeginner = document.getElementById("target-beginner");
+            const targetIntermediate = document.getElementById("target-intermediate");
+            const targetAdvanced = document.getElementById("target-advanced");
+            if (targetBasic) targetBasic.value = String(getSentenceTarget("Basic"));
+            if (targetBeginner) targetBeginner.value = String(getSentenceTarget("Beginner"));
+            if (targetIntermediate) targetIntermediate.value = String(getSentenceTarget("Intermediate"));
+            if (targetAdvanced) targetAdvanced.value = String(getSentenceTarget("Advanced"));
         }
 
         function loadSentenceTarget() {
-            const saved = Number(localStorage.getItem("jj_sentence_target"));
-            sentenceTarget = Number.isFinite(saved) && saved >= 50 ? saved : 100;
+            const legacySaved = Number(localStorage.getItem("jj_sentence_target"));
+            const savedTargets = JSON.parse(localStorage.getItem("jj_level_targets") || "null");
+            if (savedTargets && typeof savedTargets === "object") {
+                levelTargets = {
+                    Basic: Number(savedTargets.Basic) || 5,
+                    Beginner: Number(savedTargets.Beginner) || 100,
+                    Intermediate: Number(savedTargets.Intermediate) || 100,
+                    Advanced: Number(savedTargets.Advanced) || 100
+                };
+            } else {
+                const fallback = Number.isFinite(legacySaved) && legacySaved >= 10 ? legacySaved : 100;
+                levelTargets = { Basic: 5, Beginner: fallback, Intermediate: fallback, Advanced: fallback };
+            }
             updateSentenceTargetLabels();
         }
 
@@ -1369,19 +1498,27 @@
                 alert("Only teachers can change sentence target.");
                 return;
             }
-            const input = document.getElementById("sentence-target");
-            const nextTarget = Number(input?.value || 100);
-            if (!Number.isFinite(nextTarget) || nextTarget < 50) {
-                alert("Enter a valid sentence target (50 or more).");
+            const nextTargets = {
+                Basic: Number(document.getElementById("target-basic")?.value || 5),
+                Beginner: Number(document.getElementById("target-beginner")?.value || 100),
+                Intermediate: Number(document.getElementById("target-intermediate")?.value || 100),
+                Advanced: Number(document.getElementById("target-advanced")?.value || 100)
+            };
+
+            const allValid = allLevels.every(level => Number.isFinite(nextTargets[level]) && nextTargets[level] >= 1);
+            if (!allValid) {
+                alert("Enter valid targets (1 or more) for all levels.");
                 return;
             }
-            const hasEnoughForAll = ["Beginner", "Intermediate", "Advanced"].every(level => (baseSentences[level] || []).length >= nextTarget);
+
+            const hasEnoughForAll = allLevels.every(level => getLevelItems(level).length >= nextTargets[level]);
             if (!hasEnoughForAll) {
-                alert("Not enough real sentences in one or more levels. Upload more sentences first.");
+                alert("One or more targets are larger than available questions. Upload more data first.");
                 return;
             }
-            sentenceTarget = nextTarget;
-            localStorage.setItem("jj_sentence_target", String(sentenceTarget));
+
+            levelTargets = nextTargets;
+            localStorage.setItem("jj_level_targets", JSON.stringify(levelTargets));
             updateSentenceTargetLabels();
             updateProgressBars();
             loadSentence();
@@ -1410,9 +1547,10 @@
             const subtitleEl = document.getElementById("game-board-subtitle");
             const helpEl = document.getElementById("game-workspace-help");
             if (isMatchingLevel(currentLevel)) {
-                titleEl.textContent = "Parts of Speech";
+                const active = getActiveSentence();
+                titleEl.textContent = active?.mainCategory || "Basic Matching";
                 subtitleEl.textContent = "Drage and drop the correct word under its title.";
-                helpEl.textContent = "The Main Category is Parts of Speech. Move each jumbled word into the right Subcategory box.";
+                helpEl.textContent = "Use the sentence and category titles, then move each jumbled word into the right subcategory block.";
             } else {
                 titleEl.textContent = "Sentence Builder Workspace";
                 subtitleEl.textContent = "Drag and drop the word chips below to arrange them into a grammatically correct sentence.";
@@ -1435,6 +1573,10 @@
                 <div class="bg-white border border-slate-200 rounded-xl p-4">
                     <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">The Main Category</p>
                     <p class="text-lg font-bold text-teal-700 mt-1">${exercise.mainCategory || "Parts of Speech"}</p>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold">Sentence</p>
+                    <p class="text-base font-semibold text-slate-700 mt-1">${exercise.promptSentence || "Arrange the words under the correct labels."}</p>
                 </div>
                 <div class="bg-white border border-slate-200 rounded-xl p-4">
                     <p class="text-[11px] uppercase tracking-wide text-slate-500 font-bold mb-3">Subcategory</p>
@@ -2349,6 +2491,8 @@
                     currentUser.progress = { Basic: 0, Beginner: 0, Intermediate: 0, Advanced: 0 };
                 }
             }
+
+            await loadSentenceBankFromFirestore();
 
             document.getElementById("auth-modal").classList.add("hidden");
             document.getElementById("header-user-name").innerText = currentUser.name;
