@@ -36,13 +36,12 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
-  authDomain: "jumblejump-prod.firebaseapp.com",
-  projectId: "jumblejump-prod",
-  storageBucket: "jumblejump-prod.firebasestorage.app",
-  messagingSenderId: "25185167776",
-  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
-  measurementId: "G-WWWQHS7WD3"
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
         };
 
         // Keep empty. Each teacher saves their own Google Sheet URL in their own dashboard settings.
@@ -53,6 +52,19 @@
         body {
             font-family: 'Fredoka', sans-serif;
             background-color: #f8fafc;
+        }
+        /* Improve tap responsiveness for mobile login controls */
+        #auth-modal button {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+        }
+        #auth-modal button:active {
+            transform: scale(0.99);
+        }
+        #auth-modal,
+        #auth-modal * {
+            pointer-events: auto;
         }
         .drag-card {
             cursor: grab;
@@ -144,7 +156,7 @@
     </div>
 
     <!-- AUTHENTICATION SPLASH SCREEN (Shown before game starts) -->
-    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
         <div class="bg-white max-w-xl w-full rounded-3xl p-8 shadow-2xl border-4 border-teal-500 relative overflow-hidden">
             <!-- Decorative Background blob -->
             <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-400 opacity-10 rounded-full blur-xl"></div>
@@ -159,23 +171,23 @@
 
             <div class="space-y-4">
                 <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-xl">
-                    <button id="auth-tab-login" onclick="toggleAuthPane('login')" class="py-2 rounded-lg text-sm font-bold bg-white text-teal-700">Login</button>
-                    <button id="auth-tab-signup" onclick="toggleAuthPane('signup')" class="py-2 rounded-lg text-sm font-bold text-slate-600">Sign Up</button>
+                    <button id="auth-tab-login" type="button" class="py-2 rounded-lg text-sm font-bold bg-white text-teal-700">Login</button>
+                    <button id="auth-tab-signup" type="button" class="py-2 rounded-lg text-sm font-bold text-slate-600">Sign Up</button>
                 </div>
 
                 <div id="auth-login-pane" class="space-y-3">
                     <input type="email" id="login-email" placeholder="Email" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                     <div class="relative">
                         <input type="password" id="login-password" placeholder="Password" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
-                        <button type="button" onclick="togglePasswordVisibility('login-password', this)" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700">
+                        <button id="btn-toggle-login-password" type="button" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 z-10">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">Sign In</button>
-                    <button onclick="forgotPassword()" class="w-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                    <button id="btn-auth-login" type="button" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">Sign In</button>
+                    <button id="btn-auth-forgot" type="button" class="w-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-key"></i> Forget My Password
                     </button>
-                    <button onclick="toggleAuthPane('signup')" class="w-full border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                    <button id="btn-auth-switch-signup" type="button" class="w-full border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i> New Student? Create Account
                     </button>
                 </div>
@@ -186,11 +198,11 @@
                     <input type="text" id="signup-teacher-code" placeholder="Teacher Code (required)" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium uppercase">
                     <div class="relative">
                         <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
-                        <button type="button" onclick="togglePasswordVisibility('signup-password', this)" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700">
+                        <button id="btn-toggle-signup-password" type="button" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 z-10">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <button onclick="handleSignup()" class="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <button id="btn-auth-signup" type="button" class="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i> Create Student Account
                     </button>
                 </div>
@@ -1303,6 +1315,7 @@
         let lastSheetSyncAt = 0;
         const teacherWebhookCache = new Map();
         let pendingThemeLogoData = "";
+        let authBusyUnlockTimer = null;
         const motivationalQuotes = [
             "Every correct sentence makes your writing shine brighter!",
             "Great grammar creates great confidence.",
@@ -1380,6 +1393,75 @@
             const statusEl = document.getElementById("auth-status");
             statusEl.textContent = message;
             statusEl.className = isError ? "text-xs text-rose-700" : "text-xs text-amber-800";
+        }
+
+        function setAuthUiBusy(isBusy, action = "") {
+            const loginBtn = document.getElementById("btn-auth-login");
+            const signupBtn = document.getElementById("btn-auth-signup");
+            const forgotBtn = document.getElementById("btn-auth-forgot");
+
+            if (authBusyUnlockTimer) {
+                clearTimeout(authBusyUnlockTimer);
+                authBusyUnlockTimer = null;
+            }
+
+            if (isBusy) {
+                // Failsafe: unlock auth controls if network/auth callback hangs.
+                authBusyUnlockTimer = setTimeout(() => {
+                    setAuthUiBusy(false);
+                    setAuthStatus("Request timed out. Please try again.", true);
+                }, 12000);
+            }
+
+            if (loginBtn) {
+                loginBtn.disabled = !!isBusy;
+                loginBtn.classList.toggle("opacity-75", !!isBusy);
+                loginBtn.classList.toggle("cursor-wait", !!isBusy);
+                loginBtn.innerHTML = isBusy && action === "login" ? "Signing In..." : "Sign In";
+            }
+            if (signupBtn) {
+                signupBtn.disabled = !!isBusy;
+                signupBtn.classList.toggle("opacity-75", !!isBusy);
+                signupBtn.classList.toggle("cursor-wait", !!isBusy);
+                signupBtn.innerHTML = isBusy && action === "signup"
+                    ? "<i class='fa-solid fa-spinner fa-spin'></i> Creating Account..."
+                    : "<i class='fa-solid fa-user-plus'></i> Create Student Account";
+            }
+            if (forgotBtn) {
+                forgotBtn.disabled = !!isBusy;
+                forgotBtn.classList.toggle("opacity-75", !!isBusy);
+                forgotBtn.classList.toggle("cursor-wait", !!isBusy);
+                forgotBtn.innerHTML = isBusy && action === "forgot"
+                    ? "<i class='fa-solid fa-spinner fa-spin'></i> Sending..."
+                    : "<i class='fa-solid fa-key'></i> Forget My Password";
+            }
+        }
+
+        function bindAuthModalEvents() {
+            const bindClick = (id, handler) => {
+                const el = document.getElementById(id);
+                if (!el || el.dataset.bound === "1") return;
+                el.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    handler(event);
+                });
+                el.dataset.bound = "1";
+            };
+
+            bindClick("auth-tab-login", () => toggleAuthPane("login"));
+            bindClick("auth-tab-signup", () => toggleAuthPane("signup"));
+            bindClick("btn-auth-switch-signup", () => toggleAuthPane("signup"));
+            bindClick("btn-auth-login", () => handleLogin());
+            bindClick("btn-auth-signup", () => handleSignup());
+            bindClick("btn-auth-forgot", () => forgotPassword());
+            bindClick("btn-toggle-login-password", () => {
+                const button = document.getElementById("btn-toggle-login-password");
+                togglePasswordVisibility("login-password", button);
+            });
+            bindClick("btn-toggle-signup-password", () => {
+                const button = document.getElementById("btn-toggle-signup-password");
+                togglePasswordVisibility("signup-password", button);
+            });
         }
 
         function setFirebaseBadge(isConnected) {
@@ -2509,6 +2591,7 @@
                 return;
             }
 
+            setAuthUiBusy(true, "signup");
             try {
                 const teacherSnap = await db.collection("users")
                     .where("signupCode", "==", teacherCode)
@@ -2563,6 +2646,8 @@
                 await completeLogin(cred.user.uid);
             } catch (error) {
                 setAuthStatus(error.message, true);
+            } finally {
+                setAuthUiBusy(false);
             }
         }
 
@@ -2576,11 +2661,14 @@
                 setAuthStatus("Enter a valid email first, then tap Forget My Password.", true);
                 return;
             }
+            setAuthUiBusy(true, "forgot");
             try {
                 await auth.sendPasswordResetEmail(email);
                 setAuthStatus("Password reset email sent. Check your inbox.");
             } catch (error) {
                 setAuthStatus(error.message, true);
+            } finally {
+                setAuthUiBusy(false);
             }
         }
 
@@ -2632,6 +2720,7 @@
                 return;
             }
 
+            setAuthUiBusy(true, "login");
             try {
                 const cred = await auth.signInWithEmailAndPassword(email, password);
                 await completeLogin(cred.user.uid, cred.user.email || email);
@@ -2641,6 +2730,8 @@
                 } else {
                     setAuthStatus(error.message, true);
                 }
+            } finally {
+                setAuthUiBusy(false);
             }
         }
 
@@ -4223,6 +4314,8 @@
         initFirebase();
         initPWA();
         initInstallUX();
+        bindAuthModalEvents();
+        setAuthUiBusy(false);
         loadSentenceTarget();
         loadSheetsConfig();
         populateDatabaseTable();
