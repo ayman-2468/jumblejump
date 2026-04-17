@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -54,7 +54,7 @@
             font-family: 'Fredoka', sans-serif;
             background-color: #f8fafc;
         }
-        /* Improve tap responsiveness for mobile login controls */
+        /* Keep auth interactions simple and fast */
         #auth-modal button {
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
@@ -64,33 +64,14 @@
             transform: scale(0.99);
         }
         #auth-modal {
-            z-index: 99999;
+            z-index: 1000;
             position: fixed;
             inset: 0;
-            pointer-events: none;
+            pointer-events: auto;
         }
         #auth-modal .auth-dialog {
             position: relative;
-            z-index: 2;
             pointer-events: auto;
-            isolation: isolate;
-        }
-        #auth-modal .auth-dialog * {
-            pointer-events: auto;
-        }
-        #auth-modal [data-inline-auth="1"] {
-            pointer-events: auto !important;
-            position: relative;
-            z-index: 3;
-        }
-        #auth-modal .auth-decor {
-            pointer-events: none !important;
-            z-index: 1;
-        }
-        body.auth-locked header,
-        body.auth-locked main,
-        body.auth-locked footer {
-            pointer-events: none !important;
         }
         .drag-card {
             cursor: grab;
@@ -112,7 +93,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col text-slate-700 select-none auth-locked">
+<body class="min-h-screen flex flex-col text-slate-700 select-none">
 
     <!-- TOP NAVBAR -->
     <header id="top-header" class="bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg sticky top-0 z-50">
@@ -1425,7 +1406,7 @@
             const modal = document.getElementById("auth-modal");
             if (!modal) return;
             modal.classList.toggle("hidden", !isVisible);
-            document.body.classList.toggle("auth-locked", !!isVisible);
+            modal.style.pointerEvents = isVisible ? "auto" : "none";
         }
 
         function setAuthUiBusy(isBusy, action = "") {
@@ -1473,7 +1454,6 @@
         function bindAuthModalEvents() {
             const bindClick = (id, handler) => {
                 const el = document.getElementById(id);
-                if (el && el.dataset.inlineAuth === "1") return;
                 if (!el || el.dataset.bound === "1") return;
                 el.addEventListener("click", (event) => {
                     event.preventDefault();
@@ -1528,6 +1508,53 @@
 
             document.addEventListener("click", emergencyHandler, true);
             document.addEventListener("touchend", emergencyHandler, { capture: true, passive: false });
+        }
+
+        function forceAuthControlsReady() {
+            const modal = document.getElementById("auth-modal");
+            if (!modal) return;
+            modal.style.pointerEvents = "auto";
+
+            const dialog = modal.querySelector(".auth-dialog");
+            if (dialog) dialog.style.pointerEvents = "auto";
+
+            [
+                "btn-auth-login",
+                "btn-auth-signup",
+                "btn-auth-forgot",
+                "auth-tab-login",
+                "auth-tab-signup",
+                "btn-auth-switch-signup",
+                "btn-toggle-login-password",
+                "btn-toggle-signup-password"
+            ].forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.hasAttribute("disabled")) {
+                    el.removeAttribute("disabled");
+                }
+                el.style.pointerEvents = "auto";
+            });
+        }
+
+        async function clearLegacyPwaCacheOnce() {
+            // Emergency one-time recovery for stale cached JS/CSS that can freeze auth controls.
+            const resetKey = "jj_pwa_auth_reset_v1";
+            if (localStorage.getItem(resetKey) === "done") return;
+            if (!("serviceWorker" in navigator) || !("caches" in window)) {
+                localStorage.setItem(resetKey, "done");
+                return;
+            }
+            try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map((reg) => reg.unregister()));
+                const keys = await caches.keys();
+                await Promise.all(keys.filter((key) => key.startsWith("jumblejump-")).map((key) => caches.delete(key)));
+                localStorage.setItem(resetKey, "done");
+                location.reload();
+            } catch (_) {
+                localStorage.setItem(resetKey, "done");
+            }
         }
 
         function setFirebaseBadge(isConnected) {
@@ -1592,7 +1619,7 @@
                 return;
             }
 
-            navigator.serviceWorker.register("./sw.js?v=20260417a").then((registration) => {
+            navigator.serviceWorker.register("./sw.js?v=20260417c").then((registration) => {
                 pwaRegistration = registration;
 
                 if (registration.waiting) {
@@ -2791,8 +2818,8 @@
                 const cred = await auth.signInWithEmailAndPassword(email, password);
                 await completeLogin(cred.user.uid, cred.user.email || email);
             } catch (error) {
-                if (String(error.message || "").toLowerCase().includes("missing or insufficient permissions")) {
-                    setAuthStatus("Login blocked by Firestore permissions. Please update Firestore rules for users/{uid} and userProgress/{uid}.", true);
+                if (isFirestoreAccessError(error)) {
+                    setAuthStatus("Login could not load profile from Firestore (permissions/quota). Check Firestore usage and rules.", true);
                 } else {
                     setAuthStatus(error.message, true);
                 }
@@ -2801,8 +2828,18 @@
             }
         }
 
-        function isFirestorePermissionError(error) {
-            return String(error?.message || "").toLowerCase().includes("missing or insufficient permissions");
+        function isFirestoreAccessError(error) {
+            const message = String(error?.message || "").toLowerCase();
+            const code = String(error?.code || "").toLowerCase();
+            return (
+                message.includes("missing or insufficient permissions") ||
+                message.includes("quota") ||
+                message.includes("resource exhausted") ||
+                message.includes("too many requests") ||
+                code.includes("permission-denied") ||
+                code.includes("resource-exhausted") ||
+                code.includes("unavailable")
+            );
         }
 
         function getProfileCacheKey(uid) {
@@ -2835,7 +2872,7 @@
                 profile = userSnap.data();
                 writeCachedProfile(uid, profile);
             } catch (error) {
-                if (!isFirestorePermissionError(error)) {
+                if (!isFirestoreAccessError(error)) {
                     throw error;
                 }
 
@@ -2875,7 +2912,7 @@
                         };
                     }
                 } catch (error) {
-                    if (!isFirestorePermissionError(error)) throw error;
+                    if (!isFirestoreAccessError(error)) throw error;
                     currentUser.progress = { Basic: 0, Beginner: 0, Intermediate: 0, Advanced: 0 };
                 }
             }
@@ -4384,17 +4421,19 @@
         window.forgotPassword = forgotPassword;
 
         // Base initialization (guard each step so one failure never blocks login UI).
-        try { initFirebase(); } catch (error) { console.error("initFirebase failed:", error); }
-        try { initPWA(); } catch (error) { console.error("initPWA failed:", error); }
-        try { initInstallUX(); } catch (error) { console.error("initInstallUX failed:", error); }
-        try { bindAuthModalEvents(); } catch (error) { console.error("bindAuthModalEvents failed:", error); }
-        try { setAuthModalVisible(true); } catch (error) { console.error("setAuthModalVisible failed:", error); }
-        try { setAuthUiBusy(false); } catch (error) { console.error("setAuthUiBusy failed:", error); }
-        try { loadSentenceTarget(); } catch (error) { console.error("loadSentenceTarget failed:", error); }
-        try { loadSheetsConfig(); } catch (error) { console.error("loadSheetsConfig failed:", error); }
-        try { populateDatabaseTable(); } catch (error) { console.error("populateDatabaseTable failed:", error); }
-        try { populateRosterTable(); } catch (error) { console.error("populateRosterTable failed:", error); }
-        try { resetCompetition(); } catch (error) { console.error("resetCompetition failed:", error); }
+        clearLegacyPwaCacheOnce().finally(() => {
+            try { initFirebase(); } catch (error) { console.error("initFirebase failed:", error); }
+            try { initPWA(); } catch (error) { console.error("initPWA failed:", error); }
+            try { initInstallUX(); } catch (error) { console.error("initInstallUX failed:", error); }
+            try { bindAuthModalEvents(); } catch (error) { console.error("bindAuthModalEvents failed:", error); }
+            try { setAuthModalVisible(true); } catch (error) { console.error("setAuthModalVisible failed:", error); }
+            try { setAuthUiBusy(false); } catch (error) { console.error("setAuthUiBusy failed:", error); }
+            try { loadSentenceTarget(); } catch (error) { console.error("loadSentenceTarget failed:", error); }
+            try { loadSheetsConfig(); } catch (error) { console.error("loadSheetsConfig failed:", error); }
+            try { populateDatabaseTable(); } catch (error) { console.error("populateDatabaseTable failed:", error); }
+            try { populateRosterTable(); } catch (error) { console.error("populateRosterTable failed:", error); }
+            try { resetCompetition(); } catch (error) { console.error("resetCompetition failed:", error); }
+        });
 
     </script>
 
