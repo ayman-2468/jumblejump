@@ -63,24 +63,29 @@
         #auth-modal button:active {
             transform: scale(0.99);
         }
-        #auth-modal,
-        #auth-modal * {
-            pointer-events: auto;
-        }
         #auth-modal {
             z-index: 99999;
             position: fixed;
             inset: 0;
+            pointer-events: none;
         }
         #auth-modal .auth-dialog {
             position: relative;
             z-index: 2;
+            pointer-events: auto;
+            isolation: isolate;
+        }
+        #auth-modal .auth-dialog * {
             pointer-events: auto;
         }
         #auth-modal [data-inline-auth="1"] {
             pointer-events: auto !important;
             position: relative;
             z-index: 3;
+        }
+        #auth-modal .auth-decor {
+            pointer-events: none !important;
+            z-index: 1;
         }
         body.auth-locked header,
         body.auth-locked main,
@@ -180,7 +185,7 @@
     <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-4">
         <div class="auth-dialog bg-white max-w-xl w-full rounded-3xl p-8 shadow-2xl border-4 border-teal-500 relative overflow-hidden">
             <!-- Decorative Background blob -->
-            <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-400 opacity-10 rounded-full blur-xl"></div>
+            <div class="auth-decor absolute -top-12 -right-12 w-40 h-40 bg-orange-400 opacity-10 rounded-full blur-xl"></div>
             
             <div class="text-center mb-6">
                 <div class="inline-block bg-teal-100 text-teal-600 p-4 rounded-full mb-4 shadow-inner">
@@ -1491,6 +1496,38 @@
                 const button = document.getElementById("btn-toggle-signup-password");
                 togglePasswordVisibility("signup-password", button);
             });
+        }
+
+        function installAuthEmergencyHandlers() {
+            const actionMap = {
+                "auth-tab-login": () => toggleAuthPane("login"),
+                "auth-tab-signup": () => toggleAuthPane("signup"),
+                "btn-auth-switch-signup": () => toggleAuthPane("signup"),
+                "btn-auth-login": () => handleLogin(),
+                "btn-auth-signup": () => handleSignup(),
+                "btn-auth-forgot": () => forgotPassword(),
+                "btn-toggle-login-password": () => {
+                    const button = document.getElementById("btn-toggle-login-password");
+                    togglePasswordVisibility("login-password", button);
+                },
+                "btn-toggle-signup-password": () => {
+                    const button = document.getElementById("btn-toggle-signup-password");
+                    togglePasswordVisibility("signup-password", button);
+                }
+            };
+
+            const emergencyHandler = (event) => {
+                const targetButton = event.target.closest("button[id]");
+                if (!targetButton) return;
+                const action = actionMap[targetButton.id];
+                if (!action) return;
+                if (targetButton.disabled) return;
+                event.preventDefault();
+                action();
+            };
+
+            document.addEventListener("click", emergencyHandler, true);
+            document.addEventListener("touchend", emergencyHandler, { capture: true, passive: false });
         }
 
         function setFirebaseBadge(isConnected) {
@@ -4339,18 +4376,25 @@
             populateRosterTable();
         }
 
-        // Base initialization
-        initFirebase();
-        initPWA();
-        initInstallUX();
-        bindAuthModalEvents();
-        setAuthModalVisible(true);
-        setAuthUiBusy(false);
-        loadSentenceTarget();
-        loadSheetsConfig();
-        populateDatabaseTable();
-        populateRosterTable();
-        resetCompetition();
+        // Expose auth handlers globally for inline buttons in all browsers.
+        window.toggleAuthPane = toggleAuthPane;
+        window.togglePasswordVisibility = togglePasswordVisibility;
+        window.handleLogin = handleLogin;
+        window.handleSignup = handleSignup;
+        window.forgotPassword = forgotPassword;
+
+        // Base initialization (guard each step so one failure never blocks login UI).
+        try { initFirebase(); } catch (error) { console.error("initFirebase failed:", error); }
+        try { initPWA(); } catch (error) { console.error("initPWA failed:", error); }
+        try { initInstallUX(); } catch (error) { console.error("initInstallUX failed:", error); }
+        try { bindAuthModalEvents(); } catch (error) { console.error("bindAuthModalEvents failed:", error); }
+        try { setAuthModalVisible(true); } catch (error) { console.error("setAuthModalVisible failed:", error); }
+        try { setAuthUiBusy(false); } catch (error) { console.error("setAuthUiBusy failed:", error); }
+        try { loadSentenceTarget(); } catch (error) { console.error("loadSentenceTarget failed:", error); }
+        try { loadSheetsConfig(); } catch (error) { console.error("loadSheetsConfig failed:", error); }
+        try { populateDatabaseTable(); } catch (error) { console.error("populateDatabaseTable failed:", error); }
+        try { populateRosterTable(); } catch (error) { console.error("populateRosterTable failed:", error); }
+        try { resetCompetition(); } catch (error) { console.error("resetCompetition failed:", error); }
 
     </script>
 
