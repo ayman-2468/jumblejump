@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -654,6 +654,9 @@
                                 <i class="fa-solid fa-layer-group"></i> Upload Basic Level Excel
                             </button>
                         </div>
+                        <button onclick="clearTeacherSentenceBank()" class="w-full mb-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-trash"></i> Clean All Uploaded Sentences (My Account)
+                        </button>
 
                         <!-- Template Structure Download -->
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
@@ -1585,12 +1588,16 @@
             return level === "Basic";
         }
 
-        function getLevelItems(level) {
+        function getRawLevelItems(level) {
             return isMatchingLevel(level) ? basicMatchingExercises : (baseSentences[level] || []);
         }
 
+        function getLevelItems(level) {
+            return isMatchingLevel(level) ? getRawLevelItems(level) : getRuleRotatedItems(level);
+        }
+
         function getRuleRotatedItems(level) {
-            const items = getLevelItems(level);
+            const items = getRawLevelItems(level);
             if (isMatchingLevel(level)) return items;
 
             const buckets = new Map();
@@ -1736,6 +1743,7 @@
                 Intermediate: Number(document.getElementById("target-intermediate")?.value || 100),
                 Advanced: Number(document.getElementById("target-advanced")?.value || 100)
             };
+            const nextMasteryTries = sanitizeMasteryTries(document.getElementById("target-mastery-tries")?.value || requiredMasteryTries);
 
             const allValid = allLevels.every(level => Number.isFinite(nextTargets[level]) && nextTargets[level] >= 1);
             if (!allValid) {
@@ -1750,13 +1758,17 @@
             }
 
             levelTargets = nextTargets;
+            requiredMasteryTries = nextMasteryTries;
             localStorage.setItem(getLevelTargetsStorageKey(currentUser.uid), JSON.stringify(levelTargets));
             localStorage.setItem("jj_level_targets", JSON.stringify(levelTargets));
+            localStorage.setItem(getMasteryTriesStorageKey(currentUser.uid), String(requiredMasteryTries));
+            localStorage.setItem("jj_mastery_tries", String(requiredMasteryTries));
 
             if (firebaseReady && currentUser.uid) {
                 try {
                     await db.collection("teacherSettings").doc(currentUser.uid).set({
                         levelTargets,
+                        masteryTries: requiredMasteryTries,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 } catch (error) {
@@ -1766,6 +1778,7 @@
                 try {
                     await db.collection("users").doc(currentUser.uid).set({
                         levelTargets,
+                        masteryTries: requiredMasteryTries,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 } catch (error) {
@@ -1780,7 +1793,7 @@
 
         function updateSentenceActionUI() {
             const isBasic = isMatchingLevel(currentLevel);
-            const mastered = sentenceMasteryCount >= 3;
+            const mastered = sentenceMasteryCount >= requiredMasteryTries;
             const nextBtn = document.getElementById("btn-next");
             const counter = document.getElementById("mastery-counter");
             const checkBtn = document.getElementById("btn-check");
@@ -1788,7 +1801,9 @@
             nextBtn.className = mastered
                 ? "px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2"
                 : "px-6 py-3 bg-orange-300 text-white rounded-xl font-bold shadow-md transition flex items-center gap-2 cursor-not-allowed";
-            counter.textContent = isBasic ? `Correct Matches: ${sentenceMasteryCount}/3` : `Correct Rearranges: ${sentenceMasteryCount}/3`;
+            counter.textContent = isBasic
+                ? `Correct Matches: ${sentenceMasteryCount}/${requiredMasteryTries}`
+                : `Correct Rearranges: ${sentenceMasteryCount}/${requiredMasteryTries}`;
             if (checkBtn) {
                 checkBtn.innerHTML = isBasic
                     ? '<i class="fa-solid fa-puzzle-piece"></i> Check Match'
@@ -2971,15 +2986,15 @@
                 sentenceMasteryCount += 1;
                 feedbackBox.classList.add("bg-emerald-100", "text-emerald-700");
                 document.getElementById("btn-hint").classList.add("hidden");
-                if (sentenceMasteryCount < 3) {
+                if (sentenceMasteryCount < requiredMasteryTries) {
                     feedbackBox.innerHTML = isMatchingLevel(currentLevel)
-                        ? `Correct match! Great job (${sentenceMasteryCount}/3). Do it again.`
-                        : `Correct! Great job (${sentenceMasteryCount}/3). Rearrange the same sentence again.`;
+                        ? `Correct match! Great job (${sentenceMasteryCount}/${requiredMasteryTries}). Do it again.`
+                        : `Correct! Great job (${sentenceMasteryCount}/${requiredMasteryTries}). Rearrange the same sentence again.`;
                     shuffleCurrentSentence();
                 } else {
                     feedbackBox.innerHTML = isMatchingLevel(currentLevel)
-                        ? "Excellent! 3/3 correct matches. Submit is now enabled for the next task."
-                        : "Excellent! 3/3 correct. Submit is now enabled for the next sentence.";
+                        ? `Excellent! ${requiredMasteryTries}/${requiredMasteryTries} correct matches. Submit is now enabled for the next task.`
+                        : `Excellent! ${requiredMasteryTries}/${requiredMasteryTries} correct. Submit is now enabled for the next sentence.`;
                     confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
                     setMotivationalQuote();
                 }
@@ -2996,10 +3011,10 @@
         }
 
         function nextSentence() {
-            if (sentenceMasteryCount < 3) {
+            if (sentenceMasteryCount < requiredMasteryTries) {
                 alert(isMatchingLevel(currentLevel)
-                    ? "Complete 3 correct matches before submitting this task."
-                    : "Complete 3 correct rearranges before submitting this sentence.");
+                    ? `Complete ${requiredMasteryTries} correct matches before submitting this task.`
+                    : `Complete ${requiredMasteryTries} correct rearranges before submitting this sentence.`);
                 return;
             }
             currentUser.progress[currentLevel] = Math.min(getLevelTarget(currentLevel), currentUser.progress[currentLevel] + 1);
@@ -3787,6 +3802,51 @@
                 await commitImportedContent(stagedSentenceAdds, stagedBasicAdds, pendingFirestoreWrites, importedCount, "Sentences sheet");
             } catch (error) {
                 alert(error.message || "Sentence upload failed.");
+            }
+        }
+
+        async function clearTeacherSentenceBank() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can clean sentence data.");
+                return;
+            }
+
+            const teacherUid = currentUser.uid || "";
+            if (!teacherUid) {
+                alert("Teacher account not found. Please sign in again.");
+                return;
+            }
+
+            const confirmed = confirm("This will delete all uploaded sentence and Basic records for your account from Firestore. Continue?");
+            if (!confirmed) return;
+
+            try {
+                if (firebaseReady) {
+                    const snap = await db.collection("sentences").where("ownerTeacherUid", "==", teacherUid).get();
+                    const docs = snap.docs || [];
+                    const maxOpsPerBatch = 350;
+                    for (let i = 0; i < docs.length; i += maxOpsPerBatch) {
+                        const chunk = docs.slice(i, i + maxOpsPerBatch);
+                        const batch = db.batch();
+                        chunk.forEach(docSnap => batch.delete(docSnap.ref));
+                        await batch.commit();
+                    }
+                }
+
+                ["Beginner", "Intermediate", "Advanced"].forEach(level => {
+                    baseSentences[level] = [];
+                });
+                basicMatchingExercises.length = 0;
+                saveSentenceBankCache(teacherUid);
+                currentSentenceIdx = 0;
+                sentenceMasteryCount = 0;
+                populateDatabaseTable();
+                updateSentenceTargetLabels();
+                updateProgressBars();
+                loadSentence();
+                alert("All your uploaded sentence records were cleared. You can now upload a new workbook.");
+            } catch (error) {
+                alert(`Could not clean sentence bank: ${error.message}`);
             }
         }
 
