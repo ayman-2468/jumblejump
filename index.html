@@ -1037,6 +1037,10 @@
                 .filter(Boolean);
         }
 
+        function normalizeCategoryKey(value) {
+            return String(value || "").trim().toLowerCase();
+        }
+
         function normalizeHeaderKey(key) {
             return String(key || "").toLowerCase().replace(/[^a-z0-9]/g, "");
         }
@@ -1195,18 +1199,6 @@
             try {
                 const scopedSnap = await db.collection("sentences").where("ownerTeacherUid", "==", teacherScopeUid).get();
                 docs = [...scopedSnap.docs];
-
-                // Backward compatibility for old data that missed ownerTeacherUid.
-                if (currentUser.role === "teacher") {
-                    const legacySnap = await db.collection("sentences").get();
-                    legacySnap.docs.forEach(docSnap => {
-                        const data = docSnap.data() || {};
-                        const ownerTeacherUid = String(data.ownerTeacherUid || "").trim();
-                        if (!ownerTeacherUid || ownerTeacherUid === teacherScopeUid) {
-                            if (!docs.some(item => item.id === docSnap.id)) docs.push(docSnap);
-                        }
-                    });
-                }
             } catch (error) {
                 console.warn("Sentence bank load failed:", error.message);
                 const cacheLoaded = loadSentenceBankCache(teacherScopeUid);
@@ -1218,20 +1210,7 @@
                 return;
             }
 
-            // If Firestore returns no scoped data, keep teacher cache instead of wiping it.
-            if (!docs.length) {
-                const cacheLoaded = loadSentenceBankCache(teacherScopeUid);
-                if (cacheLoaded) {
-                    populateDatabaseTable();
-                    updateSentenceTargetLabels();
-                    loadSentence();
-                    return;
-                }
-            }
-
             resetSentenceBanksToStarter();
-
-            const legacyOwnerFixes = [];
 
             docs.forEach(docSnap => {
                 const data = docSnap.data() || {};
@@ -1241,9 +1220,8 @@
                 // If owner is present, never mix content across teachers.
                 if (ownerTeacherUid && ownerTeacherUid !== teacherScopeUid) return;
 
-                if (!ownerTeacherUid && currentUser.role === "teacher") {
-                    legacyOwnerFixes.push(docSnap.id);
-                }
+                // Ignore legacy records without ownerTeacherUid to prevent stale cross-teacher data.
+                if (!ownerTeacherUid) return;
 
                 if (String(data.type || "").toLowerCase() === "basic" || level === "Basic" || data.mainCategory) {
                     const subCategories = Array.isArray(data.subCategories) ? data.subCategories : [];
@@ -1274,22 +1252,6 @@
                     teacherNote: data.teacherNote || ""
                 });
             });
-
-            if (firebaseReady && currentUser.role === "teacher" && legacyOwnerFixes.length) {
-                try {
-                    const patchBatch = db.batch();
-                    legacyOwnerFixes.forEach(docId => {
-                        patchBatch.set(db.collection("sentences").doc(docId), {
-                            ownerTeacherUid: currentUser.uid,
-                            ownerTeacherEmail: currentUser.email || "",
-                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
-                    });
-                    await patchBatch.commit();
-                } catch (error) {
-                    console.warn("Could not migrate legacy sentence ownership:", error.message);
-                }
-            }
 
             saveSentenceBankCache(teacherScopeUid);
         }
@@ -3822,8 +3784,17 @@
 
             try {
                 if (firebaseReady) {
-                    const snap = await db.collection("sentences").where("ownerTeacherUid", "==", teacherUid).get();
-                    const docs = snap.docs || [];
+                    const docsById = new Map();
+                    const ownerSnap = await db.collection("sentences").where("ownerTeacherUid", "==", teacherUid).get();
+                    (ownerSnap.docs || []).forEach(docSnap => docsById.set(docSnap.id, docSnap));
+
+                    // Extra cleanup for legacy rows that were linked only by teacher email.
+                    if (currentUser.email) {
+                        const emailSnap = await db.collection("sentences").where("ownerTeacherEmail", "==", currentUser.email).get();
+                        (emailSnap.docs || []).forEach(docSnap => docsById.set(docSnap.id, docSnap));
+                    }
+
+                    const docs = Array.from(docsById.values());
                     const maxOpsPerBatch = 350;
                     for (let i = 0; i < docs.length; i += maxOpsPerBatch) {
                         const chunk = docs.slice(i, i + maxOpsPerBatch);
@@ -3837,6 +3808,7 @@
                     baseSentences[level] = [];
                 });
                 basicMatchingExercises.length = 0;
+                localStorage.removeItem(getSentenceBankStorageKey(teacherUid));
                 saveSentenceBankCache(teacherUid);
                 currentSentenceIdx = 0;
                 sentenceMasteryCount = 0;
@@ -3882,6 +3854,7 @@
                 const stagedSentenceAdds = { Beginner: [], Intermediate: [], Advanced: [] };
                 const stagedBasicAdds = [];
                 const pendingFirestoreWrites = [];
+                const groupedQuestions = new Map();
 
                 for (let rowIndex = 0; rowIndex < basicRows.length; rowIndex++) {
                     const row = basicRows[rowIndex];
@@ -3916,29 +3889,58 @@
                     }
                     if (!normalizedWords.length) continue;
 
-                    const normalizedSubCategories = [...new Set(normalizedWords.map(item => item.pos).filter(Boolean))];
+                    const groupKey = questionId
+                        ? `qid:${normalizeCategoryKey(questionId)}`
+                        : `row:${rowIndex}:${normalizeCategoryKey(mainCategory)}`;
+                    if (!groupedQuestions.has(groupKey)) {
+                        groupedQuestions.set(groupKey, {
+                            mainCategory,
+                            promptSentence,
+                            rule: hint,
+                            teacherNote: teacherNoteFromRow,
+                            questionId,
+                            words: [],
+                            subCategorySet: new Set()
+                        });
+                    }
+
+                    const grouped = groupedQuestions.get(groupKey);
+                    if (!grouped.promptSentence && promptSentence) grouped.promptSentence = promptSentence;
+                    if ((!grouped.rule || grouped.rule === "Use Hint to see the grammar rule.") && hint) grouped.rule = hint;
+                    if (!grouped.teacherNote && teacherNoteFromRow) grouped.teacherNote = teacherNoteFromRow;
+                    if (!grouped.questionId && questionId) grouped.questionId = questionId;
+
+                    normalizedWords.forEach(item => {
+                        grouped.words.push(item);
+                        if (item.pos) grouped.subCategorySet.add(item.pos);
+                    });
+                }
+
+                groupedQuestions.forEach(grouped => {
+                    if (!grouped.words.length || !grouped.subCategorySet.size) return;
+                    const normalizedSubCategories = Array.from(grouped.subCategorySet);
                     const localItem = {
                         id: `local-${sentenceIdSeed++}`,
-                        mainCategory,
-                        promptSentence,
+                        mainCategory: grouped.mainCategory,
+                        promptSentence: grouped.promptSentence,
                         subCategories: normalizedSubCategories,
-                        words: normalizedWords,
-                        rule: hint,
-                        teacherNote: teacherNoteFromRow,
-                        questionId
+                        words: grouped.words,
+                        rule: grouped.rule || "Use Hint to see the grammar rule.",
+                        teacherNote: grouped.teacherNote,
+                        questionId: grouped.questionId
                     };
                     stagedBasicAdds.push(localItem);
                     if (firebaseReady) {
                         const payload = {
                             type: "basic",
                             level: "Basic",
-                            mainCategory,
-                            promptSentence,
+                            mainCategory: grouped.mainCategory,
+                            promptSentence: grouped.promptSentence,
                             subCategories: normalizedSubCategories,
-                            words: normalizedWords,
-                            rule: hint,
-                            teacherNote: teacherNoteFromRow,
-                            questionId,
+                            words: grouped.words,
+                            rule: grouped.rule || "Use Hint to see the grammar rule.",
+                            teacherNote: grouped.teacherNote,
+                            questionId: grouped.questionId,
                             ownerTeacherUid: teacherUid,
                             ownerTeacherEmail: teacherEmail
                         };
