@@ -36,12 +36,13 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "",
-            authDomain: "",
-            projectId: "",
-            storageBucket: "",
-            messagingSenderId: "",
-            appId: ""
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+  authDomain: "jumblejump-prod.firebaseapp.com",
+  projectId: "jumblejump-prod",
+  storageBucket: "jumblejump-prod.firebasestorage.app",
+  messagingSenderId: "25185167776",
+  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
+  measurementId: "G-WWWQHS7WD3"
         };
 
         // Keep empty. Each teacher saves their own Google Sheet URL in their own dashboard settings.
@@ -171,23 +172,23 @@
 
             <div class="space-y-4">
                 <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-xl">
-                    <button id="auth-tab-login" type="button" class="py-2 rounded-lg text-sm font-bold bg-white text-teal-700">Login</button>
-                    <button id="auth-tab-signup" type="button" class="py-2 rounded-lg text-sm font-bold text-slate-600">Sign Up</button>
+                    <button id="auth-tab-login" data-inline-auth="1" onclick="toggleAuthPane('login')" type="button" class="py-2 rounded-lg text-sm font-bold bg-white text-teal-700">Login</button>
+                    <button id="auth-tab-signup" data-inline-auth="1" onclick="toggleAuthPane('signup')" type="button" class="py-2 rounded-lg text-sm font-bold text-slate-600">Sign Up</button>
                 </div>
 
                 <div id="auth-login-pane" class="space-y-3">
                     <input type="email" id="login-email" placeholder="Email" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
                     <div class="relative">
                         <input type="password" id="login-password" placeholder="Password" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
-                        <button id="btn-toggle-login-password" type="button" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 z-10">
+                        <button id="btn-toggle-login-password" data-inline-auth="1" onclick="togglePasswordVisibility('login-password', this)" type="button" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 z-10">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <button id="btn-auth-login" type="button" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">Sign In</button>
-                    <button id="btn-auth-forgot" type="button" class="w-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                    <button id="btn-auth-login" data-inline-auth="1" onclick="handleLogin()" type="button" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5">Sign In</button>
+                    <button id="btn-auth-forgot" data-inline-auth="1" onclick="forgotPassword()" type="button" class="w-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-key"></i> Forget My Password
                     </button>
-                    <button id="btn-auth-switch-signup" type="button" class="w-full border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+                    <button id="btn-auth-switch-signup" data-inline-auth="1" onclick="toggleAuthPane('signup')" type="button" class="w-full border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i> New Student? Create Account
                     </button>
                 </div>
@@ -198,11 +199,11 @@
                     <input type="text" id="signup-teacher-code" placeholder="Teacher Code (required)" class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium uppercase">
                     <div class="relative">
                         <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="w-full px-4 py-3 pr-12 bg-slate-100 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium">
-                        <button id="btn-toggle-signup-password" type="button" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 z-10">
+                        <button id="btn-toggle-signup-password" data-inline-auth="1" onclick="togglePasswordVisibility('signup-password', this)" type="button" aria-label="Show password" class="absolute inset-y-0 right-0 px-4 text-slate-500 hover:text-slate-700 z-10">
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <button id="btn-auth-signup" type="button" class="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <button id="btn-auth-signup" data-inline-auth="1" onclick="handleSignup()" type="button" class="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-user-plus"></i> Create Student Account
                     </button>
                 </div>
@@ -1440,6 +1441,7 @@
         function bindAuthModalEvents() {
             const bindClick = (id, handler) => {
                 const el = document.getElementById(id);
+                if (el && el.dataset.inlineAuth === "1") return;
                 if (!el || el.dataset.bound === "1") return;
                 el.addEventListener("click", (event) => {
                     event.preventDefault();
