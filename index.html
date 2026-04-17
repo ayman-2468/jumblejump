@@ -36,7 +36,7 @@
     <script>
         // Paste your Firebase project credentials here once, then keep app logic unchanged.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -596,6 +596,10 @@
                                 <input id="target-intermediate" type="number" min="1" step="1" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Intermediate target">
                                 <input id="target-advanced" type="number" min="1" step="1" value="100" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Advanced target">
                             </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 mb-1">Required Correct Tries Per Sentence/Task</label>
+                                <input id="target-mastery-tries" type="number" min="1" max="10" step="1" value="3" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm" placeholder="Example: 3">
+                            </div>
                             <div class="flex gap-2">
                                 <button onclick="applySentenceTarget()" class="px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl text-sm font-bold">Apply</button>
                             </div>
@@ -953,83 +957,14 @@
         // 1. DATASETS & DEFAULT COLLECTIONS
         // ==========================================
 
-        // Starter sentences. Teachers can upload more through Excel/manual editor.
+        // Demo data removed: app now depends on teacher-uploaded Firestore content.
         const baseSentences = {
-            Beginner: [
-                { correct: "The clever student reads books.", scramble: ["books", "student", "reads", "The", "clever"], rule: "Adjectives like 'clever' precede nouns, followed by the main verb and object." },
-                { correct: "She plays soccer every morning.", scramble: ["every", "She", "soccer", "plays", "morning"], rule: "In simple present tense, place frequency/time adverbials at the end." },
-                { correct: "Ali enjoys cold orange juice.", scramble: ["enjoys", "orange", "Ali", "juice", "cold"], rule: "Multiple adjectives (cold, orange) describe the noun (juice)." },
-                { correct: "We always listen to teachers.", scramble: ["listen", "always", "teachers", "to", "We"], rule: "Adverbs of frequency (always) go before the main verb." }
-            ],
-            Intermediate: [
-                { correct: "Sarah bought a beautiful red dress yesterday.", scramble: ["red", "yesterday", "Sarah", "a", "dress", "bought", "beautiful"], rule: "Order of adjectives: opinion (beautiful) goes before color (red)." },
-                { correct: "He was walking to the mosque when it rained.", scramble: ["walking", "when", "the", "mosque", "to", "it", "rained", "He", "was"], rule: "Past continuous (was walking) interrupted by past simple (rained)." },
-                { correct: "Reading English stories improves vocabulary quickly.", scramble: ["quickly", "vocabulary", "improves", "English", "Reading", "stories"], rule: "Gerunds (Reading) can function as the subject of the sentence." },
-                { correct: "The teacher explained the lesson clearly to students.", scramble: ["explained", "clearly", "to", "The", "students", "teacher", "the", "lesson"], rule: "Manner adverbs (clearly) follow the object of the sentence." }
-            ],
-            Advanced: [
-                { correct: "If I study hard, I will pass the final exams.", scramble: ["pass", "If", "study", "the", "I", "exams", "will", "final", "hard", "I"], rule: "First conditional structure: If + present simple, followed by will + infinitive." },
-                { correct: "Although it was very hot, they played a football match.", scramble: ["hot", "a", "match", "played", "Although", "was", "it", "they", "football", "very"], rule: "Subordinating conjunctions (Although) introduce a concessive dependent clause." },
-                { correct: "The ancient library, which was recently renovated, contains rare manuscripts.", scramble: ["recently", "The", "library", "which", "manuscripts", "renovated", "ancient", "rare", "was", "contains"], rule: "Non-defining relative clauses provide extra information within commas." },
-                { correct: "By the time we arrived, the plane had already taken off.", scramble: ["arrived", "already", "the", "had", "By", "time", "we", "plane", "taken", "off", "the"], rule: "Past perfect (had taken) shows an action completed before another past action." }
-            ]
+            Beginner: [],
+            Intermediate: [],
+            Advanced: []
         };
 
-        const basicMatchingExercises = [
-            {
-                mainCategory: "Parts of Speech",
-                promptSentence: "Students play football today.",
-                subCategories: ["Noun", "Verb", "Adverb"],
-                words: [
-                    { text: "Students", pos: "Noun" },
-                    { text: "play", pos: "Verb" },
-                    { text: "today", pos: "Adverb" }
-                ],
-                rule: "Nouns name people or things, verbs show action, and adverbs add time or manner."
-            },
-            {
-                mainCategory: "Personal Pronouns",
-                promptSentence: "She helps us in class.",
-                subCategories: ["Subject Pronoun", "Object Pronoun"],
-                words: [
-                    { text: "She", pos: "Subject Pronoun" },
-                    { text: "us", pos: "Object Pronoun" }
-                ],
-                rule: "Subject pronouns do the action (I, you, he, she, we, they) and object pronouns receive it (me, him, her, us, them)."
-            },
-            {
-                mainCategory: "Auxiliary Verbs",
-                promptSentence: "They are studying now.",
-                subCategories: ["Auxiliary Verb", "Main Verb"],
-                words: [
-                    { text: "are", pos: "Auxiliary Verb" },
-                    { text: "studying", pos: "Main Verb" }
-                ],
-                rule: "Auxiliary verbs support tense and structure, while the main verb carries the action meaning."
-            },
-            {
-                mainCategory: "Demonstratives",
-                promptSentence: "These books are useful.",
-                subCategories: ["Demonstrative", "Noun", "Adjective"],
-                words: [
-                    { text: "These", pos: "Demonstrative" },
-                    { text: "books", pos: "Noun" },
-                    { text: "useful", pos: "Adjective" }
-                ],
-                rule: "This/that/these/those point to nouns. Use these/those with plural nouns."
-            },
-            {
-                mainCategory: "Prepositions",
-                promptSentence: "The pen is on the desk.",
-                subCategories: ["Subject Noun", "Preposition", "Object Noun"],
-                words: [
-                    { text: "pen", pos: "Subject Noun" },
-                    { text: "on", pos: "Preposition" },
-                    { text: "desk", pos: "Object Noun" }
-                ],
-                rule: "Prepositions like on, in, under, and beside connect nouns to place or time information."
-            }
-        ];
+        const basicMatchingExercises = [];
 
         const starterSentenceBank = JSON.parse(JSON.stringify(baseSentences));
         const starterBasicExercises = JSON.parse(JSON.stringify(basicMatchingExercises));
@@ -1122,6 +1057,10 @@
             return `jj_level_targets_${scopeUid || "global"}`;
         }
 
+        function getMasteryTriesStorageKey(scopeUid = "") {
+            return `jj_mastery_tries_${scopeUid || "global"}`;
+        }
+
         function sanitizeTargets(rawTargets) {
             return {
                 Basic: Math.max(1, Number(rawTargets?.Basic) || 5),
@@ -1129,6 +1068,12 @@
                 Intermediate: Math.max(1, Number(rawTargets?.Intermediate) || 100),
                 Advanced: Math.max(1, Number(rawTargets?.Advanced) || 100)
             };
+        }
+
+        function sanitizeMasteryTries(value) {
+            const parsed = Number(value);
+            if (!Number.isFinite(parsed)) return 3;
+            return Math.min(10, Math.max(1, Math.floor(parsed)));
         }
 
         function stableHash(input) {
@@ -1377,6 +1322,7 @@
         let currentLevel = "Basic";
         let currentSentenceIdx = 0;
         let sentenceMasteryCount = 0;
+        let requiredMasteryTries = 3;
         let levelTargets = {
             Basic: 5,
             Beginner: 100,
@@ -1643,6 +1589,38 @@
             return isMatchingLevel(level) ? basicMatchingExercises : (baseSentences[level] || []);
         }
 
+        function getRuleRotatedItems(level) {
+            const items = getLevelItems(level);
+            if (isMatchingLevel(level)) return items;
+
+            const buckets = new Map();
+            items.forEach(item => {
+                const key = String(item?.rule || "General Rule").trim() || "General Rule";
+                if (!buckets.has(key)) buckets.set(key, []);
+                buckets.get(key).push(item);
+            });
+
+            const ruleKeys = Array.from(buckets.keys());
+            const cursors = new Map(ruleKeys.map(key => [key, 0]));
+            const ordered = [];
+            let progressed = true;
+
+            while (ordered.length < items.length && progressed) {
+                progressed = false;
+                ruleKeys.forEach(ruleKey => {
+                    const idx = cursors.get(ruleKey) || 0;
+                    const bucket = buckets.get(ruleKey) || [];
+                    if (idx < bucket.length) {
+                        ordered.push(bucket[idx]);
+                        cursors.set(ruleKey, idx + 1);
+                        progressed = true;
+                    }
+                });
+            }
+
+            return ordered;
+        }
+
         function getLevelTarget(level) {
             const configuredTarget = getSentenceTarget(level);
             return Math.min(configuredTarget, getLevelItems(level).length);
@@ -1675,10 +1653,12 @@
             const targetBeginner = document.getElementById("target-beginner");
             const targetIntermediate = document.getElementById("target-intermediate");
             const targetAdvanced = document.getElementById("target-advanced");
+            const targetMastery = document.getElementById("target-mastery-tries");
             if (targetBasic) targetBasic.value = String(getSentenceTarget("Basic"));
             if (targetBeginner) targetBeginner.value = String(getSentenceTarget("Beginner"));
             if (targetIntermediate) targetIntermediate.value = String(getSentenceTarget("Intermediate"));
             if (targetAdvanced) targetAdvanced.value = String(getSentenceTarget("Advanced"));
+            if (targetMastery) targetMastery.value = String(requiredMasteryTries);
         }
 
         async function loadSentenceTarget() {
@@ -1687,6 +1667,9 @@
             const scopedRaw = JSON.parse(localStorage.getItem(getLevelTargetsStorageKey(scopeUid)) || "null");
             const globalRaw = JSON.parse(localStorage.getItem("jj_level_targets") || "null");
             const savedTargets = scopedRaw || globalRaw;
+            const savedMasteryScoped = localStorage.getItem(getMasteryTriesStorageKey(scopeUid));
+            const savedMasteryGlobal = localStorage.getItem("jj_mastery_tries");
+            requiredMasteryTries = sanitizeMasteryTries(savedMasteryScoped || savedMasteryGlobal || 3);
 
             if (savedTargets && typeof savedTargets === "object") {
                 levelTargets = sanitizeTargets(savedTargets);
@@ -1699,26 +1682,38 @@
                 const remoteOwnerUid = currentUser.role === "teacher" ? currentUser.uid : (currentUser.teacherUid || "");
                 if (remoteOwnerUid) {
                     let remoteTargetsLoaded = false;
+                    let remoteMasteryLoaded = false;
                     try {
                         const settingSnap = await db.collection("teacherSettings").doc(remoteOwnerUid).get();
-                        const remoteTargets = settingSnap.data()?.levelTargets;
+                        const settingsData = settingSnap.data() || {};
+                        const remoteTargets = settingsData.levelTargets;
                         if (remoteTargets && typeof remoteTargets === "object") {
                             levelTargets = sanitizeTargets(remoteTargets);
                             localStorage.setItem(getLevelTargetsStorageKey(remoteOwnerUid), JSON.stringify(levelTargets));
                             remoteTargetsLoaded = true;
+                        }
+                        if (settingsData.masteryTries !== undefined) {
+                            requiredMasteryTries = sanitizeMasteryTries(settingsData.masteryTries);
+                            localStorage.setItem(getMasteryTriesStorageKey(remoteOwnerUid), String(requiredMasteryTries));
+                            remoteMasteryLoaded = true;
                         }
                     } catch (error) {
                         console.warn("Level target load from Firestore failed:", error.message);
                     }
 
                     // Fallback for environments where teacherSettings is blocked by rules.
-                    if (!remoteTargetsLoaded) {
+                    if (!remoteTargetsLoaded || !remoteMasteryLoaded) {
                         try {
                             const userSnap = await db.collection("users").doc(remoteOwnerUid).get();
-                            const userTargets = userSnap.data()?.levelTargets;
-                            if (userTargets && typeof userTargets === "object") {
+                            const userData = userSnap.data() || {};
+                            const userTargets = userData.levelTargets;
+                            if (!remoteTargetsLoaded && userTargets && typeof userTargets === "object") {
                                 levelTargets = sanitizeTargets(userTargets);
                                 localStorage.setItem(getLevelTargetsStorageKey(remoteOwnerUid), JSON.stringify(levelTargets));
+                            }
+                            if (!remoteMasteryLoaded && userData.masteryTries !== undefined) {
+                                requiredMasteryTries = sanitizeMasteryTries(userData.masteryTries);
+                                localStorage.setItem(getMasteryTriesStorageKey(remoteOwnerUid), String(requiredMasteryTries));
                             }
                         } catch (error) {
                             console.warn("Level target fallback load failed:", error.message);
