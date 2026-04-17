@@ -67,6 +67,26 @@
         #auth-modal * {
             pointer-events: auto;
         }
+        #auth-modal {
+            z-index: 99999;
+            position: fixed;
+            inset: 0;
+        }
+        #auth-modal .auth-dialog {
+            position: relative;
+            z-index: 2;
+            pointer-events: auto;
+        }
+        #auth-modal [data-inline-auth="1"] {
+            pointer-events: auto !important;
+            position: relative;
+            z-index: 3;
+        }
+        body.auth-locked header,
+        body.auth-locked main,
+        body.auth-locked footer {
+            pointer-events: none !important;
+        }
         .drag-card {
             cursor: grab;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -87,7 +107,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col text-slate-700 select-none">
+<body class="min-h-screen flex flex-col text-slate-700 select-none auth-locked">
 
     <!-- TOP NAVBAR -->
     <header id="top-header" class="bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg sticky top-0 z-50">
@@ -157,8 +177,8 @@
     </div>
 
     <!-- AUTHENTICATION SPLASH SCREEN (Shown before game starts) -->
-    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4">
-        <div class="bg-white max-w-xl w-full rounded-3xl p-8 shadow-2xl border-4 border-teal-500 relative overflow-hidden">
+    <div id="auth-modal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center p-4">
+        <div class="auth-dialog bg-white max-w-xl w-full rounded-3xl p-8 shadow-2xl border-4 border-teal-500 relative overflow-hidden">
             <!-- Decorative Background blob -->
             <div class="absolute -top-12 -right-12 w-40 h-40 bg-orange-400 opacity-10 rounded-full blur-xl"></div>
             
@@ -1396,6 +1416,13 @@
             statusEl.className = isError ? "text-xs text-rose-700" : "text-xs text-amber-800";
         }
 
+        function setAuthModalVisible(isVisible) {
+            const modal = document.getElementById("auth-modal");
+            if (!modal) return;
+            modal.classList.toggle("hidden", !isVisible);
+            document.body.classList.toggle("auth-locked", !!isVisible);
+        }
+
         function setAuthUiBusy(isBusy, action = "") {
             const loginBtn = document.getElementById("btn-auth-login");
             const signupBtn = document.getElementById("btn-auth-signup");
@@ -1528,7 +1555,7 @@
                 return;
             }
 
-            navigator.serviceWorker.register("./sw.js").then((registration) => {
+            navigator.serviceWorker.register("./sw.js?v=20260417a").then((registration) => {
                 pwaRegistration = registration;
 
                 if (registration.waiting) {
@@ -2819,7 +2846,7 @@
             await loadSentenceTarget();
             await loadSentenceBankFromFirestore();
 
-            document.getElementById("auth-modal").classList.add("hidden");
+            setAuthModalVisible(false);
             document.getElementById("header-user-name").innerText = currentUser.name;
             document.getElementById("admin-login-area").classList.toggle("hidden", currentUser.role === "teacher");
             document.getElementById("admin-content").classList.toggle("hidden", currentUser.role !== "teacher");
@@ -4317,6 +4344,7 @@
         initPWA();
         initInstallUX();
         bindAuthModalEvents();
+        setAuthModalVisible(true);
         setAuthUiBusy(false);
         loadSentenceTarget();
         loadSheetsConfig();
