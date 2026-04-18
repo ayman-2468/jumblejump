@@ -1107,7 +1107,7 @@
         // ========================================
         // IMPORTANT: Replace with your Firebase project credentials
         const firebaseConfig = {
-            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -1134,42 +1134,69 @@
         };
         
         // ========================================
-        // DEVICE FINGERPRINTING LOGIC
+        // DEVICE FINGERPRINTING LOGIC (CSP-Safe)
         // ========================================
         async function generateDeviceFingerprint() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = 'top';
-            ctx.font = '14px Arial';
-            ctx.textBaseline = 'alphabetic';
-            ctx.fillStyle = '#f60';
-            ctx.fillRect(125, 1, 62, 20);
-            ctx.fillStyle = '#069';
-            ctx.fillText('JumbleJump', 2, 15);
-            ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-            ctx.fillText('Fingerprint', 4, 17);
-            
-            const canvasData = canvas.toDataURL();
-            
-            const fingerprint = {
-                userAgent: navigator.userAgent,
-                language: navigator.language,
-                platform: navigator.platform,
-                screenResolution: `${window.screen.width}x${window.screen.height}`,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                canvasFingerprint: await hashString(canvasData),
-                timestamp: new Date().toISOString()
-            };
-            
-            return await hashString(JSON.stringify(fingerprint));
+            try {
+                // Collect device characteristics
+                const components = [
+                    navigator.userAgent || '',
+                    navigator.language || '',
+                    navigator.platform || '',
+                    window.screen.width + 'x' + window.screen.height,
+                    window.screen.colorDepth || '',
+                    new Date().getTimezoneOffset().toString(),
+                    navigator.hardwareConcurrency || '',
+                    navigator.deviceMemory || '',
+                ];
+                
+                // Create canvas fingerprint
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    canvas.width = 200;
+                    canvas.height = 50;
+                    ctx.textBaseline = 'top';
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#f60';
+                    ctx.fillRect(0, 0, 200, 50);
+                    ctx.fillStyle = '#069';
+                    ctx.fillText('JumbleJump', 10, 10);
+                    components.push(canvas.toDataURL());
+                }
+                
+                // Combine all components
+                const fingerprintString = components.join('|');
+                
+                // Hash the fingerprint using Web Crypto API
+                return await hashString(fingerprintString);
+            } catch (error) {
+                console.error('Fingerprint generation error:', error);
+                // Fallback fingerprint
+                return await hashString(navigator.userAgent + Date.now());
+            }
         }
         
         async function hashString(str) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(str);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(str);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(function(b) { 
+                    return b.toString(16).padStart(2, '0'); 
+                }).join('');
+            } catch (error) {
+                console.error('Hashing error:', error);
+                // Simple fallback hash
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash).toString(16);
+            }
         }
         
         // ========================================
@@ -1184,8 +1211,14 @@
                     // Update profile with name
                     await user.updateProfile({ displayName: name });
                     
-                    // Generate device fingerprint
-                    const fingerprint = await generateDeviceFingerprint();
+                    // Generate device fingerprint (with error handling)
+                    let fingerprint;
+                    try {
+                        fingerprint = await generateDeviceFingerprint();
+                    } catch (fpError) {
+                        console.error('Fingerprint error during registration:', fpError);
+                        fingerprint = 'fallback-' + Date.now() + '-' + Math.random().toString(36).substring(7);
+                    }
                     
                     // Create user document in Firestore
                     await db.collection('users').doc(user.uid).set({
@@ -1216,25 +1249,39 @@
                     const userCredential = await auth.signInWithEmailAndPassword(email, password);
                     const user = userCredential.user;
                     
-                    // Generate current device fingerprint
-                    const currentFingerprint = await generateDeviceFingerprint();
+                    // Generate current device fingerprint (with error handling)
+                    let currentFingerprint;
+                    try {
+                        currentFingerprint = await generateDeviceFingerprint();
+                    } catch (fpError) {
+                        console.error('Fingerprint error:', fpError);
+                        showAlert('Warning: Device verification unavailable. Proceeding with login.', 'warning');
+                        currentFingerprint = 'fallback-' + Date.now();
+                    }
                     
                     // Get stored fingerprint
                     const userDoc = await db.collection('users').doc(user.uid).get();
                     const userData = userDoc.data();
                     
-                    // Device lock check
-                    if (userData.deviceFingerprint && userData.deviceFingerprint !== currentFingerprint) {
+                    // Device lock check (skip if using fallback fingerprint)
+                    if (userData.deviceFingerprint && 
+                        userData.deviceFingerprint !== currentFingerprint && 
+                        !currentFingerprint.startsWith('fallback-')) {
                         await auth.signOut();
                         showAlert('Access denied: This account is locked to another device. Please contact support.', 'error');
                         return false;
                     }
                     
                     // If first login or fingerprint not set, update it
-                    if (!userData.deviceFingerprint) {
-                        await db.collection('users').doc(user.uid).update({
-                            deviceFingerprint: currentFingerprint
-                        });
+                    if (!userData.deviceFingerprint || currentFingerprint.startsWith('fallback-')) {
+                        try {
+                            await db.collection('users').doc(user.uid).update({
+                                deviceFingerprint: currentFingerprint,
+                                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        } catch (updateError) {
+                            console.error('Could not update fingerprint:', updateError);
+                        }
                     }
                     
                     AppState.currentUser = user;
