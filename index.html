@@ -1,159 +1,2829 @@
-[UPDATED FULL FILE WITH FEATURES]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JumbleJump - Learn English</title>
+    <meta name="theme-color" content="#0d9488">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="JumbleJump">
+    <link rel="manifest" href="manifest.webmanifest">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .teal-theme { background-color: #0d9488; }
+        .orange-theme { background-color: #f97316; }
+        .word-item { cursor: grab; }
+        .word-item:active { cursor: grabbing; }
+        button, a, input, label {
+            touch-action: manipulation;
+        }
+        .auth-tap-target {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        #auth-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.58);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 40;
+        }
+        #auth-backdrop.hidden {
+            display: none !important;
+        }
+        #auth-section {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(92vw, 42rem);
+            max-height: 92vh;
+            overflow-y: auto;
+            z-index: 50;
+        }
+        #auth-section.hidden {
+            display: none !important;
+        }
+        #toggle-password,
+        #toggle-confirm-password {
+            cursor: pointer;
+            z-index: 2;
+        }
+        #competition-winner-overlay.hidden {
+            display: none !important;
+            pointer-events: none !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8">
+        <header class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 py-4 border-b border-slate-200">
+            <div class="flex items-center gap-4">
+                <div id="brand-logo" class="w-14 h-14 rounded-2xl bg-teal-100 border border-teal-200 flex items-center justify-center text-3xl shadow-sm overflow-hidden">🧩</div>
+                <div>
+                    <h1 id="brand-title" class="text-4xl font-bold text-teal-600">JumbleJump</h1>
+                    <p id="brand-subtitle" class="text-slate-500 mt-1">English Sentence Builder</p>
+                </div>
+            </div>
+            <div class="flex flex-col md:items-end gap-2">
+                <div id="firebase-badge" class="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700">
+                    <span id="firebase-badge-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                    <span id="firebase-badge-text">Appwrite Not Connected</span>
+                </div>
+                <div id="user-status" class="text-sm text-slate-600"></div>
+            </div>
+        </header>
 
-NOTE: Your original file is very large, so I integrated ONLY the required new features cleanly into it without breaking your UI.
+        <section id="setup-section" class="mt-6 bg-sky-50 border border-sky-200 rounded-2xl p-5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-sky-900">Quick Setup</h2>
+                    <p class="text-sm text-sky-800 mt-1">Paste your Appwrite credentials, teacher code, and Google Apps Script Web App URL into the config block near the top of this file.</p>
+                </div>
+                <span class="inline-flex items-center px-3 py-1 rounded-full bg-white text-sky-700 text-xs font-semibold border border-sky-200">Single-file config enabled</span>
+            </div>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
+                <div class="bg-white rounded-xl border border-slate-200 p-4">
+                    <h3 class="font-semibold mb-2">Config keys to fill</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>endpoint</li>https://fra.cloud.appwrite.io/v1
+                        <li>projectId</li>69e294e400168ddd9eaa
+                        <li>databaseId</li>69e29d22000b7ba38755
+                        <li>usersCollectionId</li>
+                        <li>sentencesCollectionId</li>
+                        <li>basicQuestionsCollectionId</li>
+                        <li>teacherSettingsCollectionId</li>
+                        <li>teacherAdminCode</li>
+                        <li>googleSheetsWebAppUrl</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 p-4">
+                    <h3 class="font-semibold mb-2">Where to paste them</h3>
+                    <p>Open this file and find <strong>window.JUMBLEJUMP_CONFIG</strong>. Replace the placeholder values once, save, and deploy.</p>
+                    <p class="mt-2 text-xs text-slate-500">Teacher accounts use Appwrite login. Student signup saves name, score, and level data for later sheet sync.</p>
+                </div>
+            </div>
+        </section>
 
-👉 IMPORTANT: Replace ONLY the <script> sections below into your original file (do NOT delete your UI).
+        <div id="auth-backdrop"></div>
 
+        <section id="auth-section" class="relative isolate pointer-events-auto bg-white rounded-2xl shadow-lg border border-slate-200 p-6 md:p-8">
+            <div class="text-center mb-6">
+                <h2 id="auth-title" class="text-3xl font-bold text-slate-800">Login</h2>
+                <p id="auth-subtitle" class="text-slate-500 mt-2">Sign in as a student or teacher</p>
+            </div>
 
-=========================
-🔥 ADD THIS SCRIPT (BOTTOM OF FILE, BEFORE </body>)
-=========================
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button id="student-role-btn" class="auth-tap-target role-btn teal-theme text-white py-3 rounded-xl font-semibold inline-flex items-center justify-center gap-2">
+                    <span aria-hidden="true">🎓</span>
+                    <span>Student</span>
+                </button>
+                <button id="teacher-role-btn" class="auth-tap-target role-btn bg-slate-200 text-slate-700 py-3 rounded-xl font-semibold inline-flex items-center justify-center gap-2">
+                    <span aria-hidden="true">👩‍🏫</span>
+                    <span>Teacher</span>
+                </button>
+            </div>
 
-<script>
+            <button id="student-signup-shortcut" class="auth-tap-target w-full mb-4 bg-teal-50 border border-teal-200 text-teal-700 py-3 rounded-xl font-semibold inline-flex items-center justify-center gap-2">
+                <span aria-hidden="true">📝</span>
+                <span>New Student? Sign Up First</span>
+            </button>
 
-// 🔥 FIRESTORE INIT (use your existing config)
-const db = firebase.firestore();
-let teacherSettings = { masteryTries: 3 };
-let correctTries = 0;
+            <div class="space-y-3">
+                <input type="text" id="fullName" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl hidden" placeholder="Full Name">
+                <input type="email" id="email" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl" placeholder="Email address">
+                <div class="relative">
+                    <input type="password" id="password" autocomplete="new-password" class="w-full p-3 pr-12 border border-slate-300 rounded-xl" placeholder="Password">
+                    <button type="button" id="toggle-password" class="auth-tap-target absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 text-lg w-10 h-10 flex items-center justify-center rounded-full" aria-label="Show password">👁️</button>
+                </div>
+                <div id="confirm-password-wrapper" class="relative hidden">
+                    <input type="password" id="confirmPassword" autocomplete="new-password" class="w-full p-3 pr-12 border border-slate-300 rounded-xl" placeholder="Confirm Password">
+                    <button type="button" id="toggle-confirm-password" class="auth-tap-target absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 text-lg w-10 h-10 flex items-center justify-center rounded-full" aria-label="Show confirm password">👁️</button>
+                </div>
+                <input type="text" id="teacherCode" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl hidden" placeholder="Teacher Admin Code">
+                <input type="text" id="teacherLinkCode" autocomplete="off" class="w-full p-3 border border-slate-300 rounded-xl hidden" placeholder="Student Teacher Code">
+                <label class="flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" id="remember-me" class="rounded border-slate-300">
+                    <span>Remember me on this device</span>
+                </label>
+            </div>
 
-// 🔊 SOUNDS
-const sounds = {
-    correct: new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"),
-    wrong: new Audio("https://actions.google.com/sounds/v1/cartoon/boing.ogg"),
-    win: new Audio("https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg")
-};
+            <div class="mt-5 space-y-3">
+                <button id="auth-btn" class="auth-tap-target w-full teal-theme text-white py-3 rounded-xl text-lg font-semibold">Login</button>
+                <button id="forgot-password-btn" class="auth-tap-target w-full bg-slate-100 text-slate-700 py-3 rounded-xl text-sm font-semibold">Forgot My Password</button>
+                <button id="seed-teacher-btn" class="auth-tap-target w-full hidden bg-slate-800 text-white py-3 rounded-xl text-sm font-semibold">Create First Teacher Account</button>
+            </div>
 
-// 🔑 TEACHER CODE GENERATOR
-function generateTeacherCode() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "JJ-";
-    for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return code;
-}
+            <div class="mt-4 text-center text-sm text-slate-600 space-y-2">
+                <p>
+                    <a href="#" id="toggle-auth" class="auth-tap-target text-teal-600 underline">Need an account? Sign Up</a>
+                </p>
+                <p id="auth-help" class="text-slate-500">Students use Student mode. Teachers use Teacher mode.</p>
+                <p id="teacher-first-time-note" class="hidden text-orange-600 font-medium">For a teacher account, enter name, email, password, and the Teacher Admin Code, then create the account. After login, share your Teacher Code with students so they can sign up under your account.</p>
+            </div>
 
-// 🧑‍🏫 SAVE TEACHER SETTINGS
-async function applySentenceTarget() {
-    const user = firebase.auth().currentUser;
+            <div class="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+                <p class="font-semibold mb-1">First-time use</p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Choose <strong>Student</strong> or <strong>Teacher</strong>.</li>
+                    <li>Click <strong>Sign Up</strong>.</li>
+                    <li>Students create an account directly.</li>
+                    <li>Teachers create an account using the correct <strong>Teacher Admin Code</strong>.</li>
+                </ul>
+            </div>
+        </section>
 
-    const settings = {
-        basicTarget: Number(document.getElementById("target-basic").value),
-        beginnerTarget: Number(document.getElementById("target-beginner").value),
-        intermediateTarget: Number(document.getElementById("target-intermediate").value),
-        advancedTarget: Number(document.getElementById("target-advanced").value),
-        masteryTries: Number(document.getElementById("target-mastery-tries").value)
-    };
+        <section id="dashboard-section" class="hidden mt-10">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold">Dashboard</h2>
+                        <p id="welcome-message" class="text-slate-500 mt-1"></p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="open-student-dashboard" class="teal-theme text-white px-4 py-2 rounded-xl">Student Area</button>
+                        <button id="logout-btn" class="bg-slate-800 text-white px-4 py-2 rounded-xl">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    await db.collection("teachers").doc(user.uid).set({ settings }, { merge: true });
+        <section id="student-section" class="hidden mt-8">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <h3 class="text-2xl font-bold mb-2">Student Learning Area</h3>
+                <p class="text-slate-500 mb-6">Complete levels and arrange words into correct sentences.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="lg:col-span-2">
+                        <div id="levels-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                    </div>
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50">
+                        <h4 class="text-lg font-semibold mb-2">Certificate Photo</h4>
+                        <p class="text-sm text-slate-500 mb-3">Optional: upload a student photo to include on the certificate.</p>
+                        <label for="student-photo-input" class="flex items-center gap-3 cursor-pointer border-2 border-dashed border-slate-300 rounded-2xl p-4 bg-white hover:bg-slate-50 transition">
+                            <div class="w-11 h-11 rounded-xl bg-teal-100 flex items-center justify-center text-xl">🖼️</div>
+                            <div>
+                                <div class="font-semibold text-slate-800">Choose Photo</div>
+                                <div class="text-xs text-slate-500">PNG or JPG recommended</div>
+                            </div>
+                        </label>
+                        <input type="file" id="student-photo-input" accept="image/*" class="hidden">
+                        <div id="student-photo-status" class="mt-3 text-sm text-slate-500">No photo selected.</div>
+                        <img id="student-photo-preview" class="hidden mt-4 w-28 h-28 object-cover rounded-2xl border border-slate-200" alt="Student photo preview">
+                        <button id="basic-certificate-btn" class="mt-4 w-full bg-amber-500 text-white px-4 py-3 rounded-xl font-semibold">Print Basic Level Certificate</button>
+                        <div id="basic-certificate-status" class="mt-3 text-sm text-slate-500">Certificate will be available according to the teacher setting.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    alert("Settings saved!");
-}
+        <section id="game-section" class="hidden mt-8">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+                    <div>
+                        <h3 class="text-2xl font-bold">Sentence Challenge</h3>
+                        <p id="grammar-spotlight" class="text-slate-500 mt-1">Grammar Spotlight will appear here.</p>
+                    </div>
+                    <div class="text-sm text-slate-500">Drag and drop the words into the correct order.</div>
+                </div>
+                <div id="scrambled-words" class="flex flex-wrap gap-2 mb-6 min-h-16 p-4 bg-slate-100 rounded-xl"></div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <button id="rearrange-btn" class="orange-theme text-white px-5 py-3 rounded-xl font-semibold">Rearrange Attempt</button>
+                    <button id="hint-btn" class="hidden bg-amber-100 text-amber-800 px-5 py-3 rounded-xl font-semibold border border-amber-300">Show Hint</button>
+                    <button id="check-btn" disabled class="bg-slate-300 text-slate-500 px-5 py-3 rounded-xl font-semibold cursor-not-allowed">Submit & Next</button>
+                    
+                </div>
+                <div class="mt-4 flex flex-wrap gap-3 items-center">
+                    <div id="attempt-counter" class="inline-flex items-center px-3 py-2 rounded-xl bg-sky-50 text-sky-700 text-sm font-semibold border border-sky-200">Correct Rearrangements: 0 / 3</div>
+                    <div id="star-preview" class="inline-flex items-center px-3 py-2 rounded-xl bg-amber-50 text-amber-700 text-sm font-semibold border border-amber-200">Star unlocks after the required number of correct rearrangements</div>
+                </div>
+                <div id="game-feedback" class="mt-4 text-sm"></div>
+            </div>
+        </section>
 
-// 📥 SAVE SENTENCES TO FIRESTORE
-async function saveSentencesToFirestore(level, sentencesArray) {
-    const user = firebase.auth().currentUser;
+        <section id="matching-section" class="hidden mt-8">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <div class="mb-5">
+                    <h3 id="matching-title" class="text-2xl font-bold">Parts of Speech</h3>
+                    <p class="text-slate-500 mt-1">Drag and drop the correct word under its title.</p>
+                    <p id="matching-subtitle" class="text-slate-500 mt-1">Each question can later come from Excel: Main Category, Sub Category, Word, Hint.</p>
+                </div>
 
-    await db.collection("sentences")
-        .doc(`${user.uid}_${level}`)
-        .set({
-            level,
-            teacherId: user.uid,
-            data: sentencesArray
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50">
+                            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">The Main Category</div>
+                            <div id="matching-main-category" class="text-2xl font-bold text-teal-700">Parts of Speech</div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-2xl p-5 bg-white shadow-sm">
+                            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Subcategory</div>
+                            <div id="matching-sub-category" class="text-xl font-bold text-slate-800 mb-4">Verb</div>
+                            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Drop the correct word here</div>
+                            <div id="matching-single-dropzone" class="min-h-24 rounded-2xl border-2 border-dashed border-teal-300 bg-teal-50 p-4 flex flex-wrap gap-2 items-start"></div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-2xl p-5 bg-white shadow-sm">
+                            <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-3">Jumbled Words</div>
+                            <div id="matching-word-bank" class="flex flex-wrap gap-2 min-h-16 p-4 bg-slate-100 rounded-xl"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="border border-slate-200 rounded-2xl p-5 bg-amber-50">
+                            <div class="text-xs uppercase tracking-wide text-amber-700 font-semibold mb-2">Hint</div>
+                            <div id="matching-hint" class="text-sm text-amber-900">The grammatical rule will appear here when needed.</div>
+                        </div>
+                        <div class="border border-slate-200 rounded-2xl p-5 bg-sky-50">
+                            <div class="text-xs uppercase tracking-wide text-sky-700 font-semibold mb-2">Question Progress</div>
+                            <div id="matching-progress" class="text-sm text-sky-900 font-semibold">Question 1 of 5</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mt-6">
+                    <button id="matching-check-btn" class="orange-theme text-white px-5 py-3 rounded-xl font-semibold">Check Answer</button>
+                    <button id="matching-hint-btn" class="bg-amber-100 text-amber-800 px-5 py-3 rounded-xl font-semibold border border-amber-300">Show Hint</button>
+                    <button id="matching-next-btn" class="teal-theme text-white px-5 py-3 rounded-xl font-semibold">Next Question</button>
+                    <button id="matching-reset-btn" class="bg-slate-200 text-slate-700 px-5 py-3 rounded-xl font-semibold">Reset Question</button>
+                </div>
+                <div id="matching-feedback" class="mt-4 text-sm"></div>
+            </div>
+        </section>
+
+        <section id="teacher-section" class="hidden mt-8">
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <h3 class="text-2xl font-bold mb-2">Teacher Dashboard</h3>
+                <p class="text-slate-500 mb-6">Upload sentence data, review progress, and manage content.</p>
+
+                <div class="flex flex-wrap gap-3 mb-6">
+                    <button id="teacher-admin-tab" class="px-4 py-2 rounded-xl font-semibold teal-theme text-white">Admin Panel</button>
+                    <button id="teacher-manage-tab" class="px-4 py-2 rounded-xl font-semibold bg-slate-200 text-slate-700">Manage</button>
+                    <button id="teacher-compete-tab" class="px-4 py-2 rounded-xl font-semibold bg-slate-200 text-slate-700">Compete</button>
+                </div>
+
+                <div id="teacher-admin-panel-view" class="space-y-6">
+                    <div id="teacher-admin-panel" class="border-2 border-teal-200 rounded-3xl p-5 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-sm">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-bold uppercase tracking-wide">Admin Panel</div>
+                                <h4 class="text-2xl font-bold text-slate-800 mt-3">Teacher Admin Controls</h4>
+                                <p class="text-sm text-slate-500 mt-1">Manage uploads, set sentence targets for each level, and control how many trials students must complete.</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto">
+                                <div class="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm shadow-sm">
+                                    <div class="text-emerald-700 font-semibold">Sentence Upload</div>
+                                    <div class="text-slate-500 mt-1">Beginner, Intermediate, Advanced</div>
+                                </div>
+                                <div class="rounded-2xl border border-fuchsia-200 bg-white px-4 py-3 text-sm shadow-sm">
+                                    <div class="text-fuchsia-700 font-semibold">Basic Upload</div>
+                                    <div class="text-slate-500 mt-1">Separate matching/basic Excel</div>
+                                </div>
+                                <div class="rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm shadow-sm">
+                                    <div class="text-amber-700 font-semibold">Student Rules</div>
+                                    <div class="text-slate-500 mt-1">Targets and trial attempts</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-gradient-to-br from-white to-emerald-50">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                                <h4 class="text-xl font-semibold mb-1">Upload Excel for Other Levels</h4>
+                                <p class="text-sm text-slate-500">Upload the Excel sheet for Beginner, Intermediate, and Advanced levels with grammar hints and teacher notes.</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-2xl border border-emerald-200" aria-hidden="true">📊</div>
+                        </div>
+                        <label for="excelInput" class="flex items-center gap-3 cursor-pointer border-2 border-dashed border-emerald-300 rounded-2xl p-4 bg-white hover:bg-emerald-50 transition">
+                            <div class="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center text-xl">📁</div>
+                            <div>
+                                <div class="font-semibold text-slate-800">Choose Excel file</div>
+                                <div class="text-xs text-slate-500">Accepted format: .xlsx</div>
+                            </div>
+                        </label>
+                        <input type="file" id="excelInput" accept=".xlsx" class="hidden">
+                        <div id="excel-file-name" class="mt-3 text-sm text-slate-500">No file selected yet.</div>
+                        <button id="upload-btn" class="mt-4 inline-flex items-center gap-2 teal-theme text-white px-4 py-2.5 rounded-xl font-semibold">
+                            <span aria-hidden="true">📈</span>
+                            <span>Upload Sentences</span>
+                        </button>
+                        <p class="text-xs text-slate-500 mt-3">Headers: Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note</p>
+                        <div id="upload-status" class="mt-4 text-sm text-slate-600"></div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-gradient-to-br from-white to-fuchsia-50">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                                <h4 class="text-xl font-semibold mb-1">Upload Excel for Basic Level</h4>
+                                <p class="text-sm text-slate-500">Upload the separate Basic level Excel sheet with dynamic subcategory blocks and matching data.</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-fuchsia-100 flex items-center justify-center text-2xl border border-fuchsia-200" aria-hidden="true">🧠</div>
+                        </div>
+                        <label for="basicExcelInput" class="flex items-center gap-3 cursor-pointer border-2 border-dashed border-fuchsia-300 rounded-2xl p-4 bg-white hover:bg-fuchsia-50 transition">
+                            <div class="w-11 h-11 rounded-xl bg-fuchsia-100 flex items-center justify-center text-xl">🗂️</div>
+                            <div>
+                                <div class="font-semibold text-slate-800">Choose Basic Level Excel</div>
+                                <div class="text-xs text-slate-500">Accepted format: .xlsx</div>
+                            </div>
+                        </label>
+                        <input type="file" id="basicExcelInput" accept=".xlsx" class="hidden">
+                        <div id="basic-excel-file-name" class="mt-3 text-sm text-slate-500">No basic-level file selected yet.</div>
+                        <div class="mt-4 flex flex-wrap gap-3">
+                            <button id="basic-upload-btn" class="inline-flex items-center gap-2 bg-fuchsia-600 text-white px-4 py-2.5 rounded-xl font-semibold">
+                                <span aria-hidden="true">🧩</span>
+                                <span>Upload Basic Level</span>
+                            </button>
+                            <button id="clear-all-uploaded-data-btn" class="inline-flex items-center gap-2 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-semibold">
+                                <span aria-hidden="true">🗑️</span>
+                                <span>Clean Database & Upload New</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3">Headers: Main_Category | Subcategory | Jumbled_Words | Hint | Teacher_Note | Question_ID</p>
+                        <div id="basic-upload-status" class="mt-4 text-sm text-slate-600"></div>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="border border-slate-200 rounded-2xl p-5">
+                        <h4 class="text-xl font-semibold mb-3">Teacher Access Notes</h4>
+                        <ul class="list-disc pl-5 text-sm text-slate-600 space-y-2">
+                            <li>Teachers must sign up using Teacher mode.</li>
+                            <li>Teacher accounts are recognized by a Firestore role value of <strong>teacher</strong>.</li>
+                            <li>For first-time teacher registration, use the Teacher Admin Code configured in the app.</li>
+                        </ul>
+                    </div>
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-sky-50 space-y-4">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-3">Certificate Unlock Control</h4>
+                            <p class="text-sm text-slate-600 mb-3">Only allow certificate printing after the student finishes the whole level once.</p>
+                            <label class="inline-flex items-center gap-3 text-sm font-medium text-slate-700">
+                                <input id="teacher-enable-certificate-toggle" type="checkbox" class="w-5 h-5 rounded border-slate-300">
+                                <span>Enable certificate printing only after full level completion</span>
+                            </label>
+                            <div id="teacher-certificate-toggle-status" class="mt-3 text-sm text-slate-500">Certificate printing is currently locked until completion.</div>
+                        </div>
+                        <div class="border-t border-sky-200 pt-4">
+                            <h5 class="font-semibold text-slate-800 mb-2">Teacher Quick Finish</h5>
+                            <p class="text-sm text-slate-600 mb-3">Mark the whole Basic level as completed immediately and print the certificate now.</p>
+                            <div class="flex flex-wrap gap-3">
+                                <button id="teacher-finish-basic-now-btn" class="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-semibold">Finish Basic Level Now</button>
+                                <button id="teacher-print-basic-cert-btn" class="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-semibold">Print Basic Certificate Now</button>
+                            </div>
+                            <div id="teacher-basic-finish-status" class="mt-3 text-sm text-slate-500">Teacher can unlock and print the Basic certificate from here.</div>
+                        </div>
+                    </div>
+                </div>
+
+                </div>
+
+                <div id="teacher-manage-panel" class="hidden space-y-6">
+                <div class="mt-6 border border-slate-200 rounded-2xl p-5 bg-gradient-to-br from-white to-violet-50">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-1">Design Customization</h4>
+                            <p class="text-sm text-slate-500">Teachers can control fonts, colors, backgrounds, and logo styling for the whole app.</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center text-2xl border border-violet-200">🎨</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <label class="text-sm font-medium text-slate-700">Page Font Family
+                            <select id="theme-font-family" class="mt-2 w-full p-3 rounded-xl border border-slate-300 bg-white">
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                                <option value="'Verdana', sans-serif">Verdana</option>
+                                <option value="'Tahoma', sans-serif">Tahoma</option>
+                                <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                            </select>
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Main Font Color
+                            <input id="theme-font-color" type="color" value="#0f172a" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Header Title Color
+                            <input id="theme-header-color" type="color" value="#0f766e" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Background Color
+                            <input id="theme-bg-color" type="color" value="#f8fafc" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Card Color
+                            <input id="theme-card-color" type="color" value="#ffffff" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Button Color
+                            <input id="theme-button-color" type="color" value="#0d9488" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Logo Emoji / Text
+                            <input id="theme-logo-text" type="text" value="🧩" maxlength="6" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="🧩">
+                        </label>
+                        <div class="text-sm font-medium text-slate-700">
+                            Upload Logo Icon
+                            <label for="theme-logo-upload" class="mt-2 flex items-center gap-3 cursor-pointer border-2 border-dashed border-violet-300 rounded-2xl p-3 bg-white hover:bg-violet-50 transition">
+                                <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-lg">🪄</div>
+                                <div>
+                                    <div class="font-semibold text-slate-800">Choose logo image</div>
+                                    <div class="text-xs text-slate-500">PNG or JPG</div>
+                                </div>
+                            </label>
+                            <input type="file" id="theme-logo-upload" accept="image/*" class="hidden">
+                            <div id="theme-logo-upload-status" class="mt-2 text-xs text-slate-500">No custom logo uploaded.</div>
+                        </div>
+                        <div class="md:col-span-2 xl:col-span-3 border border-slate-200 rounded-2xl p-4 bg-slate-50">
+                            <div class="text-sm font-semibold text-slate-700 mb-3">Admin Setting: Number of Sentences / Questions for Every Level</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                                <label class="text-sm font-medium text-slate-700">Basic Matching Target
+                                    <input id="basic-target-count" type="number" min="1" step="1" value="5" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="5">
+                                </label>
+                                <label class="text-sm font-medium text-slate-700">Beginner Target
+                                    <input id="beginner-target-count" type="number" min="1" step="1" value="100" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="100">
+                                </label>
+                                <label class="text-sm font-medium text-slate-700">Intermediate Target
+                                    <input id="intermediate-target-count" type="number" min="1" step="1" value="100" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="100">
+                                </label>
+                                <label class="text-sm font-medium text-slate-700">Advanced Target
+                                    <input id="advanced-target-count" type="number" min="1" step="1" value="100" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="100">
+                                </label>
+                                <label class="text-sm font-medium text-slate-700">Number of Trials for Every Student
+                                    <input id="required-tries-count" type="number" min="1" step="1" value="3" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="3">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button id="apply-theme-btn" class="bg-violet-600 text-white px-4 py-2.5 rounded-xl font-semibold">Apply Design</button>
+                        <button id="reset-theme-btn" class="bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold">Reset Design</button>
+                    </div>
+                    <div id="theme-status" class="mt-3 text-sm text-slate-600">Theme is using the default joyful learning design.</div>
+                </div>
+
+                <div class="mt-6 border border-slate-200 rounded-2xl p-5 bg-gradient-to-br from-white to-amber-50">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-1">Certificate Designer</h4>
+                            <p class="text-sm text-slate-500">Customize certificate colors, wording, font, background, and teacher note.</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-2xl border border-amber-200">🏅</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <label class="text-sm font-medium text-slate-700">Certificate Title
+                            <input id="certificate-title" type="text" value="Certificate of Achievement" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="Certificate title">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Certificate Subtitle
+                            <input id="certificate-subtitle" type="text" value="This certifies successful completion in JumbleJump" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="Certificate subtitle">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Recipient Label
+                            <input id="certificate-recipient-label" type="text" value="Awarded to" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="Awarded to">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Certificate Font Family
+                            <select id="certificate-font-family" class="mt-2 w-full p-3 rounded-xl border border-slate-300 bg-white">
+                                <option value="helvetica">Helvetica</option>
+                                <option value="times">Times</option>
+                                <option value="courier">Courier</option>
+                            </select>
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Title Color
+                            <input id="certificate-title-color" type="color" value="#0f766e" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Body Text Color
+                            <input id="certificate-text-color" type="color" value="#334155" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Background Color
+                            <input id="certificate-bg-color" type="color" value="#fffaf0" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Border Color
+                            <input id="certificate-border-color" type="color" value="#f59e0b" class="mt-2 w-full h-11 rounded-lg border border-slate-300 bg-white p-1">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700">Footer Text
+                            <input id="certificate-footer-text" type="text" value="JumbleJump celebrates joyful English learning." class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="Footer text">
+                        </label>
+                        <label class="text-sm font-medium text-slate-700 md:col-span-2 xl:col-span-3">Achievement Sentence
+                            <textarea id="certificate-achievement-text" rows="3" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="For successfully mastering the Beginner Tier&#10;conforming perfectly to Saudi 8th & 9th Grade English standards.">For successfully mastering the Beginner Tier
+conforming perfectly to Saudi 8th & 9th Grade English standards.</textarea>
+                        </label>
+                        <div class="text-sm font-medium text-slate-700">
+                            Certificate Logo 1
+                            <label for="certificate-logo-left-upload" class="mt-2 flex items-center gap-3 cursor-pointer border-2 border-dashed border-amber-300 rounded-2xl p-3 bg-white hover:bg-amber-50 transition">
+                                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-lg">🏷️</div>
+                                <div>
+                                    <div class="font-semibold text-slate-800">Upload left logo</div>
+                                    <div class="text-xs text-slate-500">PNG or JPG</div>
+                                </div>
+                            </label>
+                            <input type="file" id="certificate-logo-left-upload" accept="image/*" class="hidden">
+                            <div id="certificate-logo-left-status" class="mt-2 text-xs text-slate-500">No left certificate logo uploaded.</div>
+                        </div>
+                        <div class="text-sm font-medium text-slate-700">
+                            Certificate Logo 2
+                            <label for="certificate-logo-right-upload" class="mt-2 flex items-center gap-3 cursor-pointer border-2 border-dashed border-amber-300 rounded-2xl p-3 bg-white hover:bg-amber-50 transition">
+                                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-lg">🎖️</div>
+                                <div>
+                                    <div class="font-semibold text-slate-800">Upload right logo</div>
+                                    <div class="text-xs text-slate-500">PNG or JPG</div>
+                                </div>
+                            </label>
+                            <input type="file" id="certificate-logo-right-upload" accept="image/*" class="hidden">
+                            <div id="certificate-logo-right-status" class="mt-2 text-xs text-slate-500">No right certificate logo uploaded.</div>
+                        </div>
+                        <div class="text-sm font-medium text-slate-700 md:col-span-2 xl:col-span-3">
+                            Full A4 Certificate Template
+                            <label for="certificate-template-upload" class="mt-2 flex items-center gap-3 cursor-pointer border-2 border-dashed border-amber-300 rounded-2xl p-4 bg-white hover:bg-amber-50 transition">
+                                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-xl">🖼️</div>
+                                <div>
+                                    <div class="font-semibold text-slate-800">Upload full certificate design</div>
+                                    <div class="text-xs text-slate-500">Use an A4-style PNG or JPG background/template</div>
+                                </div>
+                            </label>
+                            <input type="file" id="certificate-template-upload" accept="image/*" class="hidden">
+                            <div id="certificate-template-status" class="mt-2 text-xs text-slate-500">No certificate template uploaded.</div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="text-sm font-medium text-slate-700">Teacher Note Block
+                            <textarea id="teacher-note-input" rows="4" class="mt-2 w-full p-3 rounded-xl border border-slate-300" placeholder="Write a note that appears in grammar spotlight or certificates.">Keep practicing and build your sentence step by step.</textarea>
+                        </label>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-4">
+                        <button id="save-certificate-style-btn" class="bg-amber-500 text-white px-4 py-2.5 rounded-xl font-semibold">Save Certificate Style</button>
+                        <button id="reset-certificate-style-btn" class="bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-semibold">Reset Certificate Style</button>
+                        <button id="preview-certificate-btn" class="bg-slate-800 text-white px-4 py-2.5 rounded-xl font-semibold">Preview Certificate PDF</button>
+                    </div>
+                    <div id="certificate-style-status" class="mt-3 text-sm text-slate-600">Certificate style is using the default design.</div>
+                </div>
+
+                <div class="mt-6 border border-slate-200 rounded-2xl p-5">
+                    <h4 class="text-xl font-semibold mb-3">Sentence Manager</h4>
+                    <p class="text-sm text-slate-500 mb-4">Edit, delete, or replace demo and uploaded sentence content.</p>
+                    <div id="sentence-manager-list" class="space-y-3 text-sm text-slate-600">No sentence records loaded yet.</div>
+                </div>
+
+                <div class="mt-6 border border-slate-200 rounded-2xl p-5">
+                    <h4 class="text-xl font-semibold mb-3">Student Progress Preview</h4>
+                    <div id="teacher-progress" class="text-sm text-slate-600">Student progress data can be loaded from Firestore here.</div>
+                </div>
+
+                <div class="mt-6 border border-slate-200 rounded-2xl p-5 bg-white">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-1">Google Sheets Sync</h4>
+                            <p class="text-sm text-slate-500">Send student names, scores, emails, and levels to your Google Sheet.</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center text-2xl border border-green-200" aria-hidden="true">📗</div>
+                    </div>
+                    <div class="text-xs text-slate-500 mb-3">Required columns in your Google Sheet: Name | Email | Role | Score | Level | BeginnerCompleted | IntermediateCompleted | AdvancedCompleted</div>
+                    <button id="sync-sheets-btn" class="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl font-semibold">
+                        <span aria-hidden="true">🔄</span>
+                        <span>Sync Students to Google Sheets</span>
+                    </button>
+                    <div id="sheets-status" class="mt-4 text-sm text-slate-600">No sync started yet.</div>
+                </div>
+
+                <div id="teacher-compete-panel" class="hidden mt-2">
+                    <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50 mb-5">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div>
+                                <h4 class="text-xl font-semibold">Competition Mode</h4>
+                                <p class="text-sm text-slate-500">Two students compete side by side. Each sentence has one attempt only, a 60-second timer, and a score out of 5 based on speed.</p>
+                            </div>
+                            <div class="flex flex-wrap gap-3">
+                                <input id="compete-student-a-name" type="text" class="px-4 py-2 rounded-xl border border-slate-300 bg-white" placeholder="Student A Name">
+                                <input id="compete-student-b-name" type="text" class="px-4 py-2 rounded-xl border border-slate-300 bg-white" placeholder="Student B Name">
+                                <select id="compete-mode-select" class="px-4 py-2 rounded-xl border border-slate-300 bg-white">
+                                    <option value="sentence">Sentence Builder</option>
+                                    <option value="basic">Basic Matching</option>
+                                </select>
+                                <button id="start-competition-btn" class="teal-theme text-white px-4 py-2 rounded-xl font-semibold">Start Competition</button>
+                                <button id="reset-competition-btn" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-semibold">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div class="border border-teal-200 rounded-2xl p-5 bg-white shadow-sm">
+                            <div class="flex items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h5 id="compete-a-title" class="text-xl font-bold text-teal-700">Student A</h5>
+                                    <p id="compete-a-progress" class="text-sm text-slate-500">Sentence 1</p>
+                                </div>
+                                <div class="text-right">
+                                    <div id="compete-a-timer" class="text-lg font-bold text-orange-600">60s</div>
+                                    <div id="compete-a-score" class="text-sm font-semibold text-slate-700">Points: 0</div>
+                                </div>
+                            </div>
+                            <div id="compete-a-sentence" class="text-sm text-slate-500 mb-3">Press Start Competition to begin.</div>
+                            <div id="compete-a-words" class="flex flex-wrap gap-2 min-h-20 p-4 bg-slate-100 rounded-xl mb-4"></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <button id="compete-a-submit" class="orange-theme text-white px-4 py-3 rounded-xl font-semibold" disabled>Submit Answer</button>
+                                <button id="compete-a-next" class="bg-slate-200 text-slate-700 px-4 py-3 rounded-xl font-semibold" disabled>Next Sentence</button>
+                            </div>
+                            <div id="compete-a-feedback" class="mt-4 text-sm text-slate-600"></div>
+                        </div>
+
+                        <div class="border border-fuchsia-200 rounded-2xl p-5 bg-white shadow-sm">
+                            <div class="flex items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h5 id="compete-b-title" class="text-xl font-bold text-fuchsia-700">Student B</h5>
+                                    <p id="compete-b-progress" class="text-sm text-slate-500">Sentence 1</p>
+                                </div>
+                                <div class="text-right">
+                                    <div id="compete-b-timer" class="text-lg font-bold text-orange-600">60s</div>
+                                    <div id="compete-b-score" class="text-sm font-semibold text-slate-700">Points: 0</div>
+                                </div>
+                            </div>
+                            <div id="compete-b-sentence" class="text-sm text-slate-500 mb-3">Press Start Competition to begin.</div>
+                            <div id="compete-b-words" class="flex flex-wrap gap-2 min-h-20 p-4 bg-slate-100 rounded-xl mb-4"></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <button id="compete-b-submit" class="orange-theme text-white px-4 py-3 rounded-xl font-semibold" disabled>Submit Answer</button>
+                                <button id="compete-b-next" class="bg-slate-200 text-slate-700 px-4 py-3 rounded-xl font-semibold" disabled>Next Sentence</button>
+                            </div>
+                            <div id="compete-b-feedback" class="mt-4 text-sm text-slate-600"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="mt-10 py-6 text-center text-sm text-slate-500 space-y-4">
+            <div class="font-medium text-slate-600">JumbleJumb English Sentence Builder Designed by Ayman Naser</div>
+            <div class="flex flex-wrap justify-center gap-3">
+                <button id="install-android-btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold shadow-sm hover:bg-emerald-700 transition">
+                    <span aria-hidden="true">🤖</span>
+                    <span>Download for Android</span>
+                </button>
+                <button id="install-ios-btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold shadow-sm hover:bg-slate-700 transition">
+                    <span aria-hidden="true"></span>
+                    <span>Download for iOS</span>
+                </button>
+                <button id="install-pc-btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 text-white font-semibold shadow-sm hover:bg-sky-700 transition">
+                    <span aria-hidden="true">💻</span>
+                    <span>Download for PC</span>
+                </button>
+            </div>
+            <div id="install-help-text" class="text-xs text-slate-500 max-w-3xl mx-auto">Install this app on Android, iPhone/iPad, or PC using your browser’s install/share options. All updates from this site will be reflected in the installed app.</div>
+        </footer>
+
+        <div id="competition-winner-overlay" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-6">
+            <div class="max-w-2xl w-full rounded-3xl bg-white shadow-2xl border border-amber-200 p-8 md:p-12 text-center">
+                <div class="text-6xl mb-4">🏆</div>
+                <h2 class="text-4xl md:text-5xl font-extrabold text-teal-600">Winner!</h2>
+                <p id="competition-winner-message" class="mt-4 text-2xl font-bold text-slate-800">Congratulations to Student Name</p>
+                <p id="competition-winner-score" class="mt-3 text-lg text-slate-600">Final Score: 0 points</p>
+                <p class="mt-4 text-slate-500">The first student finished the competition and earned the top celebration screen.</p>
+                <button id="close-winner-overlay-btn" class="mt-8 inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-teal-600 text-white font-semibold">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.JUMBLEJUMP_CONFIG = {
+            appwrite: {
+                endpoint: "https://cloud.appwrite.io/v1",
+                projectId: "YOUR_APPWRITE_PROJECT_ID",
+                databaseId: "YOUR_APPWRITE_DATABASE_ID",
+                usersCollectionId: "YOUR_USERS_COLLECTION_ID",
+                sentencesCollectionId: "YOUR_SENTENCES_COLLECTION_ID",
+                basicQuestionsCollectionId: "YOUR_BASIC_QUESTIONS_COLLECTION_ID",
+                teacherSettingsCollectionId: "YOUR_TEACHER_SETTINGS_COLLECTION_ID"
+            },
+            teacherAdminCode: "CHANGE_THIS_TEACHER_CODE",
+            defaultTeacherLogin: {
+                email: "aym.naser78@gmail.com",
+                password: "1234Qwer@"
+            },
+            googleSheetsWebAppUrl: "PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE"
+        };
+    </script>
+
+    <script type="module">
+        import { Client, Account, Databases, ID, Query } from "https://cdn.jsdelivr.net/npm/appwrite@16.0.2/+esm";
+
+        const appConfig = window.JUMBLEJUMP_CONFIG || {};
+        const appwriteConfig = appConfig.appwrite || {
+            endpoint: "https://cloud.appwrite.io/v1",
+            projectId: "YOUR_APPWRITE_PROJECT_ID",
+            databaseId: "YOUR_APPWRITE_DATABASE_ID",
+            usersCollectionId: "YOUR_USERS_COLLECTION_ID",
+            sentencesCollectionId: "YOUR_SENTENCES_COLLECTION_ID",
+            basicQuestionsCollectionId: "YOUR_BASIC_QUESTIONS_COLLECTION_ID",
+            teacherSettingsCollectionId: "YOUR_TEACHER_SETTINGS_COLLECTION_ID"
+        };
+
+        const TEACHER_ADMIN_CODE = appConfig.teacherAdminCode || "CHANGE_THIS_TEACHER_CODE";
+        const GOOGLE_SHEETS_WEB_APP_URL = appConfig.googleSheetsWebAppUrl || "PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+        const APPWRITE_DB_ID = appwriteConfig.databaseId;
+        const USERS_COLLECTION_ID = appwriteConfig.usersCollectionId;
+        const SENTENCES_COLLECTION_ID = appwriteConfig.sentencesCollectionId;
+        const BASIC_QUESTIONS_COLLECTION_ID = appwriteConfig.basicQuestionsCollectionId;
+        const TEACHER_SETTINGS_COLLECTION_ID = appwriteConfig.teacherSettingsCollectionId;
+
+        const firebaseBadge = document.getElementById('firebase-badge');
+        const firebaseBadgeDot = document.getElementById('firebase-badge-dot');
+        const firebaseBadgeText = document.getElementById('firebase-badge-text');
+
+        function hasPlaceholderConfig(config) {
+            const values = Object.values(config || {});
+            return !values.length || values.some(value => String(value || '').includes('YOUR_'));
+        }
+
+        const firebaseLooksConfigured = !hasPlaceholderConfig(appwriteConfig);
+
+        if (firebaseLooksConfigured) {
+            firebaseBadge.className = 'inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700';
+            firebaseBadgeDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+            firebaseBadgeText.textContent = 'Appwrite Config Ready';
+        } else {
+            firebaseBadge.className = 'inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700';
+            firebaseBadgeDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+            firebaseBadgeText.textContent = 'Appwrite Not Connected';
+        }
+
+        const client = new Client()
+            .setEndpoint(appwriteConfig.endpoint)
+            .setProject(appwriteConfig.projectId);
+        const account = new Account(client);
+        const databases = new Databases(client);
+
+        const authSection = document.getElementById('auth-section');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const studentSection = document.getElementById('student-section');
+        const teacherSection = document.getElementById('teacher-section');
+        const gameSection = document.getElementById('game-section');
+        const teacherAdminTab = document.getElementById('teacher-admin-tab');
+        const teacherManageTab = document.getElementById('teacher-manage-tab');
+        const teacherCompeteTab = document.getElementById('teacher-compete-tab');
+        const teacherAdminPanelView = document.getElementById('teacher-admin-panel-view');
+        const teacherManagePanel = document.getElementById('teacher-manage-panel');
+        const teacherCompetePanel = document.getElementById('teacher-compete-panel');
+
+        const authTitle = document.getElementById('auth-title');
+        const authSubtitle = document.getElementById('auth-subtitle');
+        const authBtn = document.getElementById('auth-btn');
+        const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+        const toggleAuth = document.getElementById('toggle-auth');
+        const authHelp = document.getElementById('auth-help');
+        const seedTeacherBtn = document.getElementById('seed-teacher-btn');
+        const teacherFirstTimeNote = document.getElementById('teacher-first-time-note');
+
+        const fullNameInput = document.getElementById('fullName');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const confirmPasswordWrapper = document.getElementById('confirm-password-wrapper');
+        const teacherCodeInput = document.getElementById('teacherCode');
+        const teacherLinkCodeInput = document.getElementById('teacherLinkCode');
+        const rememberMeInput = document.getElementById('remember-me');
+        const togglePasswordBtn = document.getElementById('toggle-password');
+        const toggleConfirmPasswordBtn = document.getElementById('toggle-confirm-password');
+
+        const studentRoleBtn = document.getElementById('student-role-btn');
+        const teacherRoleBtn = document.getElementById('teacher-role-btn');
+        const studentSignupShortcut = document.getElementById('student-signup-shortcut');
+        const userStatus = document.getElementById('user-status');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const logoutBtn = document.getElementById('logout-btn');
+        const openStudentDashboard = document.getElementById('open-student-dashboard');
+        const brandLogo = document.getElementById('brand-logo');
+        const brandTitle = document.getElementById('brand-title');
+        const brandSubtitle = document.getElementById('brand-subtitle');
+        const themeFontFamilyInput = document.getElementById('theme-font-family');
+        const themeFontColorInput = document.getElementById('theme-font-color');
+        const themeHeaderColorInput = document.getElementById('theme-header-color');
+        const themeBgColorInput = document.getElementById('theme-bg-color');
+        const themeCardColorInput = document.getElementById('theme-card-color');
+        const themeButtonColorInput = document.getElementById('theme-button-color');
+        const themeLogoTextInput = document.getElementById('theme-logo-text');
+        const themeLogoUploadInput = document.getElementById('theme-logo-upload');
+        const themeLogoUploadStatus = document.getElementById('theme-logo-upload-status');
+        const basicTargetCountInput = document.getElementById('basic-target-count');
+        const beginnerTargetCountInput = document.getElementById('beginner-target-count');
+        const intermediateTargetCountInput = document.getElementById('intermediate-target-count');
+        const advancedTargetCountInput = document.getElementById('advanced-target-count');
+        const requiredTriesCountInput = document.getElementById('required-tries-count');
+        const applyThemeBtn = document.getElementById('apply-theme-btn');
+        const resetThemeBtn = document.getElementById('reset-theme-btn');
+        const themeStatus = document.getElementById('theme-status');
+        const studentPhotoInput = document.getElementById('student-photo-input');
+        const studentPhotoStatus = document.getElementById('student-photo-status');
+        const studentPhotoPreview = document.getElementById('student-photo-preview');
+        const startCompetitionBtn = document.getElementById('start-competition-btn');
+        const resetCompetitionBtn = document.getElementById('reset-competition-btn');
+        const competeStudentANameInput = document.getElementById('compete-student-a-name');
+        const competeStudentBNameInput = document.getElementById('compete-student-b-name');
+        const competeModeSelect = document.getElementById('compete-mode-select');
+        const competitionWinnerOverlay = document.getElementById('competition-winner-overlay');
+        const competitionWinnerMessage = document.getElementById('competition-winner-message');
+        const competitionWinnerScore = document.getElementById('competition-winner-score');
+        const installAndroidBtn = document.getElementById('install-android-btn');
+        const installIosBtn = document.getElementById('install-ios-btn');
+        const installPcBtn = document.getElementById('install-pc-btn');
+        const installHelpText = document.getElementById('install-help-text');
+        const closeWinnerOverlayBtn = document.getElementById('close-winner-overlay-btn');
+        const competeElements = {
+            a: {
+                title: document.getElementById('compete-a-title'),
+                progress: document.getElementById('compete-a-progress'),
+                timer: document.getElementById('compete-a-timer'),
+                score: document.getElementById('compete-a-score'),
+                sentence: document.getElementById('compete-a-sentence'),
+                words: document.getElementById('compete-a-words'),
+                submit: document.getElementById('compete-a-submit'),
+                next: document.getElementById('compete-a-next'),
+                feedback: document.getElementById('compete-a-feedback')
+            },
+            b: {
+                title: document.getElementById('compete-b-title'),
+                progress: document.getElementById('compete-b-progress'),
+                timer: document.getElementById('compete-b-timer'),
+                score: document.getElementById('compete-b-score'),
+                sentence: document.getElementById('compete-b-sentence'),
+                words: document.getElementById('compete-b-words'),
+                submit: document.getElementById('compete-b-submit'),
+                next: document.getElementById('compete-b-next'),
+                feedback: document.getElementById('compete-b-feedback')
+            }
+        };
+        const certificateTitleInput = document.getElementById('certificate-title');
+        const certificateSubtitleInput = document.getElementById('certificate-subtitle');
+        const certificateRecipientLabelInput = document.getElementById('certificate-recipient-label');
+        const certificateFontFamilyInput = document.getElementById('certificate-font-family');
+        const certificateTitleColorInput = document.getElementById('certificate-title-color');
+        const certificateTextColorInput = document.getElementById('certificate-text-color');
+        const certificateBgColorInput = document.getElementById('certificate-bg-color');
+        const certificateBorderColorInput = document.getElementById('certificate-border-color');
+        const certificateFooterTextInput = document.getElementById('certificate-footer-text');
+        const certificateAchievementTextInput = document.getElementById('certificate-achievement-text');
+        const certificateLogoLeftUploadInput = document.getElementById('certificate-logo-left-upload');
+        const certificateLogoRightUploadInput = document.getElementById('certificate-logo-right-upload');
+        const certificateTemplateUploadInput = document.getElementById('certificate-template-upload');
+        const certificateLogoLeftStatus = document.getElementById('certificate-logo-left-status');
+        const certificateLogoRightStatus = document.getElementById('certificate-logo-right-status');
+        const certificateTemplateStatus = document.getElementById('certificate-template-status');
+        const teacherNoteInput = document.getElementById('teacher-note-input');
+        const saveCertificateStyleBtn = document.getElementById('save-certificate-style-btn');
+        const resetCertificateStyleBtn = document.getElementById('reset-certificate-style-btn');
+        const previewCertificateBtn = document.getElementById('preview-certificate-btn');
+        const certificateStyleStatus = document.getElementById('certificate-style-status');
+        const sentenceManagerList = document.getElementById('sentence-manager-list');
+
+        let isLoginMode = true;
+        let selectedRole = 'student';
+        let currentUserProfile = null;
+
+        function setRole(role) {
+            selectedRole = role;
+            const isTeacher = role === 'teacher';
+
+            studentRoleBtn.className = isTeacher
+                ? 'role-btn bg-slate-200 text-slate-700 py-3 rounded-xl font-semibold'
+                : 'role-btn teal-theme text-white py-3 rounded-xl font-semibold';
+            teacherRoleBtn.className = isTeacher
+                ? 'role-btn orange-theme text-white py-3 rounded-xl font-semibold'
+                : 'role-btn bg-slate-200 text-slate-700 py-3 rounded-xl font-semibold';
+
+            updateAuthModeUI();
+        }
+
+        function updateAuthModeUI() {
+            const signupMode = !isLoginMode;
+            const teacherMode = selectedRole === 'teacher';
+
+            authTitle.textContent = isLoginMode ? 'Login' : `Sign Up as ${teacherMode ? 'Teacher' : 'Student'}`;
+            authSubtitle.textContent = teacherMode
+                ? 'Teachers can manage content and review student progress'
+                : 'Students can practice sentence structure and unlock levels';
+            authBtn.textContent = isLoginMode ? `Login as ${teacherMode ? 'Teacher' : 'Student'}` : `Create ${teacherMode ? 'Teacher' : 'Student'} Account`;
+            toggleAuth.textContent = isLoginMode ? 'Need an account? Sign Up' : 'Already have an account? Login';
+
+            fullNameInput.classList.toggle('hidden', !signupMode);
+            confirmPasswordWrapper.classList.toggle('hidden', !signupMode);
+            teacherCodeInput.classList.toggle('hidden', !(signupMode && teacherMode));
+            teacherLinkCodeInput.classList.toggle('hidden', !(signupMode && !teacherMode));
+            seedTeacherBtn.classList.toggle('hidden', !(signupMode && teacherMode));
+            teacherFirstTimeNote.classList.toggle('hidden', !(signupMode && teacherMode));
+
+            authHelp.textContent = signupMode
+                ? (teacherMode
+                    ? 'First-time teacher registration requires the Teacher Admin Code. Use Create Teacher Account or Create First Teacher Account.'
+                    : 'Students sign up with name, email, password, and the teacher code provided by their teacher.')
+                : `Logging in as ${teacherMode ? 'teacher' : 'student'}. Make sure you selected the correct role.`;
+        }
+
+        function getLevelTargets() {
+            const defaults = { basic: 5, beginner: 100, intermediate: 100, advanced: 100 };
+            try {
+                return { ...defaults, ...(JSON.parse(localStorage.getItem('jumblejumpLevelTargets') || '{}')) };
+            } catch (error) {
+                return defaults;
+            }
+        }
+
+        function getRequiredSentenceTries() {
+            const value = Number(localStorage.getItem('jumblejumpRequiredTries') || '3');
+            return Number.isFinite(value) && value > 0 ? value : 3;
+        }
+
+        function applyTheme(theme) {
+            const currentTargets = getLevelTargets();
+            const mergedTheme = {
+                fontFamily: theme.fontFamily || 'Arial, sans-serif',
+                fontColor: theme.fontColor || '#0f172a',
+                headerColor: theme.headerColor || '#0f766e',
+                bgColor: theme.bgColor || '#f8fafc',
+                cardColor: theme.cardColor || '#ffffff',
+                buttonColor: theme.buttonColor || '#0d9488',
+                logoText: theme.logoText || '🧩',
+                logoImage: theme.logoImage || '',
+                levelTargets: {
+                    basic: Number(theme.levelTargets?.basic || currentTargets.basic || 5),
+                    beginner: Number(theme.levelTargets?.beginner || currentTargets.beginner || 100),
+                    intermediate: Number(theme.levelTargets?.intermediate || currentTargets.intermediate || 100),
+                    advanced: Number(theme.levelTargets?.advanced || currentTargets.advanced || 100)
+                },
+                requiredTries: Number(theme.requiredTries || getRequiredSentenceTries() || 3)
+            };
+
+            document.body.style.backgroundColor = mergedTheme.bgColor;
+            document.body.style.fontFamily = mergedTheme.fontFamily;
+            document.body.style.color = mergedTheme.fontColor;
+            brandTitle.style.color = mergedTheme.headerColor;
+            brandSubtitle.style.color = mergedTheme.fontColor;
+            brandLogo.style.backgroundColor = mergedTheme.cardColor;
+
+            if (mergedTheme.logoImage) {
+                brandLogo.innerHTML = `<img src="${mergedTheme.logoImage}" alt="Logo" class="w-full h-full object-cover rounded-2xl">`;
+                themeLogoUploadStatus.textContent = 'Custom logo image loaded.';
+            } else {
+                brandLogo.textContent = mergedTheme.logoText || '🧩';
+                themeLogoUploadStatus.textContent = 'No custom logo uploaded.';
+            }
+
+            document.querySelectorAll('.bg-white.rounded-2xl.shadow-lg, .border.border-slate-200.rounded-2xl.p-5.bg-slate-50').forEach(card => {
+                card.style.backgroundColor = mergedTheme.cardColor;
+            });
+
+            document.querySelectorAll('.teal-theme, #auth-btn, #open-student-dashboard, #upload-btn').forEach(button => {
+                button.style.backgroundColor = mergedTheme.buttonColor;
+                button.style.color = '#ffffff';
+            });
+
+            localStorage.setItem('jumblejumpTheme', JSON.stringify(mergedTheme));
+            localStorage.setItem('jumblejumpLevelTargets', JSON.stringify(mergedTheme.levelTargets));
+            themeStatus.textContent = `Design updated successfully. Targets saved: Basic ${mergedTheme.levelTargets.basic}, Beginner ${mergedTheme.levelTargets.beginner}, Intermediate ${mergedTheme.levelTargets.intermediate}, Advanced ${mergedTheme.levelTargets.advanced}.`;
+            themeStatus.className = 'mt-3 text-sm text-emerald-600 font-medium';
+        }
+
+        function resetTheme() {
+            document.body.style.backgroundColor = '';
+            document.body.style.fontFamily = '';
+            document.body.style.color = '';
+            brandTitle.style.color = '';
+            brandSubtitle.style.color = '';
+            brandLogo.innerHTML = '🧩';
+            brandLogo.style.backgroundColor = '';
+            document.querySelectorAll('.bg-white.rounded-2xl.shadow-lg, .border.border-slate-200.rounded-2xl.p-5.bg-slate-50').forEach(card => {
+                card.style.backgroundColor = '';
+            });
+            document.querySelectorAll('.teal-theme, #auth-btn, #open-student-dashboard, #upload-btn').forEach(button => {
+                button.style.backgroundColor = '';
+                button.style.color = '';
+            });
+            themeFontFamilyInput.value = 'Arial, sans-serif';
+            themeFontColorInput.value = '#0f172a';
+            themeHeaderColorInput.value = '#0f766e';
+            themeBgColorInput.value = '#f8fafc';
+            themeCardColorInput.value = '#ffffff';
+            themeButtonColorInput.value = '#0d9488';
+            themeLogoTextInput.value = '🧩';
+            themeLogoUploadInput.value = '';
+            themeLogoUploadStatus.textContent = 'No custom logo uploaded.';
+            basicTargetCountInput.value = '5';
+            beginnerTargetCountInput.value = '100';
+            intermediateTargetCountInput.value = '100';
+            advancedTargetCountInput.value = '100';
+            requiredTriesCountInput.value = '3';
+            localStorage.removeItem('jumblejumpTheme');
+            localStorage.removeItem('jumblejumpLevelTargets');
+            localStorage.removeItem('jumblejumpRequiredTries');
+            themeStatus.textContent = 'Theme, level targets, and required tries reset to default joyful learning style.';
+            themeStatus.className = 'mt-3 text-sm text-slate-600';
+        }
+
+        function loadSavedTheme() {
+            const saved = localStorage.getItem('jumblejumpTheme');
+            if (!saved) return;
+            try {
+                const theme = JSON.parse(saved);
+                themeFontFamilyInput.value = theme.fontFamily || 'Arial, sans-serif';
+                themeFontColorInput.value = theme.fontColor || '#0f172a';
+                themeHeaderColorInput.value = theme.headerColor || '#0f766e';
+                themeBgColorInput.value = theme.bgColor || '#f8fafc';
+                themeCardColorInput.value = theme.cardColor || '#ffffff';
+                themeButtonColorInput.value = theme.buttonColor || '#0d9488';
+                themeLogoTextInput.value = theme.logoText || '🧩';
+                const targets = theme.levelTargets || getLevelTargets();
+                basicTargetCountInput.value = String(targets.basic || 5);
+                beginnerTargetCountInput.value = String(targets.beginner || 100);
+                intermediateTargetCountInput.value = String(targets.intermediate || 100);
+                advancedTargetCountInput.value = String(targets.advanced || 100);
+                requiredTriesCountInput.value = String(theme.requiredTries || getRequiredSentenceTries() || 3);
+                applyTheme(theme);
+            } catch (error) {
+                console.warn('Theme load failed', error);
+            }
+        }
+
+        function getDefaultCertificateStyle() {
+            return {
+                title: 'Certificate of Achievement',
+                subtitle: 'This certifies successful completion in JumbleJump',
+                recipientLabel: 'Awarded to',
+                fontFamily: 'helvetica',
+                titleColor: '#0f766e',
+                textColor: '#334155',
+                bgColor: '#fffaf0',
+                borderColor: '#f59e0b',
+                footerText: 'JumbleJump celebrates joyful English learning.',
+                achievementText: 'For successfully mastering 100 sentences in the Beginner Tier\nconforming perfectly to Saudi 8th & 9th Grade English standards.',
+                teacherNote: 'Keep practicing and build your sentence step by step.',
+                logoLeft: '',
+                logoRight: '',
+                templateImage: ''
+            };
+        }
+
+        function getStoredSentences() {
+            try {
+                return JSON.parse(localStorage.getItem('jumblejumpSentenceBank') || '[]');
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function setStoredSentences(sentences) {
+            localStorage.setItem('jumblejumpSentenceBank', JSON.stringify(sentences));
+        }
+
+        function loadCertificateStyle() {
+            const saved = localStorage.getItem('jumblejumpCertificateStyle');
+            const style = saved ? { ...getDefaultCertificateStyle(), ...JSON.parse(saved) } : getDefaultCertificateStyle();
+            certificateTitleInput.value = style.title;
+            certificateSubtitleInput.value = style.subtitle;
+            certificateRecipientLabelInput.value = style.recipientLabel;
+            certificateFontFamilyInput.value = style.fontFamily;
+            certificateTitleColorInput.value = style.titleColor;
+            certificateTextColorInput.value = style.textColor;
+            certificateBgColorInput.value = style.bgColor;
+            certificateBorderColorInput.value = style.borderColor;
+            certificateFooterTextInput.value = style.footerText;
+            certificateAchievementTextInput.value = style.achievementText;
+            teacherNoteInput.value = style.teacherNote;
+            certificateLogoLeftStatus.textContent = style.logoLeft ? 'Left certificate logo loaded.' : 'No left certificate logo uploaded.';
+            certificateLogoRightStatus.textContent = style.logoRight ? 'Right certificate logo loaded.' : 'No right certificate logo uploaded.';
+            certificateTemplateStatus.textContent = style.templateImage ? 'Full certificate template loaded.' : 'No certificate template uploaded.';
+            return style;
+        }
+
+        function saveCertificateStyle() {
+            const previousStyle = JSON.parse(localStorage.getItem('jumblejumpCertificateStyle') || '{}');
+            const style = {
+                title: certificateTitleInput.value.trim() || 'Certificate of Achievement',
+                subtitle: certificateSubtitleInput.value.trim() || 'This certifies successful completion in JumbleJump',
+                recipientLabel: certificateRecipientLabelInput.value.trim() || 'Awarded to',
+                fontFamily: certificateFontFamilyInput.value || 'helvetica',
+                titleColor: certificateTitleColorInput.value || '#0f766e',
+                textColor: certificateTextColorInput.value || '#334155',
+                bgColor: certificateBgColorInput.value || '#fffaf0',
+                borderColor: certificateBorderColorInput.value || '#f59e0b',
+                footerText: certificateFooterTextInput.value.trim() || 'JumbleJump celebrates joyful English learning.',
+                achievementText: certificateAchievementTextInput.value.trim() || 'For successfully mastering 100 sentences in the Beginner Tier\nconforming perfectly to Saudi 8th & 9th Grade English standards.',
+                teacherNote: teacherNoteInput.value.trim() || 'Keep practicing and build your sentence step by step.',
+                logoLeft: previousStyle.logoLeft || '',
+                logoRight: previousStyle.logoRight || '',
+                templateImage: previousStyle.templateImage || ''
+            };
+            localStorage.setItem('jumblejumpCertificateStyle', JSON.stringify(style));
+            localStorage.setItem('jumblejumpTeacherNote', style.teacherNote);
+            certificateStyleStatus.textContent = 'Certificate style saved successfully.';
+            certificateStyleStatus.className = 'mt-3 text-sm text-emerald-600 font-medium';
+            return style;
+        }
+
+        function resetCertificateStyle() {
+            localStorage.removeItem('jumblejumpCertificateStyle');
+            localStorage.removeItem('jumblejumpTeacherNote');
+            certificateLogoLeftUploadInput.value = '';
+            certificateLogoRightUploadInput.value = '';
+            if (certificateTemplateUploadInput) certificateTemplateUploadInput.value = '';
+            loadCertificateStyle();
+            certificateStyleStatus.textContent = 'Certificate style reset to default.';
+            certificateStyleStatus.className = 'mt-3 text-sm text-slate-600';
+        }
+
+        function renderSentenceManager() {
+            const sentences = getStoredSentences();
+            if (!sentences.length) {
+                sentenceManagerList.innerHTML = 'No sentence records loaded yet.';
+                return;
+            }
+
+            sentenceManagerList.innerHTML = sentences.map((sentence, index) => `
+                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                    <div class="flex flex-col gap-3">
+                        <div>
+                            <div class="font-semibold text-slate-800">${sentence.correct || 'Untitled sentence'}</div>
+                            <div class="text-xs text-slate-500 mt-1">Level: ${sentence.level || 'Beginner'} • Grammar: ${sentence.grammar || 'No grammar note'} • Note: ${sentence.teacherNote || teacherNoteInput.value || 'No teacher note'}</div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <input data-edit="correct" data-index="${index}" class="p-2 rounded-lg border border-slate-300" value="${sentence.correct || ''}" placeholder="Correct sentence">
+                            <input data-edit="grammar" data-index="${index}" class="p-2 rounded-lg border border-slate-300" value="${sentence.grammar || ''}" placeholder="Grammar rule">
+                            <input data-edit="teacherNote" data-index="${index}" class="p-2 rounded-lg border border-slate-300" value="${sentence.teacherNote || ''}" placeholder="Teacher note">
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button data-action="save-sentence" data-index="${index}" class="bg-emerald-600 text-white px-3 py-2 rounded-lg font-semibold">Save Changes</button>
+                            <button data-action="delete-sentence" data-index="${index}" class="bg-rose-600 text-white px-3 py-2 rounded-lg font-semibold">Delete Sentence</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function previewCertificatePdf(levelOverride = null, enforceTeacherRule = false) {
+            if (enforceTeacherRule && getBasicCertificateUnlockSetting() && !basicLevelCertificateUnlocked) {
+                const status = document.getElementById('basic-certificate-status');
+                if (status) {
+                    status.textContent = 'Certificate is locked. Finish the whole Basic level once first.';
+                    status.className = 'mt-3 text-sm text-rose-600 font-medium';
+                }
+                return;
+            }
+
+            const style = saveCertificateStyle();
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+            const studentName = currentUserProfile?.fullName || 'Student Name';
+            const studentLevel = levelOverride || currentUserProfile?.currentLevel || 'Beginner';
+            const studentPhoto = localStorage.getItem('jumblejumpStudentPhoto');
+            const customLogo = localStorage.getItem('jumblejumpCustomLogo');
+            const leftLogo = style.logoLeft || '';
+            const rightLogo = style.logoRight || customLogo || '';
+            const templateImage = style.templateImage || '';
+
+            if (templateImage) {
+                const templateFormat = templateImage.includes('image/jpeg') ? 'JPEG' : 'PNG';
+                doc.addImage(templateImage, templateFormat, 0, 0, 297, 210);
+            } else {
+                doc.setFillColor(style.bgColor);
+                doc.rect(0, 0, 297, 210, 'F');
+                doc.setDrawColor(style.borderColor);
+                doc.setLineWidth(3);
+                doc.rect(10, 10, 277, 190);
+            }
+            doc.setFont(style.fontFamily, 'bold');
+            doc.setTextColor(style.titleColor);
+            doc.setFontSize(24);
+            doc.text(style.title, 148.5, 35, { align: 'center' });
+            doc.setFont(style.fontFamily, 'normal');
+            doc.setFontSize(13);
+            doc.setTextColor(style.textColor);
+            doc.text(style.subtitle, 148.5, 48, { align: 'center' });
+            doc.text(style.recipientLabel, 148.5, 68, { align: 'center' });
+            doc.setFont(style.fontFamily, 'bold');
+            doc.setFontSize(22);
+            doc.text(studentName, 148.5, 86, { align: 'center' });
+            doc.setFont(style.fontFamily, 'normal');
+            doc.setFontSize(13);
+            doc.text(style.achievementText, 148.5, 104, { align: 'center', maxWidth: 210 });
+            doc.setFontSize(12);
+            doc.text(`Completed level: ${studentLevel}`, 148.5, 132, { align: 'center' });
+            doc.text(`Teacher note: ${style.teacherNote}`, 148.5, 145, { align: 'center', maxWidth: 220 });
+            doc.text(style.footerText, 148.5, 185, { align: 'center' });
+
+            if (studentPhoto) {
+                doc.addImage(studentPhoto, 'JPEG', 22, 60, 35, 35);
+            }
+            if (leftLogo) {
+                doc.addImage(leftLogo, 'PNG', 24, 20, 28, 28);
+            }
+            if (rightLogo) {
+                doc.addImage(rightLogo, 'PNG', 245, 20, 28, 28);
+            }
+
+            doc.save(`JumbleJump-${studentLevel.replace(/\s+/g, '-')}-Certificate.pdf`);
+            const basicStatus = document.getElementById('basic-certificate-status');
+            if (basicStatus && levelOverride === 'Basic Matching') {
+                basicStatus.textContent = 'Basic Level certificate generated successfully.';
+                basicStatus.className = 'mt-3 text-sm text-emerald-600 font-medium';
+            }
+            certificateStyleStatus.textContent = 'Certificate preview PDF generated.';
+            certificateStyleStatus.className = 'mt-3 text-sm text-emerald-600 font-medium';
+        }
+
+        async function handleForgotPassword() {
+            const email = emailInput.value.trim();
+            if (!email) {
+                alert('Please enter your email first, then click Forgot My Password.');
+                return;
+            }
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert('Password reset email sent. Please check your inbox.');
+            } catch (error) {
+                alert(`Password reset failed: ${error.message}`);
+            }
+        }
+
+        async function createUserProfile(user, role, name, teacherProfile = null) {
+            const profile = {
+                uid: user.uid,
+                email: user.email,
+                role,
+                fullName: name || user.displayName || '',
+                stars: 0,
+                medals: 0,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+
+            if (role === 'student') {
+                profile.score = 0;
+                profile.currentLevel = 'Beginner';
+                profile.progress = {
+                    beginnerCompleted: 0,
+                    intermediateCompleted: 0,
+                    advancedCompleted: 0
+                };
+                profile.teacherId = teacherProfile?.uid || teacherProfile?.id || '';
+                profile.teacherName = teacherProfile?.fullName || '';
+                profile.teacherCode = teacherProfile?.teacherJoinCode || '';
+            } else {
+                profile.isAdmin = true;
+                profile.teacherJoinCode = makeTeacherJoinCode(user);
+                profile.googleSheetsWebAppUrl = GOOGLE_SHEETS_WEB_APP_URL && !GOOGLE_SHEETS_WEB_APP_URL.includes('PASTE_GOOGLE_APPS_SCRIPT') ? GOOGLE_SHEETS_WEB_APP_URL : '';
+            }
+
+            await setDoc(doc(db, 'users', user.uid), profile, { merge: true });
+        }
+
+        async function updateStudentLatestProgress(uid, updates = {}) {
+            const userRef = doc(db, 'users', uid);
+            await setDoc(userRef, {
+                ...updates,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        }
+
+        async function loadUserProfile(user) {
+            const userRef = doc(db, 'users', user.uid);
+            const snap = await getDoc(userRef);
+
+            if (!snap.exists()) {
+                const fallbackRole = selectedRole === 'teacher' ? 'teacher' : 'student';
+                await createUserProfile(user, fallbackRole, user.displayName || '');
+                const fallbackSnap = await getDoc(userRef);
+                return fallbackSnap.data();
+            }
+
+            return snap.data();
+        }
+
+        async function getTeacherSheetUrl() {
+            if (!currentUserProfile) return '';
+            if (currentUserProfile.role === 'teacher') {
+                return currentUserProfile.googleSheetsWebAppUrl || '';
+            }
+            if (currentUserProfile.role === 'student' && currentUserProfile.teacherId) {
+                const teacherSnap = await getDoc(doc(db, 'users', currentUserProfile.teacherId));
+                if (teacherSnap.exists()) {
+                    return teacherSnap.data().googleSheetsWebAppUrl || '';
+                }
+            }
+            return '';
+        }
+
+        function getAuthFormValues() {
+            return {
+                email: emailInput.value.trim(),
+                password: passwordInput.value.trim(),
+                fullName: fullNameInput.value.trim(),
+                confirmPassword: confirmPasswordInput.value.trim(),
+                teacherCode: teacherCodeInput.value.trim(),
+                teacherLinkCode: teacherLinkCodeInput.value.trim(),
+                rememberMe: !!rememberMeInput?.checked
+            };
+        }
+
+        function makeTeacherJoinCode(user) {
+            const safeUid = String(user?.uid || '').slice(0, 6).toUpperCase();
+            return `JJ-${safeUid || 'TEACHER'}`;
+        }
+
+        async function findTeacherByJoinCode(joinCode) {
+            const trimmedCode = (joinCode || '').trim();
+            if (!trimmedCode) return null;
+            const usersRef = collection(db, 'users');
+            const q = query(usersRef, where('role', '==', 'teacher'), where('teacherJoinCode', '==', trimmedCode));
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+            const teacherDoc = snapshot.docs[0];
+            return { id: teacherDoc.id, ...teacherDoc.data() };
+        }
+
+        function validateSignupForm(role, values) {
+            if (!values.email || !values.password) {
+                alert('Please enter email and password.');
+                return false;
+            }
+            if (!values.fullName) {
+                alert('Please enter your full name.');
+                return false;
+            }
+            if (values.password !== values.confirmPassword) {
+                alert('Passwords do not match.');
+                return false;
+            }
+            if (role === 'teacher' && values.teacherCode !== TEACHER_ADMIN_CODE) {
+                alert('Invalid Teacher Admin Code.');
+                return false;
+            }
+            if (role === 'student' && !values.teacherLinkCode) {
+                alert('Please enter the teacher code given by your teacher.');
+                return false;
+            }
+            return true;
+        }
+
+        async function registerUser(role) {
+            const values = getAuthFormValues();
+            if (!validateSignupForm(role, values)) return;
+
+            let teacherProfile = null;
+            if (role === 'student') {
+                teacherProfile = await findTeacherByJoinCode(values.teacherLinkCode);
+                if (!teacherProfile) {
+                    alert('Teacher code not found. Please ask your teacher for the correct code.');
+                    return;
+                }
+            }
+
+            const cred = await createUserWithEmailAndPassword(auth, values.email, values.password);
+            await updateProfile(cred.user, { displayName: values.fullName });
+            await createUserProfile(cred.user, role, values.fullName, teacherProfile);
+            alert(`${role === 'teacher' ? 'Teacher' : 'Student'} account created successfully.`);
+        }
+
+        async function createFirstTeacherAccount() {
+            try {
+                const teacherSnapshot = await getDocs(collection(db, 'users'));
+                let teacherExists = false;
+                teacherSnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    if (data.role === 'teacher') teacherExists = true;
+                });
+
+                if (teacherExists) {
+                    alert('A teacher account already exists. Use normal Teacher Sign Up instead.');
+                    return;
+                }
+
+                await registerUser('teacher');
+            } catch (error) {
+                alert(`Unable to create first teacher account: ${error.message}`);
+            }
+        }
+
+        async function handleAuth() {
+            const values = getAuthFormValues();
+
+            if (!values.email || !values.password) {
+                alert('Please enter email and password.');
+                return;
+            }
+
+            try {
+                await setPersistence(auth, values.rememberMe ? browserLocalPersistence : browserSessionPersistence);
+
+                if (isLoginMode) {
+                    const cred = await signInWithEmailAndPassword(auth, values.email, values.password);
+                    const profile = await loadUserProfile(cred.user);
+
+                    if (profile.role !== selectedRole) {
+                        await signOut(auth);
+                        alert(`This account is registered as ${profile.role}. Please choose the correct role before logging in.`);
+                        return;
+                    }
+
+                    alert(`Logged in successfully as ${profile.role}.`);
+                } else {
+                    await registerUser(selectedRole);
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function showStudentArea() {
+            studentSection.classList.remove('hidden');
+            gameSection.classList.add('hidden');
+            matchingSection.classList.add('hidden');
+            teacherSection.classList.add('hidden');
+        }
+
+        studentRoleBtn.addEventListener('click', () => setRole('student'));
+        teacherRoleBtn.addEventListener('click', () => setRole('teacher'));
+        studentSignupShortcut.addEventListener('click', () => {
+            setRole('student');
+            isLoginMode = false;
+            updateAuthModeUI();
+            fullNameInput.focus();
+        });
+        toggleAuth.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            updateAuthModeUI();
+        });
+        togglePasswordBtn?.addEventListener('click', () => {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            togglePasswordBtn.textContent = isHidden ? '🙈' : '👁️';
+            togglePasswordBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+        });
+        toggleConfirmPasswordBtn?.addEventListener('click', () => {
+            const isHidden = confirmPasswordInput.type === 'password';
+            confirmPasswordInput.type = isHidden ? 'text' : 'password';
+            toggleConfirmPasswordBtn.textContent = isHidden ? '🙈' : '👁️';
+            toggleConfirmPasswordBtn.setAttribute('aria-label', isHidden ? 'Hide confirm password' : 'Show confirm password');
+        });
+        authBtn.addEventListener('click', handleAuth);
+        seedTeacherBtn.addEventListener('click', createFirstTeacherAccount);
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+        openStudentDashboard.addEventListener('click', showStudentArea);
+
+        window.handleLogin = function () {
+            isLoginMode = true;
+            updateAuthModeUI();
+            return handleAuth();
+        };
+        window.handleSignup = function () {
+            isLoginMode = false;
+            updateAuthModeUI();
+            return handleAuth();
+        };
+        window.handleForgotPassword = function () {
+            return forgotPasswordBtn?.click();
+        };
+        window.togglePasswordVisibility = function (targetId = 'password') {
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+        };
+        window.toggleConfirmPasswordVisibility = function () {
+            const input = document.getElementById('confirmPassword');
+            if (!input) return;
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+        };
+        applyThemeBtn.addEventListener('click', () => {
+            applyTheme({
+                fontFamily: themeFontFamilyInput.value,
+                fontColor: themeFontColorInput.value,
+                headerColor: themeHeaderColorInput.value,
+                bgColor: themeBgColorInput.value,
+                cardColor: themeCardColorInput.value,
+                buttonColor: themeButtonColorInput.value,
+                logoText: themeLogoTextInput.value,
+                logoImage: localStorage.getItem('jumblejumpCustomLogo') || '',
+                levelTargets: {
+                    basic: Number(basicTargetCountInput.value || 5),
+                    beginner: Number(beginnerTargetCountInput.value || 100),
+                    intermediate: Number(intermediateTargetCountInput.value || 100),
+                    advanced: Number(advancedTargetCountInput.value || 100)
+                },
+                requiredTries: Number(requiredTriesCountInput.value || 3)
+            });
+            localStorage.setItem('jumblejumpRequiredTries', String(Number(requiredTriesCountInput.value || 3)));
+            renderLevelCards(currentUserProfile?.role || 'student');
+        });
+        resetThemeBtn.addEventListener('click', () => {
+            localStorage.removeItem('jumblejumpCustomLogo');
+            resetTheme();
+            renderLevelCards(currentUserProfile?.role || 'student');
+        });
+        themeLogoUploadInput?.addEventListener('change', () => {
+            const file = themeLogoUploadInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const logoDataUrl = event.target?.result;
+                localStorage.setItem('jumblejumpCustomLogo', logoDataUrl);
+                themeLogoUploadStatus.textContent = `Uploaded logo: ${file.name}`;
+            };
+            reader.readAsDataURL(file);
+        });
+        studentPhotoInput?.addEventListener('change', () => {
+            const file = studentPhotoInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const photoDataUrl = event.target?.result;
+                localStorage.setItem('jumblejumpStudentPhoto', photoDataUrl);
+                studentPhotoPreview.src = photoDataUrl;
+                studentPhotoPreview.classList.remove('hidden');
+                studentPhotoStatus.textContent = `Photo selected: ${file.name}`;
+            };
+            reader.readAsDataURL(file);
+        });
+        certificateLogoLeftUploadInput?.addEventListener('change', () => {
+            const file = certificateLogoLeftUploadInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const logoDataUrl = event.target?.result;
+                const style = JSON.parse(localStorage.getItem('jumblejumpCertificateStyle') || '{}');
+                style.logoLeft = logoDataUrl;
+                localStorage.setItem('jumblejumpCertificateStyle', JSON.stringify({ ...getDefaultCertificateStyle(), ...style }));
+                certificateLogoLeftStatus.textContent = `Left logo uploaded: ${file.name}`;
+            };
+            reader.readAsDataURL(file);
+        });
+        certificateLogoRightUploadInput?.addEventListener('change', () => {
+            const file = certificateLogoRightUploadInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const logoDataUrl = event.target?.result;
+                const style = JSON.parse(localStorage.getItem('jumblejumpCertificateStyle') || '{}');
+                style.logoRight = logoDataUrl;
+                localStorage.setItem('jumblejumpCertificateStyle', JSON.stringify({ ...getDefaultCertificateStyle(), ...style }));
+                certificateLogoRightStatus.textContent = `Right logo uploaded: ${file.name}`;
+            };
+            reader.readAsDataURL(file);
+        });
+        certificateTemplateUploadInput?.addEventListener('change', () => {
+            const file = certificateTemplateUploadInput.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const templateDataUrl = event.target?.result;
+                const style = JSON.parse(localStorage.getItem('jumblejumpCertificateStyle') || '{}');
+                style.templateImage = templateDataUrl;
+                localStorage.setItem('jumblejumpCertificateStyle', JSON.stringify({ ...getDefaultCertificateStyle(), ...style }));
+                certificateTemplateStatus.textContent = `Certificate template uploaded: ${file.name}`;
+            };
+            reader.readAsDataURL(file);
+        });
+        saveCertificateStyleBtn.addEventListener('click', saveCertificateStyle);
+        resetCertificateStyleBtn.addEventListener('click', resetCertificateStyle);
+        previewCertificateBtn.addEventListener('click', previewCertificatePdf);
+        sentenceManagerList.addEventListener('click', (event) => {
+            const action = event.target?.dataset?.action;
+            const index = Number(event.target?.dataset?.index);
+            if (!action || Number.isNaN(index)) return;
+
+            const sentences = getStoredSentences();
+            if (!sentences[index]) return;
+
+            if (action === 'delete-sentence') {
+                if (!confirm('Delete this sentence?')) return;
+                sentences.splice(index, 1);
+                setStoredSentences(sentences);
+                renderSentenceManager();
+                return;
+            }
+
+            if (action === 'save-sentence') {
+                const correctInput = sentenceManagerList.querySelector(`[data-edit="correct"][data-index="${index}"]`);
+                const grammarInput = sentenceManagerList.querySelector(`[data-edit="grammar"][data-index="${index}"]`);
+                const teacherNoteField = sentenceManagerList.querySelector(`[data-edit="teacherNote"][data-index="${index}"]`);
+                sentences[index].correct = correctInput?.value?.trim() || sentences[index].correct;
+                sentences[index].grammar = grammarInput?.value?.trim() || sentences[index].grammar;
+                sentences[index].teacherNote = teacherNoteField?.value?.trim() || teacherNoteInput.value.trim() || '';
+                sentences[index].words = sentences[index].correct.split(' ');
+                setStoredSentences(sentences);
+                renderSentenceManager();
+            }
+        });
+        document.getElementById('sync-sheets-btn').addEventListener('click', syncStudentsToGoogleSheets);
+
+        let deferredInstallPrompt = null;
+        const isiOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isAndroidDevice = /Android/i.test(navigator.userAgent);
+        const isDesktopDevice = !isiOSDevice && !isAndroidDevice;
+
+        function updateInstallHelp(message, tone = 'default') {
+            installHelpText.textContent = message;
+            installHelpText.className = `text-xs max-w-3xl mx-auto ${tone === 'success' ? 'text-emerald-600' : tone === 'warn' ? 'text-amber-600' : 'text-slate-500'}`;
+        }
+
+        function showPlatformInstallInstructions(platform) {
+            if (platform === 'ios') {
+                updateInstallHelp('On iPhone/iPad: open this site in Safari, tap Share, then choose Add to Home Screen.', 'warn');
+                return;
+            }
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                deferredInstallPrompt.userChoice.then((choice) => {
+                    updateInstallHelp(choice.outcome === 'accepted' ? 'Install started successfully. The installed app will keep updating from this site.' : 'Install prompt dismissed. You can install later from your browser menu.', choice.outcome === 'accepted' ? 'success' : 'warn');
+                    deferredInstallPrompt = null;
+                });
+                return;
+            }
+            if (platform === 'android') {
+                updateInstallHelp('On Android: open the browser menu and tap Install app or Add to Home screen if no install pop-up appears.', 'warn');
+            } else {
+                updateInstallHelp('On PC: use your browser menu and choose Install App or Create Shortcut to install this app.', 'warn');
+            }
+        }
+
+        installAndroidBtn.addEventListener('click', () => showPlatformInstallInstructions('android'));
+        installIosBtn.addEventListener('click', () => showPlatformInstallInstructions('ios'));
+        installPcBtn.addEventListener('click', () => showPlatformInstallInstructions('pc'));
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            if (isAndroidDevice) {
+                updateInstallHelp('Android install is ready. Tap “Download for Android” to install the app.', 'success');
+            } else if (isDesktopDevice) {
+                updateInstallHelp('PC install is ready. Tap “Download for PC” to install the app.', 'success');
+            }
         });
 
-    alert(level + " uploaded successfully");
-}
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            updateInstallHelp('JumbleJump was installed successfully. Future updates will come from the same hosted app automatically.', 'success');
+        });
 
-// 📊 MODIFY YOUR EXISTING EXCEL UPLOAD
-async function processSentenceExcelUpload() {
-    const file = document.getElementById("sentence-excel-upload").files[0];
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-
-    saveSentencesToFirestore("Beginner", json);
-}
-
-async function processBasicExcelUpload() {
-    const file = document.getElementById("basic-excel-upload").files[0];
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-
-    saveSentencesToFirestore("Basic", json);
-}
-
-// 🔁 TRIAL SYSTEM (HOOK INTO YOUR EXISTING checkAnswer)
-const originalCheck = window.checkAnswer;
-window.checkAnswer = function () {
-    const result = originalCheck ? originalCheck() : null;
-
-    if (result === true) {
-        correctTries++;
-        sounds.correct.play();
-
-        if (correctTries >= teacherSettings.masteryTries) {
-            document.getElementById("btn-next").disabled = false;
-            sounds.win.play();
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map((registration) => registration.unregister()));
+                } catch (error) {
+                    console.warn('Service worker cleanup skipped', error);
+                }
+            });
         }
-    } else {
-        sounds.wrong.play();
-    }
-};
 
-// 🔐 LOAD TEACHER SETTINGS ON LOGIN
-firebase.auth().onAuthStateChanged(async (user) => {
-    if (!user) return;
+        if (isiOSDevice) {
+            updateInstallHelp('On iPhone/iPad, tap “Download for iOS” to see how to add this app to your Home Screen.', 'warn');
+        }
 
-    const teacherDoc = await db.collection("teachers").doc(user.uid).get();
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserProfile = await loadUserProfile(user);
 
-    if (teacherDoc.exists) {
-        teacherSettings = teacherDoc.data().settings || teacherSettings;
+                authSection.classList.add('hidden');
+                document.getElementById('auth-backdrop')?.classList.add('hidden');
+                dashboardSection.classList.remove('hidden');
 
-        // SHOW ADMIN PANEL
-        document.getElementById("tab-admin-view")?.classList.remove("hidden");
-    }
-});
+                userStatus.textContent = `${currentUserProfile.fullName || user.email} • ${currentUserProfile.role}`;
+                welcomeMessage.textContent = currentUserProfile.role === 'teacher'
+                    ? 'Welcome back, teacher. You can upload content and monitor learners.'
+                    : 'Welcome back, student. Continue your learning journey.';
 
-// 🔑 SAVE TEACHER CODE BUTTON
-async function saveTeacherSignupCode() {
-    const user = firebase.auth().currentUser;
-    const code = generateTeacherCode();
+                studentSection.classList.add('hidden');
+                teacherSection.classList.add('hidden');
+                gameSection.classList.add('hidden');
+                matchingSection.classList.add('hidden');
 
-    await db.collection("teachers").doc(user.uid).set({ code }, { merge: true });
+                if (currentUserProfile.role === 'teacher') {
+                    await hydrateTeacherBanksFromFirestore();
+                    await loadTeacherProgress();
+                    currentMatchingIndex = 0;
+                    renderMatchingQuestion();
+                    renderSentenceManager();
+                    teacherSection.classList.remove('hidden');
+                }
 
-    document.getElementById("teacher-signup-code").value = code;
-    alert("New teacher code generated");
-}
+                const savedPhoto = localStorage.getItem('jumblejumpStudentPhoto');
+                if (savedPhoto) {
+                    studentPhotoPreview.src = savedPhoto;
+                    studentPhotoPreview.classList.remove('hidden');
+                    studentPhotoStatus.textContent = 'Saved photo loaded for certificate use.';
+                }
 
-</script>
+                loadSavedTheme();
+                loadCertificateStyle();
+                renderSentenceManager();
+                renderLevelCards(currentUserProfile.role);
+            } else {
+                currentUserProfile = null;
+                authSection.classList.remove('hidden');
+                document.getElementById('auth-backdrop')?.classList.remove('hidden');
+                dashboardSection.classList.add('hidden');
+                studentSection.classList.add('hidden');
+                teacherSection.classList.add('hidden');
+                gameSection.classList.add('hidden');
+                matchingSection.classList.add('hidden');
+                userStatus.textContent = '';
+            }
+        });
+
+        async function loadTeacherProgress() {
+            const holder = document.getElementById('teacher-progress');
+            holder.textContent = 'Loading student progress...';
+            try {
+                if (!currentUserProfile?.uid) {
+                    holder.textContent = 'Teacher account not ready yet.';
+                    return;
+                }
+
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('role', '==', 'student'), where('teacherId', '==', currentUserProfile.uid));
+                const snapshot = await getDocs(q);
+                const students = [];
+                snapshot.forEach((docSnap) => students.push(docSnap.data()));
+
+                if (!students.length) {
+                    holder.innerHTML = `
+                        <div class="text-sm text-slate-600">No student records found for your account yet.</div>
+                        <div class="mt-2 text-xs text-slate-500">Share this teacher code with your students: <span class="font-semibold text-teal-700">${currentUserProfile.teacherJoinCode || 'Not set yet'}</span></div>
+                    `;
+                    return;
+                }
+
+                holder.innerHTML = `
+                    <div class="mb-3 text-xs text-slate-500">Your student sign-up code: <span class="font-semibold text-teal-700">${currentUserProfile.teacherJoinCode || 'Not set yet'}</span></div>
+                    ${students.map(student => {
+                        const progress = student.progress || {};
+                        return `
+                            <div class="border border-slate-200 rounded-xl p-3 mb-3">
+                                <div class="font-semibold">${student.fullName || student.email}</div>
+                                <div class="text-slate-500">${student.email}</div>
+                                <div class="mt-1">Score: ${student.score || 0} • Level: ${student.currentLevel || 'Beginner'}</div>
+                                <div class="mt-1">Beginner: ${progress.beginnerCompleted || 0} • Intermediate: ${progress.intermediateCompleted || 0} • Advanced: ${progress.advancedCompleted || 0}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                `;
+            } catch (error) {
+                holder.textContent = `Failed to load progress: ${error.message}`;
+            }
+        }
+
+        async function syncStudentsToGoogleSheets() {
+            const status = document.getElementById('sheets-status');
+            const teacherSheetUrl = await getTeacherSheetUrl();
+
+            if (!teacherSheetUrl) {
+                status.className = 'mt-4 text-sm text-rose-600 font-medium';
+                status.textContent = 'No Google Sheets URL is saved for this teacher account yet.';
+                return;
+            }
+
+            status.className = 'mt-4 text-sm text-slate-600';
+            status.textContent = 'Collecting your student data from Firebase...';
+
+            try {
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('role', '==', 'student'), where('teacherId', '==', currentUserProfile.uid));
+                const snapshot = await getDocs(q);
+                const students = [];
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    students.push({
+                        uid: data.uid || docSnap.id,
+                        teacherId: data.teacherId || currentUserProfile.uid,
+                        teacherName: currentUserProfile.fullName || '',
+                        teacherCode: currentUserProfile.teacherJoinCode || '',
+                        name: data.fullName || '',
+                        email: data.email || '',
+                        role: data.role || 'student',
+                        score: data.score || 0,
+                        currentLevel: data.currentLevel || 'Beginner',
+                        beginnerCompleted: data.progress?.beginnerCompleted || 0,
+                        intermediateCompleted: data.progress?.intermediateCompleted || 0,
+                        advancedCompleted: data.progress?.advancedCompleted || 0
+                    });
+                });
+
+                if (!students.length) {
+                    status.className = 'mt-4 text-sm text-amber-700 font-medium';
+                    status.textContent = 'No student records found for your account to sync.';
+                    return;
+                }
+
+                status.textContent = `Sending ${students.length} of your student records to your Google Sheet...`;
+
+                const response = await fetch(teacherSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source: 'JumbleJump',
+                        teacher: {
+                            uid: currentUserProfile.uid,
+                            name: currentUserProfile.fullName || '',
+                            email: currentUserProfile.email || '',
+                            code: currentUserProfile.teacherJoinCode || ''
+                        },
+                        students
+                    })
+                });
+
+                const resultText = await response.text();
+                status.className = 'mt-4 text-sm text-emerald-700 font-medium';
+                status.textContent = `Google Sheets sync completed successfully for your account. ${resultText}`;
+            } catch (error) {
+                status.className = 'mt-4 text-sm text-rose-600 font-medium';
+                status.textContent = `Google Sheets sync failed: ${error.message}`;
+            }
+        }
+
+        function renderLevelCards(role) {
+            const levelsContainer = document.getElementById('levels-container');
+            const targets = getLevelTargets();
+            const levels = [
+                { name: 'Basic Matching', status: `Unlocked • ${targets.basic} questions`, color: 'bg-fuchsia-50 border-fuchsia-200', action: 'matching' },
+                { name: 'Beginner', status: `Unlocked • ${targets.beginner} sentences`, color: 'bg-teal-50 border-teal-200', action: 'sentence' },
+                { name: 'Intermediate', status: role === 'teacher' ? `Preview Available • ${targets.intermediate} sentences` : 'Locked until Beginner complete', color: 'bg-orange-50 border-orange-200', action: 'sentence' },
+                { name: 'Advanced', status: role === 'teacher' ? `Preview Available • ${targets.advanced} sentences` : 'Locked until Intermediate complete', color: 'bg-sky-50 border-sky-200', action: 'sentence' }
+            ];
+
+            levelsContainer.innerHTML = levels.map(level => `
+                <div class="border ${level.color} rounded-2xl p-5 shadow-sm">
+                    <h4 class="text-xl font-bold mb-2">${level.name}</h4>
+                    <p class="text-slate-600 mb-4">${level.status}</p>
+                    <button data-level-action="${level.action}" data-level-name="${level.name}" class="open-level-btn teal-theme text-white px-4 py-2 rounded-xl">Open ${level.name}</button>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.open-level-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const action = button.dataset.levelAction;
+                    const levelName = button.dataset.levelName;
+                    if (action === 'matching') {
+                        const basicQuestions = getStoredBasicQuestions();
+                        if (!basicQuestions.length) {
+                            alert('No uploaded Basic Level bank found. Please upload Basic data first.');
+                            return;
+                        }
+                        document.getElementById('game-section').classList.add('hidden');
+                        document.getElementById('matching-section').classList.remove('hidden');
+                        currentMatchingIndex = 0;
+                        loadBasicCertificateCompleted();
+                        renderMatchingQuestion();
+                    } else {
+                        const uploadedSentences = getStoredSentences();
+                        if (!uploadedSentences.length) {
+                            alert('No uploaded sentence bank found. Please upload sentence data first.');
+                            return;
+                        }
+                        document.getElementById('matching-section').classList.add('hidden');
+                        document.getElementById('game-section').classList.remove('hidden');
+                        document.getElementById('game-feedback').textContent = `${levelName} opened. Uploaded sentence bank is ready.`;
+                        document.getElementById('game-feedback').className = 'mt-4 text-sm text-slate-600';
+                    }
+                });
+            });
+        }
+
+        setRole('student');
+        updateAuthModeUI();
+    </script>
+
+    <script>
+        let currentSentence = null;
+
+        let basicMatchingQuestions = [];
+
+        let currentMatchingIndex = 0;
+        let currentMatchingQuestion = basicMatchingQuestions[0];
+        let basicLevelCertificateUnlocked = false;
+        const COMPETITION_TIME_LIMIT = 60;
+        let competitionMode = 'sentence';
+        let competitionWinnerDeclared = false;
+        let competitionQuestions = [];
+        let competitionPlayers = {
+            a: { name: 'Student A', index: 0, score: 0, timeLeft: COMPETITION_TIME_LIMIT, timerId: null, submitted: false, currentSentence: null, sortable: null },
+            b: { name: 'Student B', index: 0, score: 0, timeLeft: COMPETITION_TIME_LIMIT, timerId: null, submitted: false, currentSentence: null, sortable: null }
+        };
+
+        function initGame(words) {
+            const list = document.getElementById('scrambled-words');
+            list.innerHTML = '';
+            words.forEach(word => {
+                const div = document.createElement('div');
+                div.className = 'word-item p-3 bg-white border border-slate-300 rounded-xl shadow-sm';
+                div.textContent = word;
+                list.appendChild(div);
+            });
+            new Sortable(list, { animation: 150 });
+        }
+
+        function createMatchingWordChip(word) {
+            const div = document.createElement('div');
+            div.className = 'word-item p-3 bg-white border border-slate-300 rounded-xl shadow-sm';
+            div.textContent = word;
+            return div;
+        }
+
+        function shuffleArray(items) {
+            return [...items].sort(() => Math.random() - 0.5);
+        }
+
+        function getStoredBasicQuestions() {
+            try {
+                const stored = JSON.parse(localStorage.getItem('jumblejumpBasicMatchingBank') || '[]');
+                return Array.isArray(stored) ? stored : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function setStoredBasicQuestions(questions) {
+            localStorage.setItem('jumblejumpBasicMatchingBank', JSON.stringify(questions));
+        }
+
+        async function persistTeacherSentencesToFirestore(sentences) {
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') {
+                throw new Error('Only a logged-in teacher can save sentence data.');
+            }
+            const teacherId = auth.currentUser.uid;
+            const existingSnapshot = await getDocs(query(collection(db, 'sentences'), where('teacherId', '==', teacherId)));
+            const deleteBatch = writeBatch(db);
+            existingSnapshot.forEach(documentSnapshot => deleteBatch.delete(documentSnapshot.ref));
+            await deleteBatch.commit();
+
+            const createBatch = writeBatch(db);
+            sentences.forEach((sentence, index) => {
+                const sentenceRef = doc(collection(db, 'sentences'));
+                createBatch.set(sentenceRef, {
+                    teacherId,
+                    source: 'excel',
+                    order: index,
+                    level: sentence.level || 'Beginner',
+                    scrambled: sentence.scrambled || '',
+                    correct: sentence.correct || '',
+                    words: Array.isArray(sentence.words) ? sentence.words : [],
+                    grammar: sentence.grammar || 'No grammar hint provided',
+                    teacherNote: sentence.teacherNote || '',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            });
+            await createBatch.commit();
+        }
+
+        async function loadTeacherSentencesFromFirestore(teacherId) {
+            const snapshot = await getDocs(query(collection(db, 'sentences'), where('teacherId', '==', teacherId)));
+            const loaded = snapshot.docs
+                .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+                .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+            setStoredSentences(loaded);
+            return loaded;
+        }
+
+        async function persistTeacherBasicQuestionsToFirestore(questions) {
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') {
+                throw new Error('Only a logged-in teacher can save Basic Level data.');
+            }
+            const teacherId = auth.currentUser.uid;
+            const existingSnapshot = await getDocs(query(collection(db, 'basicQuestions'), where('teacherId', '==', teacherId)));
+            const deleteBatch = writeBatch(db);
+            existingSnapshot.forEach(documentSnapshot => deleteBatch.delete(documentSnapshot.ref));
+            await deleteBatch.commit();
+
+            const createBatch = writeBatch(db);
+            questions.forEach((question, index) => {
+                const basicRef = doc(collection(db, 'basicQuestions'));
+                createBatch.set(basicRef, {
+                    teacherId,
+                    source: 'excel',
+                    order: index,
+                    mainCategory: question.mainCategory || 'Parts of Speech',
+                    subcategories: Array.isArray(question.subcategories) ? question.subcategories : [],
+                    items: Array.isArray(question.items) ? question.items : [],
+                    hint: question.hint || 'No hint provided',
+                    teacherNote: question.teacherNote || '',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+            });
+            await createBatch.commit();
+        }
+
+        async function loadTeacherBasicQuestionsFromFirestore(teacherId) {
+            const snapshot = await getDocs(query(collection(db, 'basicQuestions'), where('teacherId', '==', teacherId)));
+            const loaded = snapshot.docs
+                .map(docSnapshot => ({ id: docSnapshot.id, ...docSnapshot.data() }))
+                .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+            setStoredBasicQuestions(loaded);
+            return loaded;
+        }
+
+        async function hydrateTeacherBanksFromFirestore() {
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') return;
+            try {
+                const [sentences, basicQuestions] = await Promise.all([
+                    loadTeacherSentencesFromFirestore(auth.currentUser.uid),
+                    loadTeacherBasicQuestionsFromFirestore(auth.currentUser.uid)
+                ]);
+                renderSentenceManager();
+                currentMatchingIndex = 0;
+                renderMatchingQuestion();
+            } catch (error) {
+                console.error('Failed to hydrate teacher banks from Firestore:', error);
+            }
+        }
+
+        async function clearAllTeacherUploadedData() {
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') {
+                throw new Error('Only a logged-in teacher can clear uploaded data.');
+            }
+
+            const teacherId = auth.currentUser.uid;
+            const [sentenceSnapshot, basicSnapshot] = await Promise.all([
+                getDocs(query(collection(db, 'sentences'), where('teacherId', '==', teacherId))),
+                getDocs(query(collection(db, 'basicQuestions'), where('teacherId', '==', teacherId)))
+            ]);
+
+            const deleteBatch = writeBatch(db);
+            sentenceSnapshot.forEach(documentSnapshot => deleteBatch.delete(documentSnapshot.ref));
+            basicSnapshot.forEach(documentSnapshot => deleteBatch.delete(documentSnapshot.ref));
+            await deleteBatch.commit();
+
+            setStoredSentences([]);
+            setStoredBasicQuestions([]);
+            currentSentenceIndex = 0;
+            currentMatchingIndex = 0;
+            renderSentenceManager();
+            renderMatchingQuestion();
+        }
+
+        function getBasicCertificateUnlockSetting() {
+            return localStorage.getItem('jumblejumpBasicCertificateRequiresCompletion') !== 'false';
+        }
+
+        function setBasicCertificateUnlockSetting(value) {
+            localStorage.setItem('jumblejumpBasicCertificateRequiresCompletion', String(value));
+        }
+
+        function setBasicCertificateCompleted(value) {
+            basicLevelCertificateUnlocked = Boolean(value);
+            localStorage.setItem('jumblejumpBasicLevelCompleted', String(Boolean(value)));
+        }
+
+        function loadBasicCertificateCompleted() {
+            basicLevelCertificateUnlocked = localStorage.getItem('jumblejumpBasicLevelCompleted') === 'true';
+        }
+
+        function renderMatchingQuestion() {
+            const questionBank = getStoredBasicQuestions();
+            currentMatchingQuestion = questionBank[currentMatchingIndex] || questionBank[0];
+            document.getElementById('matching-title').textContent = currentMatchingQuestion.mainCategory;
+            document.getElementById('matching-subtitle').textContent = 'Drag and drop the correct word under its title';
+            document.getElementById('matching-main-category').textContent = currentMatchingQuestion.mainCategory;
+            document.getElementById('matching-sub-category').textContent = currentMatchingQuestion.subcategories.join(' • ');
+            document.getElementById('matching-progress').textContent = `Question ${currentMatchingIndex + 1} of ${questionBank.length}`;
+            document.getElementById('matching-hint').textContent = 'Click Show Hint to see the grammatical rule.';
+
+            const feedback = document.getElementById('matching-feedback');
+            feedback.textContent = `Drag each word into its correct subcategory block. Teacher Note: ${currentMatchingQuestion.teacherNote || 'No teacher note provided.'}`;
+            feedback.className = 'mt-4 text-sm text-slate-600';
+
+            const wordBank = document.getElementById('matching-word-bank');
+            const dropzoneWrapper = document.getElementById('matching-single-dropzone');
+            wordBank.innerHTML = '';
+            dropzoneWrapper.innerHTML = '';
+
+            currentMatchingQuestion.subcategories.forEach(subcategory => {
+                const block = document.createElement('div');
+                block.className = 'border border-slate-200 rounded-2xl p-4 bg-white shadow-sm mb-3';
+                block.innerHTML = `
+                    <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Subcategory</div>
+                    <div class="text-lg font-bold text-slate-800 mb-3">${subcategory}</div>
+                    <div class="matching-dropzone min-h-20 rounded-2xl border-2 border-dashed border-teal-300 bg-teal-50 p-3 flex flex-wrap gap-2 items-start" data-subcategory="${subcategory}"></div>
+                `;
+                dropzoneWrapper.appendChild(block);
+            });
+
+            shuffleArray(currentMatchingQuestion.items.map(item => item.word)).forEach(word => {
+                wordBank.appendChild(createMatchingWordChip(word));
+            });
+
+            new Sortable(wordBank, {
+                group: 'basic-match-word',
+                animation: 150
+            });
+
+            document.querySelectorAll('.matching-dropzone').forEach(zone => {
+                new Sortable(zone, {
+                    group: 'basic-match-word',
+                    animation: 150
+                });
+            });
+        }
+
+        function loadMatchingDemo() {
+            currentMatchingIndex = 0;
+            loadBasicCertificateCompleted();
+            renderMatchingQuestion();
+        }
+
+        function checkMatchingAnswers() {
+            const feedback = document.getElementById('matching-feedback');
+            const zones = [...document.querySelectorAll('.matching-dropzone')];
+            const expectedWords = currentMatchingQuestion.items.length;
+            const droppedWords = zones.flatMap(zone => [...zone.querySelectorAll('.word-item')]);
+
+            if (droppedWords.length !== expectedWords) {
+                feedback.textContent = `Please place all ${expectedWords} words into the correct subcategory blocks.`;
+                feedback.className = 'mt-4 text-sm text-rose-600 font-semibold';
+                return;
+            }
+
+            const answerIsCorrect = zones.every(zone => {
+                const subcategory = zone.dataset.subcategory;
+                const wordsInZone = [...zone.querySelectorAll('.word-item')].map(item => item.textContent.trim().toLowerCase());
+                const expectedInZone = currentMatchingQuestion.items
+                    .filter(item => item.subcategory.toLowerCase() === subcategory.toLowerCase())
+                    .map(item => item.word.toLowerCase())
+                    .sort();
+                return wordsInZone.sort().join('|') === expectedInZone.join('|');
+            });
+
+            if (answerIsCorrect) {
+                celebrate();
+                feedback.textContent = 'Excellent! You matched all words correctly.';
+                feedback.className = 'mt-4 text-sm text-emerald-600 font-semibold';
+            } else {
+                feedback.textContent = 'That is not correct yet. Click Show Hint and try again.';
+                feedback.className = 'mt-4 text-sm text-rose-600 font-semibold';
+            }
+        }
+
+        function resetMatchingGame() {
+            renderMatchingQuestion();
+        }
+
+        function showMatchingHint() {
+            document.getElementById('matching-hint').textContent = currentMatchingQuestion.hint;
+        }
+
+        function goToNextMatchingQuestion() {
+            const questionBank = getStoredBasicQuestions();
+            if (currentMatchingIndex < questionBank.length - 1) {
+                currentMatchingIndex += 1;
+                renderMatchingQuestion();
+            } else {
+                setBasicCertificateCompleted(true);
+                document.getElementById('matching-feedback').textContent = 'Great job! You finished the whole Basic Matching level once. Certificate eligibility is now updated.';
+                document.getElementById('matching-feedback').className = 'mt-4 text-sm text-emerald-600 font-semibold';
+            }
+        }
+
+        function getCurrentAnswer() {
+            return [...document.querySelectorAll('#scrambled-words .word-item')]
+                .map(el => el.textContent.trim())
+                .join(' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function celebrate() {
+            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+        }
+
+        function showTeacherTab(tabName) {
+            const isAdmin = tabName === 'admin';
+            const isManage = tabName === 'manage';
+            const isCompete = tabName === 'compete';
+            teacherAdminPanelView.classList.toggle('hidden', !isAdmin);
+            teacherManagePanel.classList.toggle('hidden', !isManage);
+            teacherCompetePanel.classList.toggle('hidden', !isCompete);
+            teacherAdminTab.className = `px-4 py-2 rounded-xl font-semibold ${isAdmin ? 'teal-theme text-white' : 'bg-slate-200 text-slate-700'}`;
+            teacherManageTab.className = `px-4 py-2 rounded-xl font-semibold ${isManage ? 'teal-theme text-white' : 'bg-slate-200 text-slate-700'}`;
+            teacherCompeteTab.className = `px-4 py-2 rounded-xl font-semibold ${isCompete ? 'teal-theme text-white' : 'bg-slate-200 text-slate-700'}`;
+        }
+
+        function getCompetitionSentenceSet() {
+            const stored = getStoredSentences();
+            return Array.isArray(stored) ? stored.filter(sentence => sentence?.correct && sentence?.words?.length) : [];
+        }
+
+        function createCompetitionWordChip(word) {
+            const chip = document.createElement('div');
+            chip.className = 'word-item bg-white border border-slate-300 px-4 py-2 rounded-xl shadow-sm';
+            chip.textContent = word;
+            return chip;
+        }
+
+        function calculateCompetitionPoints(timeUsed, isCorrect) {
+            if (!isCorrect) return 0;
+            if (timeUsed <= 30) return 5;
+            const points = 5 - Math.floor((timeUsed - 30) / 10) - 1;
+            return Math.max(1, points);
+        }
+
+        function stopCompetitionTimer(playerKey) {
+            const player = competitionPlayers[playerKey];
+            if (player.timerId) {
+                clearInterval(player.timerId);
+                player.timerId = null;
+            }
+        }
+
+        function showCompetitionWinner(playerKey) {
+            if (competitionWinnerDeclared) return;
+            const player = competitionPlayers[playerKey];
+            competitionWinnerDeclared = true;
+            competitionWinnerMessage.textContent = `Congratulations to ${player.name}`;
+            competitionWinnerScore.textContent = `Final Score: ${player.score} point${player.score === 1 ? '' : 's'}`;
+            competitionWinnerOverlay.classList.remove('hidden');
+            celebrate();
+            setTimeout(() => celebrate(), 300);
+        }
+
+        function updateCompetitionScoreDisplay(playerKey) {
+            const el = competeElements[playerKey];
+            const player = competitionPlayers[playerKey];
+            el.score.textContent = `Points: ${player.score}`;
+        }
+
+        function getCompetitionAnswer(playerKey) {
+            if (competitionMode === 'basic') {
+                const zones = [...competeElements[playerKey].words.querySelectorAll('.competition-basic-dropzone')];
+                return zones.map(zone => ({
+                    subcategory: zone.dataset.subcategory,
+                    words: [...zone.querySelectorAll('.word-item')].map(el => el.textContent.trim())
+                }));
+            }
+
+            return [...competeElements[playerKey].words.querySelectorAll('.word-item')]
+                .map(el => el.textContent.trim())
+                .join(' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function isCompetitionAnswerCorrect(playerKey, answer) {
+            const player = competitionPlayers[playerKey];
+            if (competitionMode === 'basic') {
+                const expected = player.currentSentence?.expectedMap || {};
+                return answer.every(group => {
+                    const expectedWords = expected[group.subcategory] || [];
+                    if (expectedWords.length !== group.words.length) return false;
+                    return expectedWords.every(word => group.words.includes(word));
+                }) && Object.keys(expected).length === answer.length;
+            }
+
+            return String(answer).toLowerCase() === String(player.currentSentence?.correct || '').toLowerCase();
+        }
+
+        function finishCompetitionSentence(playerKey, forcedByTimeout = false) {
+            const player = competitionPlayers[playerKey];
+            const el = competeElements[playerKey];
+            if (player.submitted) return;
+            player.submitted = true;
+            stopCompetitionTimer(playerKey);
+
+            const answer = getCompetitionAnswer(playerKey);
+            const isCorrect = isCompetitionAnswerCorrect(playerKey, answer);
+            const timeUsed = COMPETITION_TIME_LIMIT - player.timeLeft;
+            const points = forcedByTimeout ? 0 : calculateCompetitionPoints(timeUsed, isCorrect);
+            player.score += points;
+            updateCompetitionScoreDisplay(playerKey);
+
+            if (forcedByTimeout) {
+                el.feedback.textContent = 'Time is up. No points awarded for this question.';
+                el.feedback.className = 'mt-4 text-sm text-rose-600 font-semibold';
+            } else if (isCorrect) {
+                el.feedback.textContent = `Correct! You earned ${points} point${points === 1 ? '' : 's'} in ${timeUsed}s.`;
+                el.feedback.className = 'mt-4 text-sm text-emerald-600 font-semibold';
+                celebrate();
+            } else {
+                el.feedback.textContent = competitionMode === 'basic'
+                    ? 'Incorrect matching. One attempt only, so no points for this question.'
+                    : 'Incorrect arrangement. One attempt only, so no points for this sentence.';
+                el.feedback.className = 'mt-4 text-sm text-rose-600 font-semibold';
+            }
+
+            el.submit.disabled = true;
+            el.submit.classList.add('opacity-60', 'cursor-not-allowed');
+            el.next.disabled = false;
+            el.next.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+
+        function startCompetitionTimer(playerKey) {
+            stopCompetitionTimer(playerKey);
+            const player = competitionPlayers[playerKey];
+            const el = competeElements[playerKey];
+            el.timer.textContent = `${player.timeLeft}s`;
+            player.timerId = setInterval(() => {
+                player.timeLeft -= 1;
+                el.timer.textContent = `${Math.max(player.timeLeft, 0)}s`;
+                if (player.timeLeft <= 0) {
+                    finishCompetitionSentence(playerKey, true);
+                }
+            }, 1000);
+        }
+
+        function renderCompetitionBasicQuestion(playerKey, question) {
+            const host = competeElements[playerKey].words;
+            host.innerHTML = '';
+
+            const zonesWrap = document.createElement('div');
+            zonesWrap.className = 'grid grid-cols-1 md:grid-cols-3 gap-3 mb-4';
+
+            question.subcategories.forEach(subcategory => {
+                const card = document.createElement('div');
+                card.className = 'border border-slate-200 rounded-2xl bg-white p-3';
+                card.innerHTML = `<div class="text-sm font-bold text-slate-700 mb-2">${subcategory}</div>`;
+                const zone = document.createElement('div');
+                zone.className = 'competition-basic-dropzone min-h-20 rounded-2xl border-2 border-dashed border-fuchsia-300 bg-fuchsia-50 p-3 flex flex-wrap gap-2';
+                zone.dataset.subcategory = subcategory;
+                card.appendChild(zone);
+                zonesWrap.appendChild(card);
+            });
+
+            const bankCard = document.createElement('div');
+            bankCard.className = 'border border-slate-200 rounded-2xl bg-slate-50 p-4';
+            const bankTitle = document.createElement('div');
+            bankTitle.className = 'text-sm font-bold text-slate-700 mb-3';
+            bankTitle.textContent = 'Jumbled Words';
+            const bank = document.createElement('div');
+            bank.className = 'competition-basic-bank flex flex-wrap gap-2 min-h-20';
+            bankCard.appendChild(bankTitle);
+            bankCard.appendChild(bank);
+
+            host.appendChild(zonesWrap);
+            host.appendChild(bankCard);
+
+            const groupName = `competition-basic-${playerKey}`;
+            new Sortable(bank, { group: groupName, animation: 150 });
+            host.querySelectorAll('.competition-basic-dropzone').forEach(zone => {
+                new Sortable(zone, { group: groupName, animation: 150 });
+            });
+
+            shuffleArray([...(question.words || [])]).forEach(word => {
+                bank.appendChild(createCompetitionWordChip(word));
+            });
+        }
+
+        function loadCompetitionSentence(playerKey) {
+            const player = competitionPlayers[playerKey];
+            const el = competeElements[playerKey];
+            const questions = competitionQuestions;
+
+            if (!questions.length || player.index >= questions.length) {
+                stopCompetitionTimer(playerKey);
+                el.sentence.textContent = 'Competition complete.';
+                el.progress.textContent = `Finished • Total Points: ${player.score}`;
+                el.words.innerHTML = '';
+                el.submit.disabled = true;
+                el.next.disabled = true;
+                showCompetitionWinner(playerKey);
+                return;
+            }
+
+            player.currentSentence = questions[player.index];
+            player.timeLeft = COMPETITION_TIME_LIMIT;
+            player.submitted = false;
+            el.title.textContent = player.name;
+            el.progress.textContent = `${competitionMode === 'basic' ? 'Question' : 'Sentence'} ${player.index + 1} of ${questions.length}`;
+            el.feedback.textContent = 'You have one attempt only. Submit before time runs out.';
+            el.feedback.className = 'mt-4 text-sm text-slate-600';
+            el.words.innerHTML = '';
+
+            if (competitionMode === 'basic') {
+                el.sentence.textContent = `Main Category: ${player.currentSentence.mainCategory} • Match the words to the correct subcategory blocks.`;
+                renderCompetitionBasicQuestion(playerKey, player.currentSentence);
+            } else {
+                el.sentence.textContent = `Arrange: ${player.currentSentence.correct}`;
+                shuffleArray([...(player.currentSentence.words || [])]).forEach(word => {
+                    el.words.appendChild(createCompetitionWordChip(word));
+                });
+
+                if (player.sortable) {
+                    player.sortable.destroy();
+                }
+                player.sortable = new Sortable(el.words, { animation: 150 });
+            }
+
+            el.submit.disabled = false;
+            el.submit.classList.remove('opacity-60', 'cursor-not-allowed');
+            el.next.disabled = true;
+            el.next.classList.add('opacity-60', 'cursor-not-allowed');
+            startCompetitionTimer(playerKey);
+        }
+
+        function getCompetitionSentenceSetForMode() {
+            if (competitionMode === 'basic') {
+                return getStoredBasicQuestions().map(question => ({
+                    mainCategory: question.mainCategory,
+                    words: (question.items || []).map(item => item.word),
+                    expectedMap: (question.subcategories || []).reduce((acc, subcategory) => {
+                        acc[subcategory] = (question.items || [])
+                            .filter(item => item.subcategory === subcategory)
+                            .map(item => item.word);
+                        return acc;
+                    }, {}),
+                    subcategories: question.subcategories || [],
+                    hint: question.hint || ''
+                })).filter(question => question.subcategories.length && question.words.length);
+            }
+
+            return getCompetitionSentenceSet().filter(sentence => sentence.correct && sentence.words && sentence.words.length);
+        }
+
+        function startCompetition() {
+            competitionMode = competeModeSelect?.value || 'sentence';
+            competitionWinnerDeclared = false;
+            competitionWinnerOverlay.classList.add('hidden');
+            competitionQuestions = getCompetitionSentenceSetForMode();
+            competitionPlayers.a = { ...competitionPlayers.a, name: competeStudentANameInput.value.trim() || 'Student A', index: 0, score: 0, timeLeft: COMPETITION_TIME_LIMIT, submitted: false, currentSentence: null };
+            competitionPlayers.b = { ...competitionPlayers.b, name: competeStudentBNameInput.value.trim() || 'Student B', index: 0, score: 0, timeLeft: COMPETITION_TIME_LIMIT, submitted: false, currentSentence: null };
+            updateCompetitionScoreDisplay('a');
+            updateCompetitionScoreDisplay('b');
+            loadCompetitionSentence('a');
+            loadCompetitionSentence('b');
+        }
+
+        function resetCompetition() {
+            competitionWinnerDeclared = false;
+            competitionWinnerOverlay.classList.add('hidden');
+            ['a', 'b'].forEach(playerKey => {
+                stopCompetitionTimer(playerKey);
+                competitionPlayers[playerKey] = { ...competitionPlayers[playerKey], index: 0, score: 0, timeLeft: COMPETITION_TIME_LIMIT, submitted: false, currentSentence: null };
+                const el = competeElements[playerKey];
+                el.title.textContent = playerKey === 'a' ? 'Student A' : 'Student B';
+                el.progress.textContent = competitionMode === 'basic' ? 'Question 1' : 'Sentence 1';
+                el.timer.textContent = '60s';
+                el.score.textContent = 'Points: 0';
+                el.sentence.textContent = 'Press Start Competition to begin.';
+                el.words.innerHTML = '';
+                el.feedback.textContent = '';
+                el.submit.disabled = true;
+                el.next.disabled = true;
+                el.submit.classList.remove('opacity-60', 'cursor-not-allowed');
+                el.next.classList.remove('opacity-60', 'cursor-not-allowed');
+            });
+        }
 
 
-=========================
-✅ WHAT YOU NOW HAVE
-=========================
 
-✔ Excel upload → saved in Firestore
-✔ Basic + other levels separated
-✔ Teacher settings saved
-✔ Trial system enforced
-✔ Sounds added
-✔ Teacher code generator working
-✔ Admin panel auto unlock for teacher
+        document.getElementById('matching-check-btn').addEventListener('click', checkMatchingAnswers);
+        document.getElementById('matching-hint-btn').addEventListener('click', showMatchingHint);
+        document.getElementById('matching-next-btn').addEventListener('click', goToNextMatchingQuestion);
+        document.getElementById('matching-reset-btn').addEventListener('click', resetMatchingGame);
+        document.getElementById('basic-certificate-btn').addEventListener('click', () => previewCertificatePdf('Basic Matching', true));
+        teacherAdminTab.addEventListener('click', () => showTeacherTab('admin'));
+        teacherManageTab.addEventListener('click', () => showTeacherTab('manage'));
+        teacherCompeteTab.addEventListener('click', () => showTeacherTab('compete'));
+        startCompetitionBtn.addEventListener('click', startCompetition);
+        resetCompetitionBtn.addEventListener('click', resetCompetition);
+        closeWinnerOverlayBtn.addEventListener('click', () => competitionWinnerOverlay.classList.add('hidden'));
+        competeElements.a.submit.addEventListener('click', () => finishCompetitionSentence('a', false));
+        competeElements.b.submit.addEventListener('click', () => finishCompetitionSentence('b', false));
+        competeElements.a.next.addEventListener('click', () => {
+            competitionPlayers.a.index += 1;
+            loadCompetitionSentence('a');
+        });
+        competeElements.b.next.addEventListener('click', () => {
+            competitionPlayers.b.index += 1;
+            loadCompetitionSentence('b');
+        });
+        showTeacherTab('admin');
+        resetCompetition();
 
+        document.getElementById('check-btn').addEventListener('click', () => {
+            const answer = getCurrentAnswer();
+            const feedback = document.getElementById('game-feedback');
+            if (answer.toLowerCase() === currentSentence.correct.toLowerCase()) {
+                celebrate();
+                feedback.textContent = 'Excellent! You arranged the sentence correctly.';
+                feedback.className = 'mt-4 text-sm text-emerald-600 font-semibold';
+            } else {
+                feedback.textContent = `Not yet. Try again. Current answer: ${answer}`;
+                feedback.className = 'mt-4 text-sm text-rose-600 font-semibold';
+            }
+        });
 
-=========================
-🚀 NEXT STEP (RECOMMENDED)
-=========================
+        const excelInput = document.getElementById('excelInput');
+        const excelFileName = document.getElementById('excel-file-name');
+        const uploadStatus = document.getElementById('upload-status');
+        const basicExcelInput = document.getElementById('basicExcelInput');
+        const basicExcelFileName = document.getElementById('basic-excel-file-name');
+        const basicUploadStatus = document.getElementById('basic-upload-status');
+        const basicUploadBtn = document.getElementById('basic-upload-btn');
+        const clearAllUploadedDataBtn = document.getElementById('clear-all-uploaded-data-btn');
+        const certificateToggle = document.getElementById('teacher-enable-certificate-toggle');
+        const certificateToggleStatus = document.getElementById('teacher-certificate-toggle-status');
 
-If you want, I can now:
+        function updateCertificateToggleStatus() {
+            const requiresCompletion = certificateToggle.checked;
+            certificateToggleStatus.textContent = requiresCompletion
+                ? 'Certificate printing is locked until the student finishes the whole level once.'
+                : 'Certificate printing is available without full completion.';
+        }
 
-1. Fully connect drag-drop logic to Firestore data
-2. Add leaderboard (top students)
-3. Add timer mode (very powerful in class)
-4. Improve Arabic support for Saudi students
+        certificateToggle.checked = getBasicCertificateUnlockSetting();
+        updateCertificateToggleStatus();
+        certificateToggle.addEventListener('change', () => {
+            setBasicCertificateUnlockSetting(certificateToggle.checked);
+            updateCertificateToggleStatus();
+        });
 
-Just tell me 👍
+        excelInput.addEventListener('change', () => {
+            const file = excelInput.files[0];
+            excelFileName.textContent = file ? `Selected file: ${file.name}` : 'No file selected yet.';
+        });
+
+        basicExcelInput.addEventListener('change', () => {
+            const file = basicExcelInput.files[0];
+            basicExcelFileName.textContent = file ? `Selected file: ${file.name}` : 'No basic-level file selected yet.';
+        });
+
+        document.getElementById('upload-btn').addEventListener('click', () => {
+            const file = excelInput.files[0];
+            if (!file) {
+                uploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                uploadStatus.textContent = 'Please choose an XLSX file first.';
+                return;
+            }
+
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') {
+                uploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                uploadStatus.textContent = 'Please log in as a teacher before uploading sentence data.';
+                return;
+            }
+
+            uploadStatus.className = 'mt-4 text-sm text-slate-600';
+            uploadStatus.textContent = 'Reading Excel file...';
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    const importedSentences = jsonData.map((row, index) => ({
+                        id: row.ID || `sentence-${Date.now()}-${index}`,
+                        level: row.Level || 'Beginner',
+                        scrambled: row.Scrambled_Words || '',
+                        correct: row.Correct_Sentence || '',
+                        words: String(row.Scrambled_Words || row.Correct_Sentence || '').split(/\s*,\s*|\s+/).filter(Boolean),
+                        grammar: row.Grammar_Rule || 'No grammar hint provided',
+                        teacherNote: row.Teacher_Note || row.Note || teacherNoteInput.value.trim() || localStorage.getItem('jumblejumpTeacherNote') || ''
+                    })).filter(row => row.correct && row.words.length);
+
+                    uploadStatus.textContent = 'Saving sentence bank to Firestore...';
+                    await persistTeacherSentencesToFirestore(importedSentences);
+                    setStoredSentences(importedSentences);
+                    renderSentenceManager();
+
+                    const previewRows = importedSentences.slice(0, 3).map((row, index) => `
+                        <div class="border border-slate-200 rounded-xl p-3 bg-white">
+                            <div class="font-semibold text-slate-800">Row ${index + 1}: ${row.correct || 'No sentence found'}</div>
+                            <div class="text-slate-500 text-xs mt-1">Level: ${row.level || '-'} | Scrambled: ${row.scrambled || '-'}</div>
+                            <div class="mt-2 text-sm text-emerald-700"><strong>Grammar Hint:</strong> ${row.grammar || 'No grammar hint provided'}</div>
+                            <div class="mt-1 text-sm text-amber-700"><strong>Teacher Note:</strong> ${row.teacherNote || 'No teacher note provided'}</div>
+                        </div>
+                    `).join('');
+
+                    uploadStatus.className = 'mt-4 text-sm text-emerald-700';
+                    uploadStatus.innerHTML = `
+                        <div class="font-semibold mb-2">Excel uploaded and saved to Firestore successfully.</div>
+                        <div class="mb-3">Rows saved: ${importedSentences.length}</div>
+                        <div class="space-y-2">${previewRows || '<div class="text-slate-500">No preview rows available.</div>'}</div>
+                        <div class="mt-3 text-xs text-slate-500">Supported headers: Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note</div>
+                    `;
+                } catch (error) {
+                    uploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                    uploadStatus.textContent = `Failed to import/save Excel file: ${error.message}`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        clearAllUploadedDataBtn.addEventListener('click', async () => {
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') {
+                basicUploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                basicUploadStatus.textContent = 'Please log in as a teacher before clearing uploaded data.';
+                return;
+            }
+
+            const confirmed = confirm('This will permanently delete all uploaded sentence-builder and Basic Level records for this teacher from the database. Do you want to continue?');
+            if (!confirmed) {
+                basicUploadStatus.className = 'mt-4 text-sm text-slate-600';
+                basicUploadStatus.textContent = 'Database cleanup canceled.';
+                return;
+            }
+
+            try {
+                basicUploadStatus.className = 'mt-4 text-sm text-slate-600';
+                basicUploadStatus.textContent = 'Cleaning uploaded data from Firestore...';
+                await clearAllTeacherUploadedData();
+                uploadStatus.className = 'mt-4 text-sm text-emerald-700 font-medium';
+                uploadStatus.textContent = 'All uploaded sentence-builder records were removed from the database.';
+                basicUploadStatus.className = 'mt-4 text-sm text-emerald-700 font-medium';
+                basicUploadStatus.textContent = 'All uploaded sentence-builder and Basic Level records were removed. You can upload new files now.';
+            } catch (error) {
+                console.error(error);
+                basicUploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                basicUploadStatus.textContent = `Could not clean the database: ${error.message}`;
+            }
+        });
+
+        basicUploadBtn.addEventListener('click', () => {
+            const file = basicExcelInput.files[0];
+            if (!file) {
+                basicUploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                basicUploadStatus.textContent = 'Please choose a Basic Level XLSX file first.';
+                return;
+            }
+
+            if (!auth.currentUser || currentUserProfile?.role !== 'teacher') {
+                basicUploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                basicUploadStatus.textContent = 'Please log in as a teacher before uploading Basic Level data.';
+                return;
+            }
+
+            basicUploadStatus.className = 'mt-4 text-sm text-slate-600';
+            basicUploadStatus.textContent = 'Reading Basic Level Excel file...';
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const targetSheetName = workbook.SheetNames.find(name => /basic|match|parts|pronoun|verb/i.test(name)) || workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[targetSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                    const getCellValue = (row, keys = [], fallback = '') => {
+                        for (const key of keys) {
+                            if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                                return String(row[key]).trim();
+                            }
+                        }
+                        return fallback;
+                    };
+
+                    const groupedBasicQuestions = new Map();
+
+                    jsonData.forEach((row, index) => {
+                        const mainCategory = getCellValue(row, [
+                            'Main_Category', 'Main category', 'Main Category', 'Main_Category ',
+                            'Category', 'MainCategory', 'Title', 'Lesson', 'Topic'
+                        ], 'Parts of Speech');
+
+                        const subcategoryCell = getCellValue(row, [
+                            'Subcategory', 'Sub category', 'Sub_Category', 'Sub Category',
+                            'Subcategory/Title', 'Subcategories', 'Sub Category Title', 'Type', 'Types'
+                        ], '');
+
+                        const rawWordsCell = getCellValue(row, [
+                            'Jumbled_Words', 'Jumbeled words', 'Jumbled words', 'Jumbled Words',
+                            'Words', 'Word', 'Items', 'Word Bank', 'Options', 'Options/Words'
+                        ], '');
+
+                        const hint = getCellValue(row, [
+                            'Hint', 'Rule', 'Grammar_Rule', 'Grammar Rule', 'Grammatical Rule', 'Clue'
+                        ], 'No hint provided');
+
+                        const teacherNote = getCellValue(row, [
+                            'Teacher_Note', 'Teacher note', 'Teacher_Note ', 'Note', 'Notes', 'Teacher Notes'
+                        ], '');
+
+                        const questionId = getCellValue(row, [
+                            'Question_ID', 'Question ID', 'QuestionId', 'QID', 'Q_Id', 'ID', 'Id'
+                        ], `basic-upload-${Date.now()}-${index}`);
+
+                        const explicitWordCategory = getCellValue(row, [
+                            'Word_Category', 'Word Category', 'Correct_Subcategory', 'Correct Subcategory', 'Answer', 'Correct Answer'
+                        ], '');
+
+                        const subcategories = subcategoryCell
+                            .split(/\s*[,|؛;\n]\s*/)
+                            .map(value => value.trim())
+                            .filter(Boolean);
+
+                        const words = rawWordsCell
+                            .split(/\s*[,|؛;\n]\s*/)
+                            .map(value => value.trim())
+                            .filter(Boolean);
+
+                        const normalizedSubcategories = subcategories.length ? subcategories : [explicitWordCategory || 'Uncategorized'];
+                        const items = words.map((word, wordIndex) => ({
+                            word,
+                            subcategory: explicitWordCategory || normalizedSubcategories[wordIndex] || normalizedSubcategories[normalizedSubcategories.length - 1] || 'Uncategorized'
+                        }));
+
+                        if (!groupedBasicQuestions.has(questionId)) {
+                            groupedBasicQuestions.set(questionId, {
+                                id: String(questionId),
+                                mainCategory,
+                                subcategories: [],
+                                items: [],
+                                hint,
+                                teacherNote,
+                                order: index
+                            });
+                        }
+
+                        const question = groupedBasicQuestions.get(questionId);
+                        question.mainCategory = question.mainCategory || mainCategory;
+                        question.hint = question.hint || hint;
+                        question.teacherNote = question.teacherNote || teacherNote;
+                        question.subcategories.push(...subcategories);
+                        question.items.push(...items);
+                    });
+
+                    const importedBasicQuestions = [...groupedBasicQuestions.values()]
+                        .map((question, index) => ({
+                            ...question,
+                            order: index,
+                            subcategories: [...new Set(question.subcategories.filter(Boolean))],
+                            items: question.items
+                                .filter(item => item.word && item.subcategory)
+                                .filter((item, itemIndex, source) => itemIndex === source.findIndex(compareItem => compareItem.word === item.word && compareItem.subcategory === item.subcategory))
+                        }))
+                        .filter(question => question.mainCategory && question.items.length);
+                    basicUploadStatus.textContent = 'Saving Basic Level bank to Firestore...';
+                    await persistTeacherBasicQuestionsToFirestore(importedBasicQuestions);
+                    setStoredBasicQuestions(importedBasicQuestions);
+                    currentMatchingIndex = 0;
+                    renderMatchingQuestion();
+
+                    const totalBasicWords = importedBasicQuestions.reduce((sum, row) => sum + (row.items?.length || 0), 0);
+                    const previewRows = importedBasicQuestions.slice(0, 3).map((row, index) => `
+                        <div class="border border-slate-200 rounded-xl p-3 bg-white">
+                            <div class="font-semibold text-slate-800">Question ${index + 1}: ${row.mainCategory}</div>
+                            <div class="text-slate-500 text-xs mt-1">Subcategories: ${row.subcategories.join(', ')}</div>
+                            <div class="mt-2 text-sm text-fuchsia-700"><strong>Words:</strong> ${row.items.map(item => item.word).join(', ')}</div>
+                            <div class="mt-1 text-sm text-amber-700"><strong>Teacher Note:</strong> ${row.teacherNote || 'No teacher note provided'}</div>
+                        </div>
+                    `).join('');
+
+                    basicUploadStatus.className = 'mt-4 text-sm text-emerald-700';
+                    basicUploadStatus.innerHTML = `
+                        <div class="font-semibold mb-2">Basic Level Excel uploaded and saved to Firestore.</div>
+                        <div class="mb-1">Sheet used: <strong>${targetSheetName}</strong></div>
+                        <div class="mb-3">Rows found: ${jsonData.length} • Grouped questions saved: ${importedBasicQuestions.length} • Total words saved: ${totalBasicWords}</div>
+                        <div class="mb-3 text-xs text-slate-500">Note: rows with the same ID/Question_ID are grouped into one Basic question.</div>
+                        <div class="space-y-2">${previewRows || '<div class="text-slate-500">No preview rows available.</div>'}</div>
+                        <div class="mt-3 text-xs text-slate-500">Supported headers: Main_Category | Subcategory | Jumbled_Words | Hint | Teacher_Note | Question_ID | ID</div>
+                    `;
+                } catch (error) {
+                    basicUploadStatus.className = 'mt-4 text-sm text-rose-600 font-medium';
+                    basicUploadStatus.textContent = `Failed to parse/save Basic Level Excel file: ${error.message}`;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>
