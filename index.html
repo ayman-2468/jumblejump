@@ -3,74 +3,1893 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JumbleJump | Gamified English Learning</title>
+    <title>JumbleJump - Master English Sentence Structure</title>
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
-    <!-- Libraries -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@4/dist/fp.min.js"></script>
-
+    
     <style>
+        /* ========================================
+           GLOBAL STYLES & THEME VARIABLES
+        ======================================== */
         :root {
-            --teal: #0d9488;
-            --orange: #f97316;
-            --white: #ffffff;
+            --color-primary: #14b8a6; /* Teal */
+            --color-secondary: #fb923c; /* Soft Orange */
+            --color-white: #ffffff;
+            --color-light-bg: #f0fdfa;
+            --color-dark: #0f172a;
+            --color-success: #10b981;
+            --color-error: #ef4444;
+            --color-warning: #f59e0b;
+            --font-primary: 'Quicksand', 'Poppins', sans-serif;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0fdfa; }
-        .bg-teal { background-color: var(--teal); }
-        .text-teal { color: var(--teal); }
-        .bg-orange { background-color: var(--orange); }
-        .text-orange { color: var(--orange); }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-primary), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+            min-height: 100vh;
+            color: var(--color-dark);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* ========================================
+           AUTHENTICATION SCREEN
+        ======================================== */
+        #auth-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        
+        .auth-container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            padding: 3rem;
+            max-width: 450px;
+            width: 100%;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .logo h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .logo p {
+            color: #64748b;
+            margin-top: 0.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+        
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary), #0d9488);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(20, 184, 166, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--color-secondary);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #f97316;
+        }
+        
+        .toggle-auth {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #64748b;
+        }
+        
+        .toggle-auth a {
+            color: var(--color-primary);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        
+        .toggle-auth a:hover {
+            text-decoration: underline;
+        }
+        
+        .alert {
+            padding: 0.875rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .alert-error {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            color: #047857;
+            border: 1px solid #6ee7b7;
+        }
+        
+        /* ========================================
+           STUDENT DASHBOARD
+        ======================================== */
+        #student-dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        .dashboard-header {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .dashboard-header h2 {
+            font-size: 2rem;
+            color: var(--color-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .progress-summary {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            flex: 1;
+            min-width: 150px;
+            background: linear-gradient(135deg, var(--color-primary), #0d9488);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+        }
+        
+        .stat-card.orange {
+            background: linear-gradient(135deg, var(--color-secondary), #f97316);
+        }
+        
+        .stat-card h3 {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+        
+        .stat-card p {
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .level-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .level-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        
+        .level-card.locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .level-card.locked::before {
+            content: '🔒';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 2rem;
+        }
+        
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .level-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-dark);
+        }
+        
+        .level-badge {
+            background: var(--color-primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .progress-bar {
+            background: #e2e8f0;
+            height: 12px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        
+        .rewards-display {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .btn-play {
+            margin-top: 1rem;
+            background: var(--color-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-play:hover {
+            background: #0d9488;
+            transform: scale(1.05);
+        }
+        
+        .btn-play:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        
+        .admin-link {
+            display: inline-block;
+            margin-top: 1rem;
+            color: var(--color-primary);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        
+        /* ========================================
+           GAME INTERFACE
+        ======================================== */
+        #game-screen {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        .game-header {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        .game-counter {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-dark);
+        }
+        
+        .btn-back {
+            background: #64748b;
+            color: white;
+            padding: 0.625rem 1.25rem;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
+        }
+        
+        .instruction-box {
+            background: linear-gradient(135deg, #dbeafe, #e0f2fe);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .instruction-box h3 {
+            font-size: 1.5rem;
+            color: var(--color-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .instruction-box p {
+            color: #475569;
+            font-size: 1.125rem;
+        }
+        
+        .word-bank {
+            background: #fef3c7;
+            border: 2px dashed var(--color-secondary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            min-height: 100px;
+            margin-bottom: 2rem;
+        }
+        
+        .word-bank-title {
+            font-weight: 700;
+            color: var(--color-secondary);
+            margin-bottom: 1rem;
+            font-size: 1.125rem;
+        }
+        
+        .words-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            min-height: 60px;
+        }
+        
+        .word-chip {
+            background: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            border: 2px solid var(--color-primary);
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: move;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .word-chip:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+        }
+        
+        .answer-zone {
+            background: #dcfce7;
+            border: 3px solid var(--color-success);
+            border-radius: 16px;
+            padding: 1.5rem;
+            min-height: 120px;
+            margin-bottom: 2rem;
+        }
+        
+        .answer-zone-title {
+            font-weight: 700;
+            color: var(--color-success);
+            margin-bottom: 1rem;
+            font-size: 1.125rem;
+        }
+        
+        .answer-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            min-height: 60px;
+        }
+        
+        .answer-container .word-chip {
+            border-color: var(--color-success);
+        }
+        
+        .game-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .btn-check {
+            background: linear-gradient(135deg, var(--color-success), #059669);
+            color: white;
+            padding: 1rem 3rem;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-check:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-reset {
+            background: var(--color-secondary);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        
+        /* Success Modal */
+        .success-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+        
+        .success-content {
+            background: white;
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            animation: modalPop 0.4s ease-out;
+        }
+        
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .success-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .success-content h2 {
+            font-size: 2.5rem;
+            color: var(--color-success);
+            margin-bottom: 1rem;
+        }
+        
+        .quote-box {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: #78350f;
+        }
+        
+        .grammar-spotlight {
+            background: linear-gradient(135deg, var(--color-light-bg), #e0f2fe);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        
+        .grammar-spotlight h3 {
+            color: var(--color-primary);
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .grammar-spotlight p {
+            color: var(--color-dark);
+            line-height: 1.6;
+        }
+        
+        .btn-continue {
+            background: var(--color-primary);
+            color: white;
+            padding: 1rem 3rem;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        
+        /* ========================================
+           ADMIN DASHBOARD
+        ======================================== */
+        #admin-dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .admin-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+        
+        .admin-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .admin-card h3 {
+            font-size: 1.5rem;
+            color: var(--color-dark);
+            margin-bottom: 1.5rem;
+        }
+        
+        .file-upload-area {
+            border: 2px dashed var(--color-primary);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-upload-area:hover {
+            background: var(--color-light-bg);
+            border-color: #0d9488;
+        }
+        
+        .file-upload-area input {
+            display: none;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .students-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .students-table th,
+        .students-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .students-table th {
+            background: var(--color-light-bg);
+            font-weight: 700;
+            color: var(--color-dark);
+        }
+        
+        .students-table tr:hover {
+            background: #f8fafc;
+        }
+        
+        /* Certificate Modal */
+        .certificate-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+        
+        .certificate-content {
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .certificate-preview {
+            border: 4px solid var(--color-primary);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            margin: 1.5rem 0;
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+        }
+        
+        .cert-logo {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .cert-title {
+            font-size: 2rem;
+            color: var(--color-dark);
+            margin: 1rem 0;
+        }
+        
+        .cert-student-name {
+            font-size: 2.5rem;
+            color: var(--color-primary);
+            font-weight: 800;
+            margin: 1rem 0;
+        }
+        
+        .cert-text {
+            font-size: 1.125rem;
+            color: #64748b;
+            margin: 1rem 0;
+        }
+        
+        .btn-download-cert {
+            background: linear-gradient(135deg, var(--color-primary), #0d9488);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            margin-right: 1rem;
+        }
+        
+        .btn-close-cert {
+            background: #64748b;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        
+        /* ========================================
+           RESPONSIVE DESIGN (Mobile-First)
+        ======================================== */
+        @media (max-width: 768px) {
+            .auth-container {
+                padding: 2rem 1.5rem;
+            }
+            
+            .logo h1 {
+                font-size: 2.5rem;
+            }
+            
+            .levels-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .progress-summary {
+                flex-direction: column;
+            }
+            
+            .game-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .game-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .game-container {
+                padding: 1.5rem;
+            }
+            
+            .word-chip {
+                font-size: 1rem;
+                padding: 0.625rem 1rem;
+            }
+            
+            .game-actions {
+                flex-direction: column;
+            }
+            
+            .btn-check,
+            .btn-reset {
+                width: 100%;
+            }
+            
+            .admin-sections {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .logo h1 {
+                font-size: 2rem;
+            }
+            
+            .success-content {
+                padding: 2rem 1rem;
+            }
+            
+            .success-content h2 {
+                font-size: 1.75rem;
+            }
+            
+            .cert-logo {
+                font-size: 2rem;
+            }
+            
+            .cert-title {
+                font-size: 1.5rem;
+            }
+            
+            .cert-student-name {
+                font-size: 1.75rem;
+            }
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--color-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="min-h-screen">
-
-    <div id="app" class="container mx-auto p-4">
-        <!-- Auth View -->
-        <section id="auth-view" class="max-w-md mx-auto mt-20 p-8 bg-white rounded-2xl shadow-xl">
-            <h1 class="text-3xl font-bold text-teal text-center mb-6">JumbleJump</h1>
-            <input type="email" id="email" placeholder="Email" class="w-full p-3 mb-4 border rounded-lg">
-            <input type="password" id="password" placeholder="Password" class="w-full p-3 mb-4 border rounded-lg">
-            <button id="login-btn" class="w-full bg-teal text-white p-3 rounded-lg font-bold">Login</button>
-        </section>
-
-        <!-- Dashboard View (Hidden by default) -->
-        <section id="dashboard-view" class="hidden">
-            <nav class="flex justify-between items-center p-4 bg-white rounded-xl shadow mb-6">
-                <h2 class="text-xl font-bold text-teal">JumbleJump Dashboard</h2>
-                <button id="logout-btn" class="text-sm text-gray-500">Logout</button>
-            </nav>
-            <div id="game-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Game components will be injected here -->
+<body>
+    
+    <!-- ========================================
+         AUTHENTICATION SCREEN
+    ======================================== -->
+    <div id="auth-screen">
+        <div class="auth-container">
+            <div class="logo">
+                <h1>🎯 JumbleJump</h1>
+                <p>Master English Sentence Structure</p>
             </div>
-        </section>
+            
+            <div id="alert-container"></div>
+            
+            <!-- Login Form -->
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required placeholder="student@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+                <div class="toggle-auth">
+                    Don't have an account? <a id="show-register">Register</a>
+                </div>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="register-form" class="hidden">
+                <div class="form-group">
+                    <label for="register-name">Full Name</label>
+                    <input type="text" id="register-name" required placeholder="Ahmed Ali">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" required placeholder="student@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" required placeholder="••••••••" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+                <div class="toggle-auth">
+                    Already have an account? <a id="show-login">Login</a>
+                </div>
+            </form>
+        </div>
     </div>
-
+    
+    <!-- ========================================
+         STUDENT DASHBOARD
+    ======================================== -->
+    <div id="student-dashboard" class="hidden">
+        <div class="dashboard-header">
+            <h2>Welcome, <span id="student-name">Student</span>! 👋</h2>
+            <p>Track your progress and unlock new levels</p>
+            
+            <div class="progress-summary">
+                <div class="stat-card">
+                    <h3 id="total-stars">0</h3>
+                    <p>⭐ Total Stars</p>
+                </div>
+                <div class="stat-card orange">
+                    <h3 id="total-medals">0</h3>
+                    <p>🏅 Medals Earned</p>
+                </div>
+            </div>
+            
+            <button class="logout-btn" id="logout-btn">Logout</button>
+            <a class="admin-link" id="go-to-admin">Admin Dashboard</a>
+        </div>
+        
+        <div class="levels-grid" id="levels-container">
+            <!-- Levels will be dynamically generated -->
+        </div>
+    </div>
+    
+    <!-- ========================================
+         GAME SCREEN
+    ======================================== -->
+    <div id="game-screen" class="hidden">
+        <div class="game-header">
+            <div class="game-info">
+                <div class="game-counter">
+                    <span id="current-level-name">Basic</span> - 
+                    Question <span id="current-question">1</span> of <span id="total-questions">100</span>
+                </div>
+                <div>
+                    Stars: <span id="game-stars">0</span> ⭐
+                </div>
+            </div>
+            <button class="btn-back" id="back-to-dashboard">Back to Dashboard</button>
+        </div>
+        
+        <div class="game-container">
+            <div class="instruction-box">
+                <h3>📝 Arrange the words to form a correct sentence</h3>
+                <p>Drag the words from the bank to the answer zone</p>
+            </div>
+            
+            <div class="word-bank">
+                <div class="word-bank-title">Word Bank 🎯</div>
+                <div class="words-container" id="word-bank">
+                    <!-- Words will be dynamically added -->
+                </div>
+            </div>
+            
+            <div class="answer-zone">
+                <div class="answer-zone-title">Your Answer ✍️</div>
+                <div class="answer-container" id="answer-zone">
+                    <!-- Answer will be built here -->
+                </div>
+            </div>
+            
+            <div class="game-actions">
+                <button class="btn-check" id="check-answer">Check Answer</button>
+                <button class="btn-reset" id="reset-answer">Reset</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         ADMIN DASHBOARD
+    ======================================== -->
+    <div id="admin-dashboard" class="hidden">
+        <div class="admin-header">
+            <h2>🔐 Admin Dashboard</h2>
+            <p>Manage content and monitor student progress</p>
+            <button class="logout-btn" id="admin-logout-btn">Back to Dashboard</button>
+        </div>
+        
+        <div class="admin-sections">
+            <div class="admin-card">
+                <h3>📊 Upload Excel Data</h3>
+                <div class="file-upload-area" id="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <p><strong>Click to upload</strong> or drag and drop</p>
+                    <p style="font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
+                        Excel file with columns: Level | Correct_Sentence | Grammar_Rule
+                    </p>
+                    <input type="file" id="excel-file" accept=".xlsx,.xls">
+                </div>
+                <div id="upload-status" style="margin-top: 1rem;"></div>
+            </div>
+            
+            <div class="admin-card">
+                <h3>👨‍🎓 Student Progress</h3>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Total Stars</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-table-body">
+                            <!-- Students will be dynamically added -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         SUCCESS MODAL
+    ======================================== -->
+    <div id="success-modal" class="success-modal hidden">
+        <div class="success-content">
+            <div class="success-icon">🎉</div>
+            <h2>Perfect!</h2>
+            
+            <div class="quote-box">
+                <p id="motivational-quote">"Every accomplishment starts with the decision to try!"</p>
+            </div>
+            
+            <div class="grammar-spotlight">
+                <h3>💡 Grammar Spotlight</h3>
+                <p id="grammar-rule">Great job! Keep practicing to master English!</p>
+            </div>
+            
+            <button class="btn-continue" id="continue-btn">Continue</button>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         CERTIFICATE MODAL
+    ======================================== -->
+    <div id="certificate-modal" class="certificate-modal hidden">
+        <div class="certificate-content">
+            <h2>🎓 Congratulations!</h2>
+            <div class="certificate-preview">
+                <div class="cert-logo">JumbleJump</div>
+                <div class="cert-title">Certificate of Achievement</div>
+                <div class="cert-text">This is to certify that</div>
+                <div class="cert-student-name" id="cert-student-name">Student Name</div>
+                <div class="cert-text">has successfully completed the <strong id="cert-level">Basic</strong> level</div>
+                <div class="cert-text">with outstanding performance!</div>
+                <div style="margin-top: 2rem; font-size: 0.875rem; color: #64748b;">
+                    Date: <span id="cert-date"></span>
+                </div>
+            </div>
+            <button class="btn-download-cert" id="download-cert-btn">Download PDF</button>
+            <button class="btn-close-cert" id="close-cert-btn">Close</button>
+        </div>
+    </div>
+    
+    <!-- ========================================
+         JAVASCRIPT CODE
+    ======================================== -->
     <script>
-        // --- Firebase Config & Initialization ---
+        // ========================================
+        // FIREBASE CONFIGURATION
+        // ========================================
+        // IMPORTANT: Replace with your Firebase project credentials
         const firebaseConfig = {
-            // REPLACE WITH YOUR FIREBASE CONFIG
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+  authDomain: "jumblejump-prod.firebaseapp.com",
+  projectId: "jumblejump-prod",
+  storageBucket: "jumblejump-prod.firebasestorage.app",
+  messagingSenderId: "25185167776",
+  appId: "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
+  measurementId: "G-WWWQHS7WD3"
         };
+        
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-
-        // --- Modules Placeholder ---
-        console.log("JumbleJump Initialized");
+        
+        // ========================================
+        // GLOBAL STATE MANAGEMENT
+        // ========================================
+        const AppState = {
+            currentUser: null,
+            currentLevel: null,
+            currentSentenceIndex: 0,
+            levelData: {},
+            userProgress: {},
+            deviceFingerprint: null
+        };
+        
+        // ========================================
+        // DEVICE FINGERPRINTING LOGIC
+        // ========================================
+        async function generateDeviceFingerprint() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#f60';
+            ctx.fillRect(125, 1, 62, 20);
+            ctx.fillStyle = '#069';
+            ctx.fillText('JumbleJump', 2, 15);
+            ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+            ctx.fillText('Fingerprint', 4, 17);
+            
+            const canvasData = canvas.toDataURL();
+            
+            const fingerprint = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                canvasFingerprint: await hashString(canvasData),
+                timestamp: new Date().toISOString()
+            };
+            
+            return await hashString(JSON.stringify(fingerprint));
+        }
+        
+        async function hashString(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        // ========================================
+        // AUTHENTICATION MANAGER
+        // ========================================
+        const AuthManager = {
+            async register(name, email, password) {
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+                    
+                    // Update profile with name
+                    await user.updateProfile({ displayName: name });
+                    
+                    // Generate device fingerprint
+                    const fingerprint = await generateDeviceFingerprint();
+                    
+                    // Create user document in Firestore
+                    await db.collection('users').doc(user.uid).set({
+                        name: name,
+                        email: email,
+                        deviceFingerprint: fingerprint,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Initialize user progress
+                    await db.collection('userProgress').doc(user.uid).set({
+                        Basic: { completed: [], stars: 0, medals: 0 },
+                        Beginner: { completed: [], stars: 0, medals: 0 },
+                        Intermediate: { completed: [], stars: 0, medals: 0 },
+                        Advanced: { completed: [], stars: 0, medals: 0 }
+                    });
+                    
+                    showAlert('Registration successful! Welcome to JumbleJump!', 'success');
+                    return true;
+                } catch (error) {
+                    showAlert(error.message, 'error');
+                    return false;
+                }
+            },
+            
+            async login(email, password) {
+                try {
+                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+                    
+                    // Generate current device fingerprint
+                    const currentFingerprint = await generateDeviceFingerprint();
+                    
+                    // Get stored fingerprint
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    const userData = userDoc.data();
+                    
+                    // Device lock check
+                    if (userData.deviceFingerprint && userData.deviceFingerprint !== currentFingerprint) {
+                        await auth.signOut();
+                        showAlert('Access denied: This account is locked to another device. Please contact support.', 'error');
+                        return false;
+                    }
+                    
+                    // If first login or fingerprint not set, update it
+                    if (!userData.deviceFingerprint) {
+                        await db.collection('users').doc(user.uid).update({
+                            deviceFingerprint: currentFingerprint
+                        });
+                    }
+                    
+                    AppState.currentUser = user;
+                    AppState.deviceFingerprint = currentFingerprint;
+                    showAlert('Login successful!', 'success');
+                    return true;
+                } catch (error) {
+                    showAlert(error.message, 'error');
+                    return false;
+                }
+            },
+            
+            async logout() {
+                try {
+                    await auth.signOut();
+                    AppState.currentUser = null;
+                    showScreen('auth-screen');
+                } catch (error) {
+                    showAlert(error.message, 'error');
+                }
+            }
+        };
+        
+        // ========================================
+        // FIRESTORE DATA MANAGER
+        // ========================================
+        const DataManager = {
+            async loadUserProgress(userId) {
+                try {
+                    const progressDoc = await db.collection('userProgress').doc(userId).get();
+                    if (progressDoc.exists) {
+                        AppState.userProgress = progressDoc.data();
+                    } else {
+                        // Initialize if doesn't exist
+                        AppState.userProgress = {
+                            Basic: { completed: [], stars: 0, medals: 0 },
+                            Beginner: { completed: [], stars: 0, medals: 0 },
+                            Intermediate: { completed: [], stars: 0, medals: 0 },
+                            Advanced: { completed: [], stars: 0, medals: 0 }
+                        };
+                        await db.collection('userProgress').doc(userId).set(AppState.userProgress);
+                    }
+                } catch (error) {
+                    console.error('Error loading progress:', error);
+                }
+            },
+            
+            async updateProgress(level, sentenceIndex) {
+                try {
+                    const userId = AppState.currentUser.uid;
+                    
+                    if (!AppState.userProgress[level].completed.includes(sentenceIndex)) {
+                        AppState.userProgress[level].completed.push(sentenceIndex);
+                        AppState.userProgress[level].stars += 1;
+                        
+                        // Check for medal (every 10 sentences)
+                        if (AppState.userProgress[level].completed.length % 10 === 0) {
+                            AppState.userProgress[level].medals += 1;
+                        }
+                        
+                        await db.collection('userProgress').doc(userId).update(AppState.userProgress);
+                    }
+                } catch (error) {
+                    console.error('Error updating progress:', error);
+                }
+            },
+            
+            async loadLevelData(level) {
+                try {
+                    const levelDoc = await db.collection('sentences').doc(level).get();
+                    if (levelDoc.exists) {
+                        AppState.levelData[level] = levelDoc.data().sentences || [];
+                    } else {
+                        AppState.levelData[level] = [];
+                    }
+                    return AppState.levelData[level];
+                } catch (error) {
+                    console.error('Error loading level data:', error);
+                    return [];
+                }
+            },
+            
+            async uploadExcelData(excelData) {
+                try {
+                    const levels = { Basic: [], Beginner: [], Intermediate: [], Advanced: [] };
+                    
+                    excelData.forEach(row => {
+                        const level = row.Level;
+                        if (levels[level]) {
+                            levels[level].push({
+                                correctSentence: row.Correct_Sentence,
+                                grammarRule: row.Grammar_Rule
+                            });
+                        }
+                    });
+                    
+                    // Upload each level to Firestore
+                    for (const [level, sentences] of Object.entries(levels)) {
+                        if (sentences.length > 0) {
+                            await db.collection('sentences').doc(level).set({ sentences });
+                        }
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Error uploading data:', error);
+                    return false;
+                }
+            },
+            
+            async getAllStudents() {
+                try {
+                    const usersSnapshot = await db.collection('users').get();
+                    const progressSnapshot = await db.collection('userProgress').get();
+                    
+                    const progressMap = {};
+                    progressSnapshot.forEach(doc => {
+                        progressMap[doc.id] = doc.data();
+                    });
+                    
+                    const students = [];
+                    usersSnapshot.forEach(doc => {
+                        const userData = doc.data();
+                        const progress = progressMap[doc.id] || {};
+                        
+                        let totalStars = 0;
+                        Object.values(progress).forEach(level => {
+                            totalStars += level.stars || 0;
+                        });
+                        
+                        students.push({
+                            id: doc.id,
+                            name: userData.name,
+                            email: userData.email,
+                            totalStars: totalStars
+                        });
+                    });
+                    
+                    return students;
+                } catch (error) {
+                    console.error('Error loading students:', error);
+                    return [];
+                }
+            }
+        };
+        
+        // ========================================
+        // GAME ENGINE
+        // ========================================
+        const GameEngine = {
+            currentSentence: null,
+            
+            scrambleWords(sentence) {
+                const words = sentence.split(' ');
+                const scrambled = [...words];
+                for (let i = scrambled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [scrambled[i], scrambled[j]] = [scrambled[j], scrambled[i]];
+                }
+                return scrambled;
+            },
+            
+            loadSentence(sentence) {
+                this.currentSentence = sentence;
+                const scrambled = this.scrambleWords(sentence.correctSentence);
+                
+                const wordBank = document.getElementById('word-bank');
+                const answerZone = document.getElementById('answer-zone');
+                
+                wordBank.innerHTML = '';
+                answerZone.innerHTML = '';
+                
+                scrambled.forEach((word, index) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'word-chip';
+                    chip.textContent = word;
+                    chip.dataset.word = word;
+                    wordBank.appendChild(chip);
+                });
+                
+                // Initialize Sortable for drag and drop
+                new Sortable(wordBank, {
+                    group: 'words',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost'
+                });
+                
+                new Sortable(answerZone, {
+                    group: 'words',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost'
+                });
+            },
+            
+            checkAnswer() {
+                const answerZone = document.getElementById('answer-zone');
+                const words = Array.from(answerZone.children).map(chip => chip.dataset.word);
+                const userAnswer = words.join(' ');
+                const correctAnswer = this.currentSentence.correctSentence;
+                
+                if (userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()) {
+                    this.onSuccess();
+                    return true;
+                } else {
+                    showAlert('Not quite right. Try again!', 'error');
+                    return false;
+                }
+            },
+            
+            onSuccess() {
+                // Trigger confetti
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+                
+                // Update progress
+                DataManager.updateProgress(AppState.currentLevel, AppState.currentSentenceIndex);
+                
+                // Show success modal
+                this.showSuccessModal();
+            },
+            
+            showSuccessModal() {
+                const quotes = [
+                    "Every accomplishment starts with the decision to try!",
+                    "Success is the sum of small efforts repeated day in and day out!",
+                    "Believe you can and you're halfway there!",
+                    "The expert in anything was once a beginner!",
+                    "Learning is a treasure that will follow you everywhere!",
+                    "Education is the most powerful weapon you can use to change the world!"
+                ];
+                
+                const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+                
+                document.getElementById('motivational-quote').textContent = randomQuote;
+                document.getElementById('grammar-rule').textContent = this.currentSentence.grammarRule || 'Great job! Keep practicing to master English!';
+                
+                document.getElementById('success-modal').classList.remove('hidden');
+            },
+            
+            resetAnswer() {
+                const wordBank = document.getElementById('word-bank');
+                const answerZone = document.getElementById('answer-zone');
+                
+                // Move all words back to word bank
+                Array.from(answerZone.children).forEach(chip => {
+                    wordBank.appendChild(chip);
+                });
+            }
+        };
+        
+        // ========================================
+        // REWARD SYSTEM & CERTIFICATE
+        // ========================================
+        const RewardSystem = {
+            showCertificate(level) {
+                const user = AppState.currentUser;
+                document.getElementById('cert-student-name').textContent = user.displayName || 'Student';
+                document.getElementById('cert-level').textContent = level;
+                document.getElementById('cert-date').textContent = new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                document.getElementById('certificate-modal').classList.remove('hidden');
+            },
+            
+            downloadCertificate() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const user = AppState.currentUser;
+                const level = document.getElementById('cert-level').textContent;
+                
+                // Set background color
+                doc.setFillColor(255, 251, 235);
+                doc.rect(0, 0, 297, 210, 'F');
+                
+                // Border
+                doc.setLineWidth(2);
+                doc.setDrawColor(20, 184, 166);
+                doc.rect(10, 10, 277, 190);
+                
+                // Logo
+                doc.setFontSize(40);
+                doc.setTextColor(20, 184, 166);
+                doc.text('JumbleJump', 148.5, 40, { align: 'center' });
+                
+                // Title
+                doc.setFontSize(30);
+                doc.setTextColor(15, 23, 42);
+                doc.text('Certificate of Achievement', 148.5, 60, { align: 'center' });
+                
+                // Body
+                doc.setFontSize(16);
+                doc.setTextColor(100, 116, 139);
+                doc.text('This is to certify that', 148.5, 80, { align: 'center' });
+                
+                // Student name
+                doc.setFontSize(28);
+                doc.setTextColor(20, 184, 166);
+                doc.text(user.displayName || 'Student', 148.5, 100, { align: 'center' });
+                
+                // Completion text
+                doc.setFontSize(16);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`has successfully completed the ${level} level`, 148.5, 120, { align: 'center' });
+                doc.text('with outstanding performance!', 148.5, 130, { align: 'center' });
+                
+                // Date
+                doc.setFontSize(12);
+                const date = new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                doc.text(`Date: ${date}`, 148.5, 170, { align: 'center' });
+                
+                // Save
+                doc.save(`JumbleJump_Certificate_${level}.pdf`);
+            }
+        };
+        
+        // ========================================
+        // UI CONTROLLER
+        // ========================================
+        const UIController = {
+            init() {
+                this.setupEventListeners();
+                this.checkAuthState();
+            },
+            
+            setupEventListeners() {
+                // Auth toggle
+                document.getElementById('show-register').addEventListener('click', () => {
+                    document.getElementById('login-form').classList.add('hidden');
+                    document.getElementById('register-form').classList.remove('hidden');
+                });
+                
+                document.getElementById('show-login').addEventListener('click', () => {
+                    document.getElementById('register-form').classList.add('hidden');
+                    document.getElementById('login-form').classList.remove('hidden');
+                });
+                
+                // Forms
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+                    const success = await AuthManager.login(email, password);
+                    if (success) {
+                        this.loadDashboard();
+                    }
+                });
+                
+                document.getElementById('register-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('register-name').value;
+                    const email = document.getElementById('register-email').value;
+                    const password = document.getElementById('register-password').value;
+                    const success = await AuthManager.register(name, email, password);
+                    if (success) {
+                        this.loadDashboard();
+                    }
+                });
+                
+                // Logout
+                document.getElementById('logout-btn').addEventListener('click', () => {
+                    AuthManager.logout();
+                });
+                
+                document.getElementById('admin-logout-btn').addEventListener('click', () => {
+                    showScreen('student-dashboard');
+                });
+                
+                // Admin link
+                document.getElementById('go-to-admin').addEventListener('click', () => {
+                    this.loadAdminDashboard();
+                });
+                
+                // Game controls
+                document.getElementById('back-to-dashboard').addEventListener('click', () => {
+                    showScreen('student-dashboard');
+                    this.loadDashboard();
+                });
+                
+                document.getElementById('check-answer').addEventListener('click', () => {
+                    GameEngine.checkAnswer();
+                });
+                
+                document.getElementById('reset-answer').addEventListener('click', () => {
+                    GameEngine.resetAnswer();
+                });
+                
+                document.getElementById('continue-btn').addEventListener('click', () => {
+                    document.getElementById('success-modal').classList.add('hidden');
+                    this.nextSentence();
+                });
+                
+                // Certificate
+                document.getElementById('download-cert-btn').addEventListener('click', () => {
+                    RewardSystem.downloadCertificate();
+                });
+                
+                document.getElementById('close-cert-btn').addEventListener('click', () => {
+                    document.getElementById('certificate-modal').classList.add('hidden');
+                    showScreen('student-dashboard');
+                    this.loadDashboard();
+                });
+                
+                // Excel upload
+                document.getElementById('upload-area').addEventListener('click', () => {
+                    document.getElementById('excel-file').click();
+                });
+                
+                document.getElementById('excel-file').addEventListener('change', (e) => {
+                    this.handleExcelUpload(e.target.files[0]);
+                });
+            },
+            
+            checkAuthState() {
+                auth.onAuthStateChanged(async (user) => {
+                    if (user) {
+                        AppState.currentUser = user;
+                        await this.loadDashboard();
+                    } else {
+                        showScreen('auth-screen');
+                    }
+                });
+            },
+            
+            async loadDashboard() {
+                showScreen('student-dashboard');
+                
+                const user = AppState.currentUser;
+                document.getElementById('student-name').textContent = user.displayName || 'Student';
+                
+                // Load progress
+                await DataManager.loadUserProgress(user.uid);
+                
+                // Update stats
+                let totalStars = 0;
+                let totalMedals = 0;
+                Object.values(AppState.userProgress).forEach(level => {
+                    totalStars += level.stars || 0;
+                    totalMedals += level.medals || 0;
+                });
+                
+                document.getElementById('total-stars').textContent = totalStars;
+                document.getElementById('total-medals').textContent = totalMedals;
+                
+                // Render levels
+                this.renderLevels();
+            },
+            
+            renderLevels() {
+                const levels = ['Basic', 'Beginner', 'Intermediate', 'Advanced'];
+                const container = document.getElementById('levels-container');
+                container.innerHTML = '';
+                
+                levels.forEach((level, index) => {
+                    const progress = AppState.userProgress[level];
+                    const completed = progress.completed.length;
+                    const percentage = (completed / 100) * 100;
+                    
+                    // Check if locked
+                    const isLocked = index > 0 && AppState.userProgress[levels[index - 1]].completed.length < 100;
+                    
+                    const card = document.createElement('div');
+                    card.className = `level-card ${isLocked ? 'locked' : ''}`;
+                    
+                    card.innerHTML = `
+                        <div class="level-header">
+                            <div class="level-name">${level}</div>
+                            <div class="level-badge">${completed}/100</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="rewards-display">
+                            <span>⭐ ${progress.stars}</span>
+                            <span>🏅 ${progress.medals}</span>
+                        </div>
+                        <button class="btn-play" ${isLocked ? 'disabled' : ''} data-level="${level}">
+                            ${isLocked ? '🔒 Locked' : (completed === 100 ? '✅ Completed' : '▶️ Play')}
+                        </button>
+                    `;
+                    
+                    if (!isLocked) {
+                        card.querySelector('.btn-play').addEventListener('click', () => {
+                            this.startLevel(level);
+                        });
+                    }
+                    
+                    container.appendChild(card);
+                });
+            },
+            
+            async startLevel(level) {
+                AppState.currentLevel = level;
+                
+                // Load level data
+                const sentences = await DataManager.loadLevelData(level);
+                
+                if (sentences.length === 0) {
+                    showAlert('No sentences available for this level. Please contact admin.', 'error');
+                    return;
+                }
+                
+                // Find next uncompleted sentence
+                const completed = AppState.userProgress[level].completed;
+                let nextIndex = 0;
+                for (let i = 0; i < sentences.length; i++) {
+                    if (!completed.includes(i)) {
+                        nextIndex = i;
+                        break;
+                    }
+                }
+                
+                // Check if level is complete
+                if (completed.length === sentences.length) {
+                    // Show certificate
+                    RewardSystem.showCertificate(level);
+                    return;
+                }
+                
+                AppState.currentSentenceIndex = nextIndex;
+                
+                showScreen('game-screen');
+                this.loadGameScreen(level, nextIndex, sentences);
+            },
+            
+            loadGameScreen(level, index, sentences) {
+                document.getElementById('current-level-name').textContent = level;
+                document.getElementById('current-question').textContent = index + 1;
+                document.getElementById('total-questions').textContent = sentences.length;
+                document.getElementById('game-stars').textContent = AppState.userProgress[level].stars;
+                
+                const sentence = sentences[index];
+                GameEngine.loadSentence(sentence);
+            },
+            
+            nextSentence() {
+                const sentences = AppState.levelData[AppState.currentLevel];
+                const completed = AppState.userProgress[AppState.currentLevel].completed;
+                
+                // Find next uncompleted sentence
+                let nextIndex = -1;
+                for (let i = 0; i < sentences.length; i++) {
+                    if (!completed.includes(i)) {
+                        nextIndex = i;
+                        break;
+                    }
+                }
+                
+                if (nextIndex === -1) {
+                    // Level complete - show certificate
+                    RewardSystem.showCertificate(AppState.currentLevel);
+                } else {
+                    AppState.currentSentenceIndex = nextIndex;
+                    this.loadGameScreen(AppState.currentLevel, nextIndex, sentences);
+                }
+            },
+            
+            async loadAdminDashboard() {
+                showScreen('admin-dashboard');
+                
+                // Load all students
+                const students = await DataManager.getAllStudents();
+                const tbody = document.getElementById('students-table-body');
+                tbody.innerHTML = '';
+                
+                students.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${student.name}</td>
+                        <td>${student.email}</td>
+                        <td>${student.totalStars} ⭐</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            },
+            
+            async handleExcelUpload(file) {
+                if (!file) return;
+                
+                const statusDiv = document.getElementById('upload-status');
+                statusDiv.innerHTML = '<div class="spinner"></div>';
+                
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                        
+                        const success = await DataManager.uploadExcelData(jsonData);
+                        
+                        if (success) {
+                            statusDiv.innerHTML = '<div class="alert alert-success">✅ Data uploaded successfully!</div>';
+                        } else {
+                            statusDiv.innerHTML = '<div class="alert alert-error">❌ Upload failed. Please try again.</div>';
+                        }
+                        
+                        setTimeout(() => {
+                            statusDiv.innerHTML = '';
+                        }, 3000);
+                    } catch (error) {
+                        console.error('Error parsing Excel:', error);
+                        statusDiv.innerHTML = '<div class="alert alert-error">❌ Error parsing file. Please check format.</div>';
+                    }
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+        };
+        
+        // ========================================
+        // UTILITY FUNCTIONS
+        // ========================================
+        function showScreen(screenId) {
+            const screens = ['auth-screen', 'student-dashboard', 'game-screen', 'admin-dashboard'];
+            screens.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+        
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 4000);
+        }
+        
+        // ========================================
+        // INITIALIZE APP
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            UIController.init();
+        });
     </script>
 </body>
 </html>
