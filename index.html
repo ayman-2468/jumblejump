@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0d9488">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="JumbleJump">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="apple-touch-icon" href="icon-192.svg">
     <title>JumbleJump | Joyful English Sentence Builder</title>
     
     <!-- External Libraries & CDN -->
@@ -29,14 +24,14 @@
     <!-- jsPDF for Generating Custom Certificates -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Firebase (Auth + Firestore) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
     <script>
-        // Paste your Firebase project credentials here once, then keep app logic unchanged.
+        // Paste your Firebase project credentials here.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-           apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+            apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -67,11 +62,20 @@
             z-index: 1000;
             position: fixed;
             inset: 0;
-            pointer-events: auto;
+            pointer-events: auto !important;
         }
         #auth-modal .auth-dialog {
             position: relative;
-            pointer-events: auto;
+            z-index: 1001;
+            pointer-events: auto !important;
+        }
+        #auth-modal button,
+        #auth-modal input,
+        #auth-modal select,
+        #auth-modal textarea,
+        #auth-modal .auth-dialog,
+        #auth-modal [role="button"] {
+            pointer-events: auto !important;
         }
         .drag-card {
             cursor: grab;
@@ -124,7 +128,7 @@
                     </button>
                 </div>
 
-                <!-- Firebase Connection Status + User Stats -->
+                <!-- Backend Connection Status + User Stats -->
                 <div class="flex items-center gap-2 bg-teal-800/40 px-3 py-2 rounded-2xl border border-teal-400/20">
                     <div id="firebase-status-badge" class="text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-500/20 text-rose-200 border border-rose-300/30">
                         Firebase: Not Connected
@@ -793,7 +797,7 @@
                         <div class="flex justify-between items-center mb-4">
                             <div>
                                 <h4 class="font-bold text-slate-800 text-lg">Student Progress</h4>
-                                <p class="text-xs text-slate-500">Monitor active students and review real-time stars from Firestore progress data.</p>
+                                <p class="text-xs text-slate-500">Monitor active students and review real-time stars from Firebase progress data.</p>
                             </div>
                             <!-- Mock generator for list testing -->
                             <button onclick="addMockStudent()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg font-semibold transition">
@@ -823,7 +827,7 @@
                     <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
                         <div class="flex justify-between items-center mb-4">
                             <div>
-                                <h4 class="font-bold text-slate-800 text-lg">Sentences Collection (Firestore View)</h4>
+                                <h4 class="font-bold text-slate-800 text-lg">Sentences Collection (Appwrite View)</h4>
                                 <p class="text-xs text-slate-500">Currently available sentence/level database nodes</p>
                             </div>
                         </div>
@@ -1557,6 +1561,17 @@
             }
         }
 
+        function disableLegacyServiceWorkers() {
+            if (!("serviceWorker" in navigator)) return;
+            navigator.serviceWorker.getRegistrations()
+                .then(registrations => Promise.all(registrations.map(reg => reg.unregister())))
+                .catch(() => {});
+            if (!("caches" in window)) return;
+            caches.keys()
+                .then(keys => Promise.all(keys.filter(key => key.startsWith("jumblejump-")).map(key => caches.delete(key))))
+                .catch(() => {});
+        }
+
         function setFirebaseBadge(isConnected) {
             const badge = document.getElementById("firebase-status-badge");
             if (!badge) return;
@@ -1842,7 +1857,7 @@
                             remoteMasteryLoaded = true;
                         }
                     } catch (error) {
-                        console.warn("Level target load from Firestore failed:", error.message);
+                        console.warn("Level target load from Firebase failed:", error.message);
                     }
 
                     // Fallback for environments where teacherSettings is blocked by rules.
@@ -1909,7 +1924,7 @@
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 } catch (error) {
-                    console.warn("Could not store level targets in Firestore:", error.message);
+                    console.warn("Could not store level targets in Firebase:", error.message);
                 }
 
                 try {
@@ -2519,7 +2534,7 @@
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 } catch (error) {
-                    alert(`Could not save code to Firestore: ${error.message}`);
+                    alert(`Could not save code to Firebase: ${error.message}`);
                     return;
                 }
             }
@@ -2560,7 +2575,7 @@
                     savedRemote = true;
                 } catch (error) {
                     if (!savedRemote) {
-                        alert(`Could not save URL to Firestore: ${error.message}`);
+                        alert(`Could not save URL to Firebase: ${error.message}`);
                         return;
                     }
                 }
@@ -2630,16 +2645,347 @@
             alert("Student scores synced to Google Sheet.");
         }
 
+        const appwriteState = {
+            client: null,
+            account: null,
+            databases: null,
+            databaseId: "",
+            collections: {}
+        };
+
+        function appwriteCollectionId(name) {
+            const exact = appwriteState.collections?.[name] || "";
+            if (exact) return exact;
+            // teacherSettings is optional; fallback writes already mirror into users.
+            if (name === "teacherSettings") {
+                return appwriteState.collections?.users || "";
+            }
+            return "";
+        }
+
+        async function appwriteSafeCall(fnObj, fnPositional, ...args) {
+            try {
+                return await fnObj();
+            } catch (_) {
+                return await fnPositional(...args);
+            }
+        }
+
+        function normalizeAppwriteError(error) {
+            if (!error) return new Error("Unknown Appwrite error");
+            const message = String(error.message || error.response?.message || "Unknown Appwrite error");
+            const code = String(error.code || error.type || "appwrite_error");
+            const wrapped = new Error(message);
+            wrapped.code = code;
+            return wrapped;
+        }
+
+        function encodeAppwriteValue(value) {
+            if (value === undefined) return null;
+            if (value === null) return null;
+            if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+                return JSON.stringify(value);
+            }
+            return value;
+        }
+
+        function decodeAppwriteValue(value) {
+            if (typeof value !== "string") return value;
+            const trimmed = value.trim();
+            if (!trimmed) return value;
+            if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+                try {
+                    return JSON.parse(trimmed);
+                } catch (_) {
+                    return value;
+                }
+            }
+            return value;
+        }
+
+        function encodeAppwritePayload(data) {
+            const encoded = {};
+            Object.keys(data || {}).forEach((key) => {
+                encoded[key] = encodeAppwriteValue(data[key]);
+            });
+            return encoded;
+        }
+
+        function buildDocSnap(docRef, rawDoc) {
+            if (!rawDoc) {
+                return { exists: false, id: docRef.id, ref: docRef, data: () => ({}) };
+            }
+            return {
+                exists: true,
+                id: rawDoc.$id,
+                ref: docRef,
+                data: () => {
+                    const clean = { ...rawDoc };
+                    delete clean.$id;
+                    delete clean.$collectionId;
+                    delete clean.$databaseId;
+                    delete clean.$createdAt;
+                    delete clean.$updatedAt;
+                    delete clean.$permissions;
+                    Object.keys(clean).forEach((key) => {
+                        clean[key] = decodeAppwriteValue(clean[key]);
+                    });
+                    return clean;
+                }
+            };
+        }
+
+        class AppwriteDocRef {
+            constructor(collectionName, id) {
+                this.collectionName = collectionName;
+                this.collectionId = appwriteCollectionId(collectionName);
+                this.id = id || Appwrite.ID.unique();
+            }
+
+            async get() {
+                try {
+                    const raw = await appwriteSafeCall(
+                        () => appwriteState.databases.getDocument({
+                            databaseId: appwriteState.databaseId,
+                            collectionId: this.collectionId,
+                            documentId: this.id
+                        }),
+                        () => appwriteState.databases.getDocument(
+                            appwriteState.databaseId,
+                            this.collectionId,
+                            this.id
+                        )
+                    );
+                    return buildDocSnap(this, raw);
+                } catch (error) {
+                    const normalized = normalizeAppwriteError(error);
+                    if (String(normalized.code).includes("404") || String(normalized.message).toLowerCase().includes("not found")) {
+                        return buildDocSnap(this, null);
+                    }
+                    throw normalized;
+                }
+            }
+
+            async set(data, options = {}) {
+                const payload = encodeAppwritePayload(data || {});
+                try {
+                    if (options.merge) {
+                        await appwriteSafeCall(
+                            () => appwriteState.databases.updateDocument({
+                                databaseId: appwriteState.databaseId,
+                                collectionId: this.collectionId,
+                                documentId: this.id,
+                                data: payload
+                            }),
+                            () => appwriteState.databases.updateDocument(
+                                appwriteState.databaseId,
+                                this.collectionId,
+                                this.id,
+                                payload
+                            )
+                        );
+                    } else {
+                        await appwriteSafeCall(
+                            () => appwriteState.databases.createDocument({
+                                databaseId: appwriteState.databaseId,
+                                collectionId: this.collectionId,
+                                documentId: this.id,
+                                data: payload
+                            }),
+                            () => appwriteState.databases.createDocument(
+                                appwriteState.databaseId,
+                                this.collectionId,
+                                this.id,
+                                payload
+                            )
+                        );
+                    }
+                } catch (error) {
+                    const normalized = normalizeAppwriteError(error);
+                    if (options.merge && (String(normalized.code).includes("404") || String(normalized.message).toLowerCase().includes("not found"))) {
+                        await appwriteSafeCall(
+                            () => appwriteState.databases.createDocument({
+                                databaseId: appwriteState.databaseId,
+                                collectionId: this.collectionId,
+                                documentId: this.id,
+                                data: payload
+                            }),
+                            () => appwriteState.databases.createDocument(
+                                appwriteState.databaseId,
+                                this.collectionId,
+                                this.id,
+                                payload
+                            )
+                        );
+                    } else {
+                        throw normalized;
+                    }
+                }
+                return { id: this.id };
+            }
+
+            async delete() {
+                await appwriteSafeCall(
+                    () => appwriteState.databases.deleteDocument({
+                        databaseId: appwriteState.databaseId,
+                        collectionId: this.collectionId,
+                        documentId: this.id
+                    }),
+                    () => appwriteState.databases.deleteDocument(
+                        appwriteState.databaseId,
+                        this.collectionId,
+                        this.id
+                    )
+                );
+            }
+        }
+
+        class AppwriteCollectionRef {
+            constructor(name, filters = []) {
+                this.name = name;
+                this.collectionId = appwriteCollectionId(name);
+                this.filters = filters;
+            }
+
+            where(field, op, value) {
+                if (op !== "==") {
+                    throw new Error("Only equality where() is supported in current Appwrite adapter.");
+                }
+                return new AppwriteCollectionRef(this.name, [...this.filters, { field, value }]);
+            }
+
+            doc(id) {
+                return new AppwriteDocRef(this.name, id || Appwrite.ID.unique());
+            }
+
+            async add(data) {
+                const ref = this.doc();
+                await ref.set(data || {}, { merge: false });
+                return { id: ref.id };
+            }
+
+            async get() {
+                const queries = this.filters.map((filter) => Appwrite.Query.equal(filter.field, [filter.value]));
+                const result = await appwriteSafeCall(
+                    () => appwriteState.databases.listDocuments({
+                        databaseId: appwriteState.databaseId,
+                        collectionId: this.collectionId,
+                        queries
+                    }),
+                    () => appwriteState.databases.listDocuments(
+                        appwriteState.databaseId,
+                        this.collectionId,
+                        queries
+                    )
+                );
+                const docs = (result?.documents || []).map((rawDoc) => {
+                    const ref = new AppwriteDocRef(this.name, rawDoc.$id);
+                    return buildDocSnap(ref, rawDoc);
+                });
+                return { docs };
+            }
+        }
+
+        class AppwriteBatch {
+            constructor() {
+                this.ops = [];
+            }
+
+            set(docRef, data, options = {}) {
+                this.ops.push(() => docRef.set(data, options));
+            }
+
+            delete(docRef) {
+                this.ops.push(() => docRef.delete());
+            }
+
+            async commit() {
+                for (const op of this.ops) {
+                    await op();
+                }
+            }
+        }
+
+        class AppwriteDbAdapter {
+            collection(name) {
+                return new AppwriteCollectionRef(name);
+            }
+
+            batch() {
+                return new AppwriteBatch();
+            }
+        }
+
+        class AppwriteAuthAdapter {
+            constructor(account) {
+                this.account = account;
+                this.currentUser = null;
+            }
+
+            async setPersistence() {
+                return Promise.resolve();
+            }
+
+            async signOut() {
+                try {
+                    await appwriteSafeCall(
+                        () => this.account.deleteSession({ sessionId: "current" }),
+                        () => this.account.deleteSession("current")
+                    );
+                } catch (_) {
+                    // Session may already be cleared.
+                }
+                this.currentUser = null;
+            }
+
+            async signInWithEmailAndPassword(email, password) {
+                await appwriteSafeCall(
+                    () => this.account.createEmailPasswordSession({ email, password }),
+                    () => this.account.createEmailPasswordSession(email, password)
+                );
+                const user = await appwriteSafeCall(
+                    () => this.account.get(),
+                    () => this.account.get()
+                );
+                const authUser = {
+                    uid: user.$id,
+                    email: user.email || email,
+                    displayName: user.name || ""
+                };
+                this.currentUser = authUser;
+                return { user: authUser };
+            }
+
+            async createUserWithEmailAndPassword(email, password) {
+                const displayName = document.getElementById("signup-name")?.value?.trim() || email.split("@")[0];
+                await appwriteSafeCall(
+                    () => this.account.create({ userId: Appwrite.ID.unique(), email, password, name: displayName }),
+                    () => this.account.create(Appwrite.ID.unique(), email, password, displayName)
+                );
+                return this.signInWithEmailAndPassword(email, password);
+            }
+
+            async sendPasswordResetEmail(email) {
+                const redirectUrl = `${window.location.origin}${window.location.pathname}`;
+                await appwriteSafeCall(
+                    () => this.account.createRecovery({ email, url: redirectUrl }),
+                    () => this.account.createRecovery(email, redirectUrl)
+                );
+            }
+        }
+
         function initFirebase() {
-            const firebaseConfig = window.JJ_FIREBASE_CONFIG || {};
-            if (!firebaseConfig.apiKey) {
-                setAuthStatus("Firebase config missing. Add window.JJ_FIREBASE_CONFIG to enable real signup/login.");
+            const cfg = window.JJ_FIREBASE_CONFIG || {};
+            if (!cfg.apiKey || !cfg.authDomain || !cfg.projectId || !cfg.appId) {
+                setAuthStatus("Firebase config missing. Add JJ_FIREBASE_CONFIG in index.html.", true);
                 setFirebaseBadge(false);
                 return;
             }
 
             try {
-                firebase.initializeApp(firebaseConfig);
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(cfg);
+                }
                 auth = firebase.auth();
                 db = firebase.firestore();
                 firebaseReady = true;
@@ -2649,7 +2995,7 @@
                 auth.setPersistence(firebase.auth.Auth.Persistence.NONE)
                     .then(() => auth.signOut())
                     .catch(() => {
-                        // If persistence setup fails, still keep app usable.
+                        // Keep app usable if startup signout fails.
                     });
             } catch (error) {
                 firebaseReady = false;
@@ -2819,7 +3165,7 @@
                 await completeLogin(cred.user.uid, cred.user.email || email);
             } catch (error) {
                 if (isFirestoreAccessError(error)) {
-                    setAuthStatus("Login could not load profile from Firestore (permissions/quota). Check Firestore usage and rules.", true);
+                    setAuthStatus("Login could not load profile from Firebase (permissions/quota). Check Firestore rules and quota.", true);
                 } else {
                     setAuthStatus(error.message, true);
                 }
@@ -2833,10 +3179,13 @@
             const code = String(error?.code || "").toLowerCase();
             return (
                 message.includes("missing or insufficient permissions") ||
+                message.includes("not authorized") ||
+                message.includes("unauthorized") ||
                 message.includes("quota") ||
                 message.includes("resource exhausted") ||
                 message.includes("too many requests") ||
                 code.includes("permission-denied") ||
+                code.includes("general_unauthorized_scope") ||
                 code.includes("resource-exhausted") ||
                 code.includes("unavailable")
             );
@@ -2867,7 +3216,7 @@
             try {
                 const userSnap = await db.collection("users").doc(uid).get();
                 if (!userSnap.exists) {
-                    throw new Error("User profile not found in Firestore users collection.");
+                    throw new Error("User profile not found in Firebase users collection.");
                 }
                 profile = userSnap.data();
                 writeCachedProfile(uid, profile);
@@ -2888,7 +3237,7 @@
                         teacherEmail: ""
                     };
                 }
-                setAuthStatus("Logged in with limited profile access due to Firestore permissions.", true);
+                setAuthStatus("Logged in with limited profile access due to Firebase permissions.", true);
             }
 
             currentUser.uid = uid;
@@ -3850,7 +4199,7 @@
                         synced += chunk.length;
                     }
                 } catch (error) {
-                    alert(`Firestore sync failed. Nothing was committed locally in this import: ${error.message}`);
+                    alert(`Appwrite sync failed. Nothing was committed locally in this import: ${error.message}`);
                     return;
                 }
 
@@ -3860,14 +4209,14 @@
                 basicMatchingExercises.push(...stagedBasicAdds);
                 await loadSentenceBankFromFirestore();
                 saveSentenceBankCache(teacherUid);
-                alert(`Success! Imported ${importedCount} item(s) from ${sourceLabel}. Synced ${synced} item(s) to Firestore.`);
+                alert(`Success! Imported ${importedCount} item(s) from ${sourceLabel}. Synced ${synced} item(s) to Appwrite.`);
             } else if (!firebaseReady) {
                 ["Beginner", "Intermediate", "Advanced"].forEach(level => {
                     baseSentences[level].push(...stagedSentenceAdds[level]);
                 });
                 basicMatchingExercises.push(...stagedBasicAdds);
                 saveSentenceBankCache(teacherUid);
-                alert(`Imported ${importedCount} item(s) from ${sourceLabel} in browser memory only. Connect Firebase to keep them after logout.`);
+                alert(`Imported ${importedCount} item(s) from ${sourceLabel} in browser memory only. Connect Appwrite to keep them after logout.`);
             } else {
                 ["Beginner", "Intermediate", "Advanced"].forEach(level => {
                     baseSentences[level].push(...stagedSentenceAdds[level]);
@@ -3973,7 +4322,7 @@
                 return;
             }
 
-            const confirmed = confirm("This will delete all uploaded sentence and Basic records for your account from Firestore. Continue?");
+            const confirmed = confirm("This will delete all uploaded sentence and Basic records for your account from Firebase. Continue?");
             if (!confirmed) return;
 
             try {
@@ -4311,7 +4660,7 @@
                 try {
                     await db.collection("sentences").doc(item.firestoreId).delete();
                 } catch (error) {
-                    console.warn("Firestore delete failed:", error.message);
+                    console.warn("Appwrite delete failed:", error.message);
                 }
             }
             populateDatabaseTable();
@@ -4351,7 +4700,7 @@
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
                 } catch (error) {
-                    console.warn("Firestore update failed:", error.message);
+                    console.warn("Appwrite update failed:", error.message);
                 }
             }
 
@@ -4421,19 +4770,17 @@
         window.forgotPassword = forgotPassword;
 
         // Base initialization (guard each step so one failure never blocks login UI).
-        clearLegacyPwaCacheOnce().finally(() => {
-            try { initFirebase(); } catch (error) { console.error("initFirebase failed:", error); }
-            try { initPWA(); } catch (error) { console.error("initPWA failed:", error); }
-            try { initInstallUX(); } catch (error) { console.error("initInstallUX failed:", error); }
-            try { bindAuthModalEvents(); } catch (error) { console.error("bindAuthModalEvents failed:", error); }
-            try { setAuthModalVisible(true); } catch (error) { console.error("setAuthModalVisible failed:", error); }
-            try { setAuthUiBusy(false); } catch (error) { console.error("setAuthUiBusy failed:", error); }
-            try { loadSentenceTarget(); } catch (error) { console.error("loadSentenceTarget failed:", error); }
-            try { loadSheetsConfig(); } catch (error) { console.error("loadSheetsConfig failed:", error); }
-            try { populateDatabaseTable(); } catch (error) { console.error("populateDatabaseTable failed:", error); }
-            try { populateRosterTable(); } catch (error) { console.error("populateRosterTable failed:", error); }
-            try { resetCompetition(); } catch (error) { console.error("resetCompetition failed:", error); }
-        });
+        try { disableLegacyServiceWorkers(); } catch (error) { console.error("disableLegacyServiceWorkers failed:", error); }
+        try { initFirebase(); } catch (error) { console.error("initFirebase failed:", error); }
+        try { initInstallUX(); } catch (error) { console.error("initInstallUX failed:", error); }
+        try { bindAuthModalEvents(); } catch (error) { console.error("bindAuthModalEvents failed:", error); }
+        try { setAuthModalVisible(true); } catch (error) { console.error("setAuthModalVisible failed:", error); }
+        try { setAuthUiBusy(false); } catch (error) { console.error("setAuthUiBusy failed:", error); }
+        try { loadSentenceTarget(); } catch (error) { console.error("loadSentenceTarget failed:", error); }
+        try { loadSheetsConfig(); } catch (error) { console.error("loadSheetsConfig failed:", error); }
+        try { populateDatabaseTable(); } catch (error) { console.error("populateDatabaseTable failed:", error); }
+        try { populateRosterTable(); } catch (error) { console.error("populateRosterTable failed:", error); }
+        try { resetCompetition(); } catch (error) { console.error("resetCompetition failed:", error); }
 
     </script>
 
