@@ -568,6 +568,30 @@
                 <div class="lg:col-span-1 space-y-6">
 
                     <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="fa-solid fa-user-gear text-2xl text-teal-600"></i>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-lg">Admin Panel</h4>
+                                <p class="text-xs text-slate-500">Quick teacher controls for uploads, level counts, and trials.</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button onclick="triggerSentenceExcelPicker()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-file-lines"></i> Upload Other Levels
+                            </button>
+                            <button onclick="triggerBasicExcelPicker()" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-layer-group"></i> Upload Basic Level
+                            </button>
+                            <button onclick="applyLevelTargetsOnly()" class="w-full py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-list-ol"></i> Apply Level Counts
+                            </button>
+                            <button onclick="applyMasteryTriesOnly()" class="w-full py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-repeat"></i> Apply Trials
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
                         <div class="flex items-center gap-3 mb-4">
                             <i class="fa-solid fa-palette text-2xl text-fuchsia-600"></i>
                             <div>
@@ -2047,6 +2071,95 @@
             updateSentenceTargetLabels();
             updateProgressBars();
             loadSentence();
+        }
+
+        async function applyLevelTargetsOnly() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can change sentence counts.");
+                return;
+            }
+            const nextTargets = {
+                Basic: Number(document.getElementById("target-basic")?.value || 5),
+                Beginner: Number(document.getElementById("target-beginner")?.value || 100),
+                Intermediate: Number(document.getElementById("target-intermediate")?.value || 100),
+                Advanced: Number(document.getElementById("target-advanced")?.value || 100)
+            };
+
+            const allValid = allLevels.every(level => Number.isFinite(nextTargets[level]) && nextTargets[level] >= 1);
+            if (!allValid) {
+                alert("Enter valid targets (1 or more) for all levels.");
+                return;
+            }
+
+            const hasEnoughForAll = allLevels.every(level => getLevelItems(level).length >= nextTargets[level]);
+            if (!hasEnoughForAll) {
+                alert("One or more targets are larger than available questions. Upload more data first.");
+                return;
+            }
+
+            levelTargets = nextTargets;
+            localStorage.setItem(getLevelTargetsStorageKey(currentUser.uid), JSON.stringify(levelTargets));
+            localStorage.setItem("jj_level_targets", JSON.stringify(levelTargets));
+
+            if (firebaseReady && currentUser.uid) {
+                try {
+                    await db.collection("teacherSettings").doc(currentUser.uid).set({
+                        levelTargets,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Could not store level targets in Firebase:", error.message);
+                }
+
+                try {
+                    await db.collection("users").doc(currentUser.uid).set({
+                        levelTargets,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Could not store level targets on user profile:", error.message);
+                }
+            }
+
+            updateSentenceTargetLabels();
+            updateProgressBars();
+            loadSentence();
+            alert("Level sentence counts updated.");
+        }
+
+        async function applyMasteryTriesOnly() {
+            if (currentUser.role !== "teacher") {
+                alert("Only teachers can change trial count.");
+                return;
+            }
+
+            const nextMasteryTries = sanitizeMasteryTries(document.getElementById("target-mastery-tries")?.value || requiredMasteryTries);
+            requiredMasteryTries = nextMasteryTries;
+            localStorage.setItem(getMasteryTriesStorageKey(currentUser.uid), String(requiredMasteryTries));
+            localStorage.setItem("jj_mastery_tries", String(requiredMasteryTries));
+
+            if (firebaseReady && currentUser.uid) {
+                try {
+                    await db.collection("teacherSettings").doc(currentUser.uid).set({
+                        masteryTries: requiredMasteryTries,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Could not store trial count in Firebase:", error.message);
+                }
+
+                try {
+                    await db.collection("users").doc(currentUser.uid).set({
+                        masteryTries: requiredMasteryTries,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                } catch (error) {
+                    console.warn("Could not store trial count on user profile:", error.message);
+                }
+            }
+
+            updateSentenceActionUI();
+            alert(`Trial count updated to ${requiredMasteryTries}.`);
         }
 
         function updateSentenceActionUI() {
