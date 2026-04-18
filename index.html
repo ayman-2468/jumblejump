@@ -31,7 +31,7 @@
     <script>
         // Paste your Firebase project credentials here.
         window.JJ_FIREBASE_CONFIG = window.JJ_FIREBASE_CONFIG || {
-         apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+             apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
   authDomain: "jumblejump-prod.firebaseapp.com",
   projectId: "jumblejump-prod",
   storageBucket: "jumblejump-prod.firebasestorage.app",
@@ -563,6 +563,30 @@
 
             <!-- Admin Content area (Visible for teacher role only) -->
             <div id="admin-content" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <div class="lg:col-span-3 bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-lg">Teacher Quick Admin Controls</h4>
+                            <p class="text-xs text-slate-500">Stable shortcuts for uploads, level sentence counts, and student trial count.</p>
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">Admin Controls Active</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        <button id="admin-quick-upload-sentences" type="button" onclick="triggerSentenceExcelPicker()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-file-lines"></i> Upload Other Levels
+                        </button>
+                        <button id="admin-quick-upload-basic" type="button" onclick="triggerBasicExcelPicker()" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-layer-group"></i> Upload Basic Level
+                        </button>
+                        <button id="admin-quick-apply-counts" type="button" onclick="applyLevelTargetsOnly()" class="w-full py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-list-ol"></i> Apply Level Counts
+                        </button>
+                        <button id="admin-quick-apply-tries" type="button" onclick="applyMasteryTriesOnly()" class="w-full py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-repeat"></i> Apply Trials
+                        </button>
+                    </div>
+                </div>
 
                 <!-- Left Column: Upload Excel, Manual Correction & File Template -->
                 <div class="lg:col-span-1 space-y-6">
