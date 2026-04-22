@@ -1,0 +1,3438 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JumbleJump – English Sentence Master</title>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       EXTERNAL LIBRARIES
+  ═══════════════════════════════════════════════════════════ -->
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <!-- canvas-confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@latest/dist/confetti.browser.min.js"></script>
+  <!-- Firebase SDK (v10 modular via compat for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       GLOBAL STYLES
+  ═══════════════════════════════════════════════════════════ -->
+  <style>
+    /* ── CSS Custom Properties (Theme Engine) ── */
+    :root {
+      --color-primary:   #0d9488;   /* Teal-600   */
+      --color-secondary: #f97316;   /* Orange-500 */
+      --color-accent:    #fbbf24;   /* Amber-400  */
+      --color-bg:        #f0fdfa;   /* Teal-50    */
+      --color-card:      #ffffff;
+      --color-text:      #1e293b;   /* Slate-800  */
+      --font-main:       'Nunito', sans-serif;
+      --font-heading:    'Poppins', sans-serif;
+      --radius:          1rem;
+      --shadow:          0 4px 24px rgba(13,148,136,0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-main);
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #e2f8f5; }
+    ::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 3px; }
+
+    /* ── Screen Manager ── */
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--color-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.65rem 1.4rem;
+      border-radius: 2rem;
+      font-family: var(--font-main);
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+    .btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary   { background: var(--color-primary);   color: #fff; }
+    .btn-secondary { background: var(--color-secondary); color: #fff; }
+    .btn-accent    { background: var(--color-accent);    color: #1e293b; }
+    .btn-ghost     { background: transparent; color: var(--color-primary); border: 2px solid var(--color-primary); }
+    .btn-danger    { background: #ef4444; color: #fff; }
+    .btn-warning   { background: #f59e0b; color: #fff; }
+    .btn-info      { background: #6366f1; color: #fff; }
+    .btn-sm        { padding: 0.4rem 1rem; font-size: 0.82rem; }
+    .btn-lg        { padding: 0.85rem 2rem; font-size: 1.1rem; }
+    .btn:disabled  { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Word Chips ── */
+    .word-chip {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: grab;
+      background: var(--color-primary);
+      color: #fff;
+      user-select: none;
+      transition: transform 0.1s, box-shadow 0.1s;
+      border: 3px solid transparent;
+    }
+    .word-chip:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .word-chip.sortable-ghost { opacity: 0.4; }
+    .word-chip.sortable-chosen { border-color: var(--color-secondary); box-shadow: 0 4px 16px rgba(249,115,22,0.4); }
+
+    /* ── Drop Zone ── */
+    .drop-zone {
+      min-height: 60px;
+      border: 3px dashed var(--color-primary);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      transition: background 0.2s, border-color 0.2s;
+      background: rgba(13,148,136,0.04);
+    }
+    .drop-zone.drag-over { background: rgba(13,148,136,0.12); border-color: var(--color-secondary); }
+
+    /* ── Stars & Medals ── */
+    .star-icon   { color: var(--color-accent); font-size: 1.4rem; }
+    .medal-icon  { font-size: 1.6rem; }
+
+    /* ── Progress Bar ── */
+    .progress-bar-wrap {
+      background: #e2f8f5; border-radius: 99px; height: 14px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+      transition: width 0.6s ease;
+    }
+
+    /* ── Level Card ── */
+    .level-card {
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .level-card:hover:not(.locked) { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.15); }
+    .level-card.locked { cursor: not-allowed; filter: grayscale(0.6); }
+    .level-card .lock-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+      border-radius: var(--radius);
+    }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .modal-box {
+      background: var(--color-card);
+      border-radius: var(--radius);
+      padding: 2rem;
+      max-width: 560px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: popIn 0.3s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── Celebration Box ── */
+    .celebration-box {
+      background: linear-gradient(135deg, #0d9488 0%, #f97316 100%);
+      color: #fff; border-radius: var(--radius);
+      padding: 1.5rem; text-align: center;
+      animation: popIn 0.4s ease;
+    }
+
+    /* ── Grammar Spotlight ── */
+    .grammar-box {
+      background: #fffbeb; border-left: 5px solid var(--color-accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 1rem 1.25rem; margin-top: 1rem;
+    }
+
+    /* ── Nav Bar ── */
+    .navbar {
+      background: var(--color-primary);
+      color: #fff;
+      padding: 0.85rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .navbar .logo-text {
+      font-family: var(--font-heading);
+      font-size: 1.5rem; font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+
+    /* ── Admin Sidebar ── */
+    .admin-sidebar {
+      width: 270px; min-height: 100vh;
+      background: #1e293b;
+      color: #fff;
+      display: flex; flex-direction: column;
+      padding: 1.5rem 1rem;
+      gap: 0.4rem;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .admin-sidebar .nav-item {
+      padding: 0.7rem 1rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-weight: 600;
+      font-size: 0.88rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .admin-sidebar .nav-item:hover { background: rgba(255,255,255,0.1); }
+    .admin-sidebar .nav-item.active { background: var(--color-primary); }
+    .admin-sidebar .nav-section-label {
+      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
+      color: #64748b; text-transform: uppercase;
+      padding: 0.8rem 1rem 0.3rem;
+    }
+
+    /* ── Form Fields ── */
+    .field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .field-group label { font-weight: 700; font-size: 0.85rem; color: #64748b; }
+    .field-input {
+      padding: 0.65rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 0.75rem;
+      font-family: var(--font-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #f8fafc;
+    }
+    .field-input:focus { border-color: var(--color-primary); background: #fff; }
+
+    /* ── Match Game ── */
+    .match-category {
+      border: 3px solid var(--color-primary);
+      border-radius: var(--radius);
+      padding: 1rem;
+      min-height: 80px;
+      background: rgba(13,148,136,0.04);
+    }
+    .match-category-title {
+      font-weight: 800;
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .toast {
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.75rem;
+      font-weight: 700; font-size: 0.9rem;
+      color: #fff; max-width: 320px;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    @keyframes slideIn {
+      from { transform: translateX(120%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+    .toast.success { background: var(--color-primary); }
+    .toast.error   { background: #ef4444; }
+    .toast.info    { background: #6366f1; }
+    .toast.warning { background: var(--color-secondary); }
+
+    /* ── Animated Background Bubbles ── */
+    .bg-bubbles {
+      position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    }
+    .bubble {
+      position: absolute; border-radius: 50%;
+      background: rgba(13,148,136,0.07);
+      animation: float linear infinite;
+    }
+    @keyframes float {
+      0%   { transform: translateY(110vh) scale(1); opacity: 0.7; }
+      100% { transform: translateY(-20vh) scale(1.2); opacity: 0; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .card { padding: 1.25rem; }
+      .admin-sidebar {
+        width: 100%; min-height: auto;
+        flex-direction: row; flex-wrap: wrap;
+        padding: 0.75rem;
+      }
+      .admin-sidebar .nav-section-label { display: none; }
+    }
+
+    /* ── Transitions ── */
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Certificate Preview ── */
+    #cert-preview-canvas {
+      max-width: 100%; border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    /* ── Color Picker Row ── */
+    .color-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .color-row input[type=color] {
+      width: 48px; height: 48px; border: none; border-radius: 0.5rem;
+      cursor: pointer; padding: 2px;
+    }
+
+    /* ── Hint Box ── */
+    .hint-box {
+      background: #fef3c7; border-left: 5px solid var(--color-accent);
+      border-radius: 0 0.75rem 0.75rem 0;
+      padding: 0.75rem 1rem; margin-top: 0.75rem;
+      font-weight: 600; color: #92400e;
+    }
+
+    /* ── Loader ── */
+    .loader {
+      width: 48px; height: 48px;
+      border: 5px solid #e2f8f5;
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tables ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .data-table th {
+      background: var(--color-primary); color: #fff;
+      padding: 0.6rem 0.8rem; text-align: left; font-weight: 700;
+    }
+    .data-table td { padding: 0.55rem 0.8rem; border-bottom: 1px solid #e2e8f0; }
+    .data-table tr:hover td { background: #f0fdfa; }
+    .data-table tr:nth-child(even) td { background: #f8fafc; }
+    .data-table tr:nth-child(even):hover td { background: #f0fdfa; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem;
+      border-radius: 99px; font-size: 0.75rem; font-weight: 700;
+    }
+    .badge-teal   { background: #ccfbf1; color: #0f766e; }
+    .badge-orange { background: #ffedd5; color: #c2410c; }
+    .badge-purple { background: #ede9fe; color: #7c3aed; }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-red    { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Admin Content Panels ── */
+    .admin-panel { display: none; }
+    .admin-panel.active { display: block; }
+
+    /* ── Stats Cards ── */
+    .stat-card {
+      background: var(--color-card);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: 0.25rem;
+    }
+    .stat-card .stat-num {
+      font-family: var(--font-heading);
+      font-size: 2rem; font-weight: 900;
+      color: var(--color-primary);
+    }
+    .stat-card .stat-label {
+      font-size: 0.82rem; color: #64748b; font-weight: 700;
+    }
+
+    /* ── Data Correction Table Input ── */
+    .editable-cell input {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.4rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.82rem;
+      width: 100%;
+      font-family: var(--font-main);
+    }
+    .editable-cell input:focus { border-color: var(--color-primary); outline: none; }
+
+    /* ── Theme Preview Box ── */
+    .theme-preview-box {
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      color: #fff;
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    /* ── Admin Topbar ── */
+    .admin-topbar {
+      background: #fff;
+      border-bottom: 2px solid #e2e8f0;
+      padding: 0.85rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    /* ── Footer ── */
+    .app-footer {
+      background: #1e293b;
+      color: rgba(255,255,255,0.65);
+      text-align: center;
+      padding: 1rem 2rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .app-footer span { color: var(--color-secondary); font-weight: 800; }
+
+    /* ── Manual Edit Modal Table ── */
+    .edit-scroll-area { max-height: 400px; overflow-y: auto; }
+
+    /* ── Upload Progress Bar ── */
+    .upload-progress-wrap {
+      background: #e2f8f5; border-radius: 99px; height: 10px;
+      overflow: hidden; margin-top: 0.5rem; display: none;
+    }
+    .upload-progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+      transition: width 0.3s ease; width: 0%;
+    }
+
+    /* ── Info Box ── */
+    .info-box {
+      background: #eff6ff; border-left: 4px solid #6366f1;
+      border-radius: 0 0.75rem 0.75rem 0;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem; color: #3730a3;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Warning Box ── */
+    .warning-box {
+      background: #fffbeb; border-left: 4px solid #f59e0b;
+      border-radius: 0 0.75rem 0.75rem 0;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem; color: #92400e;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Student Row Expand ── */
+    .student-detail-row { background: #f8fafc; }
+    .student-detail-row td { padding: 1rem 1.5rem; }
+
+    /* ── Tag ── */
+    .tag {
+      display: inline-block; padding: 0.15rem 0.5rem;
+      border-radius: 0.35rem; font-size: 0.72rem; font-weight: 700;
+      background: #e2e8f0; color: #475569;
+    }
+
+    /* ── Certificate preview grid ── */
+    .cert-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ANIMATED BACKGROUND
+═══════════════════════════════════════════════════════════ -->
+<div class="bg-bubbles" id="bgBubbles"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOAST CONTAINER
+═══════════════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCREEN 1: AUTH (Login / Register)
+══════════════════════════════════════════════════════════════════════ -->
+<div id="screen-auth" class="screen active">
+  <div class="min-h-screen flex items-center justify-center p-4"
+       style="background: linear-gradient(135deg, var(--color-primary) 0%, #134e4a 60%, var(--color-secondary) 100%);">
+    <div class="card fade-in" style="max-width:460px;width:100%;padding:2.5rem;">
+      <!-- Logo -->
+      <div class="text-center mb-6">
+        <div style="font-family:var(--font-heading);font-size:2.8rem;font-weight:900;
+                    background:linear-gradient(90deg,var(--color-primary),var(--color-secondary));
+                    -webkit-background-clip:text;-webkit-text-fill-color:transparent;" id="auth-logo-text">
+          JumbleJump
+        </div>
+        <p style="color:#64748b;font-size:0.95rem;margin-top:0.25rem;">Master English Sentence Structure 🚀</p>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div style="display:flex;gap:0.5rem;background:#f1f5f9;border-radius:2rem;padding:4px;margin-bottom:1.5rem;">
+        <button class="btn btn-primary" id="tab-login" onclick="switchAuthTab('login')"
+          style="flex:1;border-radius:2rem;justify-content:center;">Login</button>
+        <button class="btn btn-ghost" id="tab-register" onclick="switchAuthTab('register')"
+          style="flex:1;border-radius:2rem;justify-content:center;border:none;color:#64748b;">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="login-form">
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="field-group">
+            <label>Email Address</label>
+            <input type="email" class="field-input" id="login-email" placeholder="student@school.sa" />
+          </div>
+          <div class="field-group">
+            <label>Password</label>
+            <div style="position:relative;">
+              <input type="password" class="field-input" id="login-password" placeholder="••••••••" style="width:100%;padding-right:3rem;" />
+              <button onclick="togglePwd('login-password','eye-login')" type="button"
+                style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;" id="eye-login">👁️</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" onclick="handleLogin()">
+            🔐 Login
+          </button>
+          <button onclick="handleForgotPassword()" type="button"
+            style="background:none;border:none;color:var(--color-primary);cursor:pointer;font-weight:700;font-size:0.9rem;text-align:center;">
+            Forgot Password? Reset via Email
+          </button>
+        </div>
+      </div>
+
+      <!-- Register Form -->
+      <div id="register-form" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="field-group">
+            <label>Full Name</label>
+            <input type="text" class="field-input" id="reg-name" placeholder="Ahmed Al-Rashid" />
+          </div>
+          <div class="field-group">
+            <label>Email Address</label>
+            <input type="email" class="field-input" id="reg-email" placeholder="student@school.sa" />
+          </div>
+          <div class="field-group">
+            <label>Password (min 6 chars)</label>
+            <div style="position:relative;">
+              <input type="password" class="field-input" id="reg-password" placeholder="••••••••" style="width:100%;padding-right:3rem;" />
+              <button onclick="togglePwd('reg-password','eye-reg')" type="button"
+                style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;" id="eye-reg">👁️</button>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-lg" style="width:100%;justify-content:center;" onclick="handleRegister()">
+            ✨ Create Account
+          </button>
+        </div>
+      </div>
+
+      <p style="text-align:center;margin-top:1.5rem;font-size:0.8rem;color:#94a3b8;">
+        Teachers: use your admin credentials to log in above.
+      </p>
+    </div>
+  </div>
+  <!-- Footer -->
+  <footer class="app-footer">
+    Designed by <span>Ayman Nasser</span> &nbsp;•&nbsp; JumbleJump © 2025
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCREEN 2: STUDENT DASHBOARD
+══════════════════════════════════════════════════════════════════════ -->
+<div id="screen-student" class="screen">
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      <span style="font-size:1.6rem;">🎯</span>
+      <span class="logo-text" id="nav-logo-text">JumbleJump</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <div style="text-align:right;">
+        <div style="font-weight:700;font-size:0.9rem;" id="nav-student-name">Student</div>
+        <div style="font-size:0.75rem;opacity:0.8;" id="nav-student-stars">⭐ 0 stars</div>
+      </div>
+      <button class="btn btn-ghost" style="color:#fff;border-color:#fff;" onclick="handleLogout()">
+        🚪 Logout
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div style="flex:1;padding:2rem 1.5rem;max-width:1100px;margin:0 auto;width:100%;">
+    <!-- Welcome Banner -->
+    <div class="card fade-in" style="background:linear-gradient(135deg,var(--color-primary),#0f766e);color:#fff;margin-bottom:2rem;">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div style="font-size:3.5rem;">🌟</div>
+        <div>
+          <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;" id="welcome-title">Welcome back!</h1>
+          <p style="opacity:0.9;margin-top:0.25rem;" id="welcome-subtitle">Continue your learning journey.</p>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:2.2rem;font-weight:900;" id="total-stars-display">⭐ 0</div>
+          <div style="opacity:0.8;font-size:0.85rem;">Total Stars</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall Progress -->
+    <div class="card fade-in" style="margin-bottom:2rem;">
+      <h2 style="font-family:var(--font-heading);font-weight:800;margin-bottom:1rem;font-size:1.1rem;">
+        📊 Your Overall Progress
+      </h2>
+      <div id="overall-progress-bars"></div>
+    </div>
+
+    <!-- Level Cards -->
+    <h2 style="font-family:var(--font-heading);font-weight:900;font-size:1.3rem;margin-bottom:1rem;">
+      🎮 Choose Your Level
+    </h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;" id="level-cards-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    Designed by <span>Ayman Nasser</span> &nbsp;•&nbsp; JumbleJump © 2025
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCREEN 3: GAME ENGINE (Sentence Drag & Drop)
+══════════════════════════════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+  <!-- Navbar -->
+  <nav class="navbar">
+    <button class="btn btn-ghost" style="color:#fff;border-color:#fff;" onclick="goBackToDashboard()">
+      ← Back
+    </button>
+    <div class="logo-text" id="game-nav-title">Level</div>
+    <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;" id="game-nav-score">
+      ⭐ 0
+    </div>
+  </nav>
+
+  <div style="flex:1;padding:1.5rem;max-width:800px;margin:0 auto;width:100%;">
+    <!-- Progress -->
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <span style="font-weight:700;white-space:nowrap;" id="game-progress-label">1 / 100</span>
+      <div class="progress-bar-wrap" style="flex:1;">
+        <div class="progress-bar-fill" id="game-progress-bar" style="width:1%;"></div>
+      </div>
+      <div id="game-trials-display" style="font-weight:700;font-size:0.85rem;color:#64748b;white-space:nowrap;">
+        Trials: 0
+      </div>
+    </div>
+
+    <!-- Sentence Card -->
+    <div class="card fade-in" id="game-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="font-family:var(--font-heading);font-weight:900;font-size:1.15rem;" id="game-level-badge">
+          🔤 Arrange the Words
+        </h2>
+        <div id="game-stars-row" style="display:flex;gap:0.25rem;"></div>
+      </div>
+
+      <!-- Answer Drop Zone -->
+      <p style="font-size:0.8rem;color:#64748b;margin-bottom:0.4rem;font-weight:600;">
+        🎯 Drop words here to form the sentence:
+      </p>
+      <div class="drop-zone" id="answer-zone"></div>
+
+      <!-- Word Bank -->
+      <p style="font-size:0.8rem;color:#64748b;margin:1rem 0 0.4rem;font-weight:600;">
+        📦 Word Bank – drag from here:
+      </p>
+      <div class="drop-zone" id="word-bank" style="background:rgba(249,115,22,0.04);border-color:var(--color-secondary);">
+      </div>
+
+      <!-- Hint -->
+      <div id="hint-area" style="display:none;" class="hint-box">
+        💡 Hint: <span id="hint-text"></span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="checkSentenceAnswer()">✅ Check Answer</button>
+        <button class="btn btn-ghost" onclick="resetWordBank()">🔄 Reset</button>
+        <button class="btn btn-ghost btn-sm" onclick="showHint()">💡 Hint</button>
+      </div>
+
+      <!-- Feedback -->
+      <div id="game-feedback" style="margin-top:1rem;display:none;"></div>
+    </div>
+
+    <!-- Medals Row -->
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1.5rem;align-items:center;">
+      <span style="font-weight:700;font-size:0.85rem;color:#64748b;">🏅 Medals:</span>
+      <div id="medals-row" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    Designed by <span>Ayman Nasser</span> &nbsp;•&nbsp; JumbleJump © 2025
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCREEN 4: BASIC MATCH GAME
+══════════════════════════════════════════════════════════════════════ -->
+<div id="screen-basic" class="screen">
+  <!-- Navbar -->
+  <nav class="navbar">
+    <button class="btn btn-ghost" style="color:#fff;border-color:#fff;" onclick="goBackToDashboard()">
+      ← Back
+    </button>
+    <div class="logo-text">Basic Level – Match Game</div>
+    <div style="display:flex;align-items:center;gap:0.5rem;font-weight:700;" id="basic-nav-score">
+      ⭐ 0
+    </div>
+  </nav>
+
+  <div style="flex:1;padding:1.5rem;max-width:960px;margin:0 auto;width:100%;">
+    <!-- Progress -->
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+      <span style="font-weight:700;white-space:nowrap;" id="basic-progress-label">Round 1</span>
+      <div class="progress-bar-wrap" style="flex:1;">
+        <div class="progress-bar-fill" id="basic-progress-bar" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <div class="card fade-in" id="basic-game-card">
+      <h2 style="font-family:var(--font-heading);font-weight:900;font-size:1.2rem;margin-bottom:0.5rem;" id="basic-main-category-title">
+        📂 Main Category
+      </h2>
+      <p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">
+        Drag each word into the correct subcategory box below.
+      </p>
+
+      <!-- Word Pool -->
+      <div style="margin-bottom:1rem;">
+        <p style="font-size:0.8rem;color:#64748b;font-weight:600;margin-bottom:0.4rem;">🎴 Words to Sort:</p>
+        <div class="drop-zone" id="basic-word-pool" style="background:rgba(249,115,22,0.04);border-color:var(--color-secondary);min-height:60px;">
+        </div>
+      </div>
+
+      <!-- Subcategory Drop Zones -->
+      <div id="basic-subcategory-zones" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;">
+        <!-- Generated by JS -->
+      </div>
+
+      <!-- Hint -->
+      <div id="basic-hint-area" style="display:none;" class="hint-box">
+        💡 Hint: <span id="basic-hint-text"></span>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:0.75rem;margin-top:1.25rem;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="checkBasicAnswer()">✅ Check</button>
+        <button class="btn btn-ghost" onclick="resetBasicRound()">🔄 Reset</button>
+        <button class="btn btn-ghost btn-sm" onclick="showBasicHint()">💡 Hint</button>
+      </div>
+
+      <div id="basic-feedback" style="margin-top:1rem;display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    Designed by <span>Ayman Nasser</span> &nbsp;•&nbsp; JumbleJump © 2025
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCREEN 5: LEVEL COMPLETE
+══════════════════════════════════════════════════════════════════════ -->
+<div id="screen-complete" class="screen" style="align-items:center;justify-content:center;padding:2rem;">
+  <div class="card fade-in" style="max-width:560px;width:100%;text-align:center;">
+    <div style="font-size:5rem;margin-bottom:1rem;">🏆</div>
+    <h1 style="font-family:var(--font-heading);font-size:2rem;font-weight:900;color:var(--color-primary);" id="complete-title">
+      Level Complete!
+    </h1>
+    <p style="color:#64748b;margin:0.75rem 0 1.5rem;" id="complete-subtitle">Outstanding performance!</p>
+    <div style="display:flex;justify-content:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;" id="complete-stars"></div>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-lg" onclick="generateCertificate()">📜 Get Certificate</button>
+      <button class="btn btn-secondary btn-lg" onclick="goBackToDashboard()">🏠 Dashboard</button>
+    </div>
+    <div id="cert-area" style="margin-top:1.5rem;display:none;">
+      <canvas id="cert-canvas" width="800" height="560" id="cert-preview-canvas"></canvas>
+      <button class="btn btn-accent btn-lg" style="margin-top:1rem;" onclick="downloadCertificate()">
+        ⬇️ Download PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer" style="width:100%;margin-top:2rem;">
+    Designed by <span>Ayman Nasser</span> &nbsp;•&nbsp; JumbleJump © 2025
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCREEN 6: ADMIN DASHBOARD  (fully expanded & feature-complete)
+══════════════════════════════════════════════════════════════════════ -->
+<div id="screen-admin" class="screen" style="flex-direction:row;min-height:100vh;">
+
+  <!-- ── Sidebar ── -->
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <!-- Logo -->
+    <div style="font-family:var(--font-heading);font-size:1.2rem;font-weight:900;margin-bottom:0.5rem;
+                background:linear-gradient(90deg,var(--color-primary),var(--color-secondary));
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+      ⚙️ Admin Panel
+    </div>
+    <div style="font-size:0.75rem;color:#64748b;margin-bottom:1rem;" id="admin-email-display">admin</div>
+
+    <!-- DATA section -->
+    <div class="nav-section-label">📦 Data</div>
+    <div class="nav-item active" onclick="adminNav('upload')" id="anav-upload">📤 Upload Data</div>
+    <div class="nav-item" onclick="adminNav('correction')" id="anav-correction">✏️ Manual Correction</div>
+    <div class="nav-item" onclick="adminNav('dbstats')" id="anav-dbstats">📊 Database Stats</div>
+
+    <!-- STUDENTS section -->
+    <div class="nav-section-label">👨‍🎓 Students</div>
+    <div class="nav-item" onclick="adminNav('students')" id="anav-students">📋 Student Progress</div>
+
+    <!-- GAME section -->
+    <div class="nav-section-label">🎮 Game</div>
+    <div class="nav-item" onclick="adminNav('settings')" id="anav-settings">⚙️ Game Settings</div>
+    <div class="nav-item" onclick="adminNav('preview')" id="anav-preview">🎮 Try the App</div>
+
+    <!-- DESIGN section -->
+    <div class="nav-section-label">🎨 Design</div>
+    <div class="nav-item" onclick="adminNav('theme')" id="anav-theme">🎨 Theme Editor</div>
+    <div class="nav-item" onclick="adminNav('certificate')" id="anav-certificate">📜 Certificate Editor</div>
+
+    <!-- bottom -->
+    <div style="margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.1);">
+      <div class="nav-item" onclick="handleLogout()" style="color:#f87171;">🚪 Logout</div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content Area ── -->
+  <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+
+    <!-- Admin Top Bar -->
+    <div class="admin-topbar">
+      <div style="font-family:var(--font-heading);font-weight:800;font-size:1.1rem;color:#1e293b;" id="admin-panel-title">
+        📤 Upload Data
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <span style="font-size:0.82rem;color:#64748b;" id="admin-topbar-info">JumbleJump Admin</span>
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));
+                    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:1rem;" id="admin-avatar">A</div>
+      </div>
+    </div>
+
+    <!-- Scrollable panel area -->
+    <div style="flex:1;overflow-y:auto;padding:2rem;">
+
+      <!-- ════════════════════════════════════════
+           PANEL: UPLOAD DATA
+      ════════════════════════════════════════ -->
+      <div id="admin-upload" class="admin-panel active fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">📤 Upload Data</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Upload Excel files to populate your Firestore database. Use the templates for correct formatting.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+          <!-- Basic Level Upload -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+              <div style="width:42px;height:42px;border-radius:0.75rem;background:linear-gradient(135deg,#6366f1,#818cf8);
+                          display:flex;align-items:center;justify-content:center;font-size:1.4rem;">📂</div>
+              <div>
+                <h3 style="font-weight:800;color:#6366f1;">Basic Level Excel</h3>
+                <p style="font-size:0.75rem;color:#64748b;">Match / Categorization Game</p>
+              </div>
+            </div>
+            <div class="info-box">
+              Required columns: <strong>Main_Category | subcategory | Jumbled_Words | Hint | Teacher_Note | Question_ID</strong>
+            </div>
+            <input type="file" id="basic-excel-input" accept=".xlsx,.xls" class="field-input" style="padding:0.4rem;" />
+            <div class="upload-progress-wrap" id="basic-upload-progress">
+              <div class="upload-progress-fill" id="basic-upload-bar"></div>
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="uploadBasicExcel()">⬆️ Upload to Firestore</button>
+              <button class="btn btn-ghost btn-sm" onclick="downloadBasicTemplate()">📥 Template</button>
+            </div>
+            <div id="basic-upload-status" style="margin-top:0.5rem;font-size:0.82rem;"></div>
+          </div>
+
+          <!-- Sentence Level Upload -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+              <div style="width:42px;height:42px;border-radius:0.75rem;background:linear-gradient(135deg,#f97316,#fb923c);
+                          display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🔤</div>
+              <div>
+                <h3 style="font-weight:800;color:var(--color-secondary);">Sentence Levels Excel</h3>
+                <p style="font-size:0.75rem;color:#64748b;">Beginner, Intermediate & Advanced</p>
+              </div>
+            </div>
+            <div class="info-box">
+              Required columns: <strong>Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note</strong>
+              <br><em style="color:#6366f1;">Level values: beginner / intermediate / advanced</em>
+            </div>
+            <input type="file" id="sentence-excel-input" accept=".xlsx,.xls" class="field-input" style="padding:0.4rem;" />
+            <div class="upload-progress-wrap" id="sentence-upload-progress">
+              <div class="upload-progress-fill" id="sentence-upload-bar"></div>
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
+              <button class="btn btn-secondary" onclick="uploadSentenceExcel()">⬆️ Upload to Firestore</button>
+              <button class="btn btn-ghost btn-sm" onclick="downloadSentenceTemplate()">📥 Template</button>
+            </div>
+            <div id="sentence-upload-status" style="margin-top:0.5rem;font-size:0.82rem;"></div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="card" style="border:2px solid #fecaca;">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+              <div style="width:42px;height:42px;border-radius:0.75rem;background:#fef2f2;
+                          display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🗑️</div>
+              <div>
+                <h3 style="font-weight:800;color:#ef4444;">Danger Zone</h3>
+                <p style="font-size:0.75rem;color:#64748b;">Irreversible database operations</p>
+              </div>
+            </div>
+            <div class="warning-box">
+              ⚠️ Permanently deletes ALL sentences from Firestore. This action <strong>cannot be undone</strong>.
+            </div>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+              <button class="btn btn-danger" onclick="confirmDeleteAll('both')">🗑️ Delete All Sentences</button>
+              <button class="btn btn-warning btn-sm" onclick="confirmDeleteAll('sentences')">Delete Sentence Levels Only</button>
+              <button class="btn btn-warning btn-sm" onclick="confirmDeleteAll('basic')">Delete Basic Level Only</button>
+            </div>
+            <div id="delete-status" style="margin-top:0.75rem;font-size:0.82rem;"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: MANUAL DATA CORRECTION
+      ════════════════════════════════════════ -->
+      <div id="admin-correction" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">✏️ Manual Data Correction</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Browse, search, edit, or delete individual sentences directly in Firestore.</p>
+
+        <!-- Filter Controls -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;">
+            <div class="field-group" style="flex:1;min-width:160px;">
+              <label>Collection</label>
+              <select class="field-input" id="correction-collection" onchange="loadCorrectionData()">
+                <option value="sentences">Sentence Levels (Beginner/Int/Adv)</option>
+                <option value="basic_sentences">Basic Level</option>
+              </select>
+            </div>
+            <div class="field-group" style="flex:1;min-width:160px;">
+              <label>Filter by Level</label>
+              <select class="field-input" id="correction-level" onchange="loadCorrectionData()">
+                <option value="">All Levels</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+            <div class="field-group" style="flex:2;min-width:200px;">
+              <label>Search (keyword)</label>
+              <input type="text" class="field-input" id="correction-search" placeholder="Type to filter..." oninput="filterCorrectionTable()" />
+            </div>
+            <button class="btn btn-primary" onclick="loadCorrectionData()">🔍 Load</button>
+          </div>
+        </div>
+
+        <!-- Correction Table -->
+        <div class="card" style="overflow-x:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+            <span style="font-weight:700;" id="correction-count">0 records</span>
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn btn-primary btn-sm" onclick="addNewSentenceModal()">➕ Add New</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadCorrectionData()">🔄 Refresh</button>
+            </div>
+          </div>
+          <div class="edit-scroll-area">
+            <table class="data-table" id="correction-table">
+              <thead id="correction-thead"></thead>
+              <tbody id="correction-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:2rem;color:#64748b;">
+                  Select a collection and click Load.
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: DATABASE STATS
+      ════════════════════════════════════════ -->
+      <div id="admin-dbstats" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">📊 Database Statistics</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Overview of all data stored in Firestore.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;" id="dbstats-grid">
+          <div class="stat-card">
+            <div class="stat-num" id="stat-basic-count">—</div>
+            <div class="stat-label">📂 Basic Entries</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-beginner-count">—</div>
+            <div class="stat-label">🟢 Beginner Sentences</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-intermediate-count">—</div>
+            <div class="stat-label">🟡 Intermediate Sentences</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-advanced-count">—</div>
+            <div class="stat-label">🔴 Advanced Sentences</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-students-count">—</div>
+            <div class="stat-label">👨‍🎓 Registered Students</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="stat-total-stars">—</div>
+            <div class="stat-label">⭐ Total Stars Earned</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:1rem;">
+          <button class="btn btn-primary" onclick="loadDbStats()">🔄 Refresh Stats</button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: STUDENT PROGRESS
+      ════════════════════════════════════════ -->
+      <div id="admin-students" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">👨‍🎓 Student Progress</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">View all registered students, their level progress, and scores.</p>
+
+        <!-- Summary Stats Row -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem;" id="students-summary-stats">
+          <div class="stat-card">
+            <div class="stat-num" id="sstat-total">—</div>
+            <div class="stat-label">Total Students</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="sstat-active">—</div>
+            <div class="stat-label">Active (has stars)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="sstat-completed">—</div>
+            <div class="stat-label">Completed a Level</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="sstat-stars">—</div>
+            <div class="stat-label">Total Stars Awarded</div>
+          </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="card" style="margin-bottom:1rem;padding:1rem 1.5rem;">
+          <div style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="field-group" style="flex:2;min-width:200px;">
+              <label>Search Student</label>
+              <input type="text" class="field-input" id="students-search" placeholder="Name or email..." oninput="filterStudentsTable()" />
+            </div>
+            <div class="field-group" style="flex:1;min-width:160px;">
+              <label>Sort By</label>
+              <select class="field-input" id="students-sort" onchange="sortStudentsTable()">
+                <option value="name">Name A–Z</option>
+                <option value="stars-desc">Stars (High → Low)</option>
+                <option value="stars-asc">Stars (Low → High)</option>
+                <option value="level">Current Level</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadStudentsList()">🔄 Refresh</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportStudentsCSV()">📥 Export CSV</button>
+          </div>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+          <table class="data-table" id="students-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Stars ⭐</th>
+                <th>Basic 📂</th>
+                <th>Beginner 🟢</th>
+                <th>Intermediate 🟡</th>
+                <th>Advanced 🔴</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="students-tbody">
+              <tr><td colspan="10" style="text-align:center;padding:2rem;">Click Refresh to load students.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: GAME SETTINGS
+      ════════════════════════════════════════ -->
+      <div id="admin-settings" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">⚙️ Game Settings</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Control how many sentences are shown per level and how many trials each student gets.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+          <!-- Sentences per Level -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+              <div style="width:38px;height:38px;border-radius:0.6rem;background:linear-gradient(135deg,var(--color-primary),#0f766e);
+                          display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📝</div>
+              <h3 style="font-weight:800;color:var(--color-primary);">Sentences Per Level</h3>
+            </div>
+            <div class="info-box">Sets the maximum sentences shown to a student per session in each level (1–200).</div>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="field-group">
+                <label>📂 Basic Level</label>
+                <input type="number" class="field-input" id="set-basic-count" min="1" max="200" value="100" />
+              </div>
+              <div class="field-group">
+                <label>🟢 Beginner Level</label>
+                <input type="number" class="field-input" id="set-beginner-count" min="1" max="200" value="100" />
+              </div>
+              <div class="field-group">
+                <label>🟡 Intermediate Level</label>
+                <input type="number" class="field-input" id="set-intermediate-count" min="1" max="200" value="100" />
+              </div>
+              <div class="field-group">
+                <label>🔴 Advanced Level</label>
+                <input type="number" class="field-input" id="set-advanced-count" min="1" max="200" value="100" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Trials per Level -->
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+              <div style="width:38px;height:38px;border-radius:0.6rem;background:linear-gradient(135deg,var(--color-secondary),#fb923c);
+                          display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🎯</div>
+              <h3 style="font-weight:800;color:var(--color-secondary);">Trials Per Sentence</h3>
+            </div>
+            <div class="info-box">How many attempts a student gets before moving on. Hint shows on last trial.</div>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="field-group">
+                <label>📂 Basic Level (trials)</label>
+                <input type="number" class="field-input" id="set-basic-trials" min="1" max="10" value="3" />
+              </div>
+              <div class="field-group">
+                <label>🟢 Beginner Level (trials)</label>
+                <input type="number" class="field-input" id="set-beginner-trials" min="1" max="10" value="3" />
+              </div>
+              <div class="field-group">
+                <label>🟡 Intermediate Level (trials)</label>
+                <input type="number" class="field-input" id="set-intermediate-trials" min="1" max="10" value="3" />
+              </div>
+              <div class="field-group">
+                <label>🔴 Advanced Level (trials)</label>
+                <input type="number" class="field-input" id="set-advanced-trials" min="1" max="10" value="3" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Save Card -->
+          <div class="card" style="display:flex;flex-direction:column;gap:1rem;justify-content:center;align-items:center;border:2px dashed var(--color-primary);">
+            <div style="font-size:3rem;">💾</div>
+            <p style="color:#64748b;text-align:center;font-size:0.9rem;">Save both sentence counts and trial limits to Firestore. Changes take effect immediately for new game sessions.</p>
+            <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" onclick="saveGameSettings()">
+              💾 Save All Settings
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: THEME EDITOR
+      ════════════════════════════════════════ -->
+      <div id="admin-theme" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">🎨 Theme Editor</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Customize every color, font, and visual element of the app. Changes apply live.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+          <!-- Colors Card -->
+          <div class="card">
+            <h3 style="font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">🎨 Colors</h3>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="color-row">
+                <input type="color" id="theme-primary" value="#0d9488" onchange="applyThemePreview()" />
+                <div>
+                  <div style="font-weight:700;">Primary Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Buttons, navbar, progress bars</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="theme-secondary" value="#f97316" onchange="applyThemePreview()" />
+                <div>
+                  <div style="font-weight:700;">Secondary Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Accents, word bank border</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="theme-accent" value="#fbbf24" onchange="applyThemePreview()" />
+                <div>
+                  <div style="font-weight:700;">Accent Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Stars, grammar spotlight</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="theme-bg" value="#f0fdfa" onchange="applyThemePreview()" />
+                <div>
+                  <div style="font-weight:700;">Background Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">App background</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="theme-card" value="#ffffff" onchange="applyThemePreview()" />
+                <div>
+                  <div style="font-weight:700;">Card Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Card / panel backgrounds</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="theme-text" value="#1e293b" onchange="applyThemePreview()" />
+                <div>
+                  <div style="font-weight:700;">Text Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Main body text</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Typography & Logo Card -->
+          <div class="card">
+            <h3 style="font-weight:800;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">🔤 Typography & Logo</h3>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="field-group">
+                <label>App Name / Logo Text</label>
+                <input type="text" class="field-input" id="theme-logo-text" value="JumbleJump" oninput="applyThemePreview()" />
+              </div>
+              <div class="field-group">
+                <label>Main Body Font</label>
+                <select class="field-input" id="theme-font" onchange="applyThemePreview()">
+                  <option value="'Nunito', sans-serif">Nunito (Default – Friendly)</option>
+                  <option value="'Poppins', sans-serif">Poppins (Modern)</option>
+                  <option value="'Comic Sans MS', cursive">Comic Sans (Playful)</option>
+                  <option value="Arial, sans-serif">Arial (Clean)</option>
+                  <option value="Georgia, serif">Georgia (Classic)</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label>Border Radius: <span id="theme-radius-label">16px</span></label>
+                <input type="range" min="0" max="32" value="16" id="theme-radius" oninput="applyThemePreview()" style="width:100%;accent-color:var(--color-primary);" />
+              </div>
+
+              <!-- Quick Palette Presets -->
+              <div style="margin-top:0.5rem;">
+                <label style="font-weight:700;font-size:0.85rem;color:#64748b;display:block;margin-bottom:0.5rem;">Quick Palettes</label>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                  <button class="btn btn-sm" onclick="applyPalette('teal')" style="background:#0d9488;color:#fff;">🌊 Teal</button>
+                  <button class="btn btn-sm" onclick="applyPalette('purple')" style="background:#7c3aed;color:#fff;">💜 Purple</button>
+                  <button class="btn btn-sm" onclick="applyPalette('rose')" style="background:#e11d48;color:#fff;">🌹 Rose</button>
+                  <button class="btn btn-sm" onclick="applyPalette('sky')" style="background:#0284c7;color:#fff;">☁️ Sky</button>
+                  <button class="btn btn-sm" onclick="applyPalette('forest')" style="background:#15803d;color:#fff;">🌿 Forest</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Preview Box -->
+            <div class="theme-preview-box" id="theme-live-preview" style="margin-top:1rem;">
+              <div style="font-family:var(--font-heading);font-size:1.4rem;font-weight:900;" id="theme-preview-logo">JumbleJump</div>
+              <div style="font-size:0.9rem;opacity:0.85;margin-top:0.25rem;">Live preview of your theme</div>
+              <div style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.75rem;">
+                <div style="background:rgba(255,255,255,0.25);border-radius:2rem;padding:0.4rem 1rem;font-size:0.85rem;font-weight:700;">⭐ Stars</div>
+                <div style="background:rgba(255,255,255,0.15);border-radius:2rem;padding:0.4rem 1rem;font-size:0.85rem;">Sample Word</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="saveThemeSettings()">💾 Save Theme</button>
+              <button class="btn btn-ghost" onclick="resetTheme()">↩️ Reset to Default</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: CERTIFICATE EDITOR
+      ════════════════════════════════════════ -->
+      <div id="admin-certificate" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">📜 Certificate Editor</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Customize the student achievement certificate. Preview updates in real time.</p>
+
+        <div class="cert-controls-grid">
+
+          <!-- Style Controls -->
+          <div class="card">
+            <h3 style="font-weight:800;margin-bottom:1rem;">🎨 Colors & Style</h3>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="color-row">
+                <input type="color" id="cert-bg1" value="#0d9488" onchange="previewCertificate()" />
+                <div>
+                  <div style="font-weight:700;">Background Gradient – Start</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Left/top color of certificate background</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="cert-bg2" value="#f97316" onchange="previewCertificate()" />
+                <div>
+                  <div style="font-weight:700;">Background Gradient – End</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Right/bottom color of certificate background</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="cert-text-color" value="#ffffff" onchange="previewCertificate()" />
+                <div>
+                  <div style="font-weight:700;">Title & Name Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Main heading text color</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="cert-body-color" value="#1e293b" onchange="previewCertificate()" />
+                <div>
+                  <div style="font-weight:700;">Body Text Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Subtitle and footer text</div>
+                </div>
+              </div>
+              <div class="color-row">
+                <input type="color" id="cert-border-color" value="#ffffff" onchange="previewCertificate()" />
+                <div>
+                  <div style="font-weight:700;">Border Color</div>
+                  <div style="font-size:0.75rem;color:#64748b;">Decorative border color</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Text Controls -->
+          <div class="card">
+            <h3 style="font-weight:800;margin-bottom:1rem;">🔤 Text Content</h3>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="field-group">
+                <label>Certificate Title</label>
+                <input type="text" class="field-input" id="cert-title-text" value="Certificate of Achievement" oninput="previewCertificate()" />
+              </div>
+              <div class="field-group">
+                <label>Subtitle / Awarded To Message</label>
+                <input type="text" class="field-input" id="cert-subtitle-text" value="This certificate is proudly awarded to" oninput="previewCertificate()" />
+              </div>
+              <div class="field-group">
+                <label>Completion Message</label>
+                <input type="text" class="field-input" id="cert-completion-text" value="for successfully completing the" oninput="previewCertificate()" />
+              </div>
+              <div class="field-group">
+                <label>Issuer / School Name</label>
+                <input type="text" class="field-input" id="cert-school-text" value="JumbleJump Academy" oninput="previewCertificate()" />
+              </div>
+              <div class="field-group">
+                <label>Footer / Tagline</label>
+                <input type="text" class="field-input" id="cert-footer-text" value="JumbleJump – English Learning Excellence" oninput="previewCertificate()" />
+              </div>
+              <div class="field-group">
+                <label>Show Trophy Emoji</label>
+                <select class="field-input" id="cert-trophy" onchange="previewCertificate()">
+                  <option value="🏆">🏆 Trophy</option>
+                  <option value="🌟">🌟 Star</option>
+                  <option value="🎓">🎓 Graduate</option>
+                  <option value="🥇">🥇 Gold Medal</option>
+                  <option value="🎖️">🎖️ Medal</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="saveCertSettings()">💾 Save Certificate</button>
+              <button class="btn btn-ghost btn-sm" onclick="downloadCertificatePreview()">⬇️ Download Preview</button>
+            </div>
+          </div>
+
+          <!-- Certificate Preview -->
+          <div class="card" style="display:flex;flex-direction:column;align-items:center;">
+            <h3 style="font-weight:800;margin-bottom:1rem;align-self:flex-start;">👁️ Live Preview</h3>
+            <canvas id="admin-cert-canvas" width="560" height="392"
+              style="max-width:100%;border-radius:0.75rem;box-shadow:var(--shadow);"></canvas>
+            <p style="font-size:0.78rem;color:#64748b;margin-top:0.75rem;">Preview uses sample student name "Ahmed Al-Rashid"</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════
+           PANEL: TRY THE APP
+      ════════════════════════════════════════ -->
+      <div id="admin-preview" class="admin-panel fade-in">
+        <h1 style="font-family:var(--font-heading);font-size:1.6rem;font-weight:900;margin-bottom:0.5rem;">🎮 Try the App (Teacher Mode)</h1>
+        <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.9rem;">Experience each level exactly as students do. Your progress will NOT be saved.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;">
+
+          <div class="card" style="border:2px solid #6366f1;text-align:center;cursor:pointer;transition:transform 0.2s;"
+               onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"
+               onclick="adminPreviewLevel('basic')">
+            <div style="font-size:3rem;margin-bottom:0.75rem;">📂</div>
+            <h3 style="font-family:var(--font-heading);font-weight:900;color:#6366f1;margin-bottom:0.5rem;">Basic Level</h3>
+            <p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">Word categorization & matching game</p>
+            <button class="btn btn-info" style="width:100%;justify-content:center;">▶ Try Basic</button>
+          </div>
+
+          <div class="card" style="border:2px solid #10b981;text-align:center;cursor:pointer;transition:transform 0.2s;"
+               onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"
+               onclick="adminPreviewLevel('beginner')">
+            <div style="font-size:3rem;margin-bottom:0.75rem;">🟢</div>
+            <h3 style="font-family:var(--font-heading);font-weight:900;color:#10b981;margin-bottom:0.5rem;">Beginner Level</h3>
+            <p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">Simple sentence drag & drop</p>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;background:#10b981;">▶ Try Beginner</button>
+          </div>
+
+          <div class="card" style="border:2px solid #f59e0b;text-align:center;cursor:pointer;transition:transform 0.2s;"
+               onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"
+               onclick="adminPreviewLevel('intermediate')">
+            <div style="font-size:3rem;margin-bottom:0.75rem;">🟡</div>
+            <h3 style="font-family:var(--font-heading);font-weight:900;color:#f59e0b;margin-bottom:0.5rem;">Intermediate Level</h3>
+            <p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">Complex sentence structures</p>
+            <button class="btn btn-accent" style="width:100%;justify-content:center;">▶ Try Intermediate</button>
+          </div>
+
+          <div class="card" style="border:2px solid #ef4444;text-align:center;cursor:pointer;transition:transform 0.2s;"
+               onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''"
+               onclick="adminPreviewLevel('advanced')">
+            <div style="font-size:3rem;margin-bottom:0.75rem;">🔴</div>
+            <h3 style="font-family:var(--font-heading);font-weight:900;color:#ef4444;margin-bottom:0.5rem;">Advanced Level</h3>
+            <p style="color:#64748b;font-size:0.85rem;margin-bottom:1rem;">Advanced grammar & style</p>
+            <button class="btn btn-danger" style="width:100%;justify-content:center;">▶ Try Advanced</button>
+          </div>
+
+        </div>
+
+        <div class="info-box" style="margin-top:1.5rem;">
+          💡 <strong>Teacher Mode:</strong> You'll be taken to the game screen. Click "← Back" to return to the Admin Dashboard. No data is written to Firestore during preview.
+        </div>
+      </div>
+
+    </div><!-- /scrollable panel area -->
+
+    <!-- Admin Footer -->
+    <footer class="app-footer">
+      Designed by <span>Ayman Nasser</span> &nbsp;•&nbsp; JumbleJump © 2025 &nbsp;•&nbsp; Admin Dashboard
+    </footer>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     GLOBAL MODAL
+══════════════════════════════════════════════════════════════════════ -->
+<div id="global-modal" class="modal-backdrop" style="display:none;" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     JAVASCRIPT – ALL MODULES
+══════════════════════════════════════════════════════════════════════ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 0 – FIREBASE CONFIGURATION & INIT
+═══════════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
+  authDomain:        "jumblejump-prod.firebaseapp.com",
+  projectId:         "jumblejump-prod",
+  storageBucket:     "jumblejump-prod.firebasestorage.app",
+  messagingSenderId: "25185167776",
+  appId:             "1:25185167776:web:ee0f3e2ee89758f76c1cc5",
+  measurementId:     "G-WWWQHS7WD3"
+};
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 1 – GLOBAL STATE
+═══════════════════════════════════════════════════════════════════ */
+let STATE = {
+  currentUser:      null,   // Firebase user object
+  isAdmin:          false,
+  adminData:        null,   // Admin Firestore doc
+  studentProfile:   null,   // { name, email, uid }
+  userProgress:     {},     // { basic:0, beginner:0, intermediate:0, advanced:0 }
+  totalStars:       0,
+  // Game engine state
+  currentLevel:     null,   // 'basic' | 'beginner' | 'intermediate' | 'advanced'
+  currentSentences: [],     // Array of sentence objects for this session
+  currentIndex:     0,      // Which sentence we're on
+  trialsLeft:       3,      // Trials remaining for current sentence
+  trialsConfig:     { basic:3, beginner:3, intermediate:3, advanced:3 },
+  countConfig:      { basic:100, beginner:100, intermediate:100, advanced:100 },
+  isAdminPreview:   false,  // Admin trying the app
+  // SortableJS instances
+  sortableBank:     null,
+  sortableAnswer:   null,
+  sortableBasicPool:null,
+  sortableBasicZones:[],
+  // Basic game state
+  basicRound:       null,   // Current round data
+  basicRounds:      [],     // All rounds loaded
+  basicRoundIndex:  0,
+  basicTrialsLeft:  3,
+  // Certificate config (from Firestore / defaults)
+  certConfig: {
+    bg1:            '#0d9488',
+    bg2:            '#f97316',
+    textColor:      '#ffffff',
+    bodyColor:      '#1e293b',
+    borderColor:    '#ffffff',
+    titleText:      'Certificate of Achievement',
+    subtitleText:   'This certificate is proudly awarded to',
+    completionText: 'for successfully completing the',
+    schoolText:     'JumbleJump Academy',
+    footerText:     'JumbleJump – English Learning Excellence',
+    trophy:         '🏆'
+  },
+  // Completed sentence IDs in current session (to avoid repeats)
+  sessionCompleted: new Set(),
+  // Admin correction data cache
+  correctionData:   [],
+  correctionDataFiltered: []
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 2 – UTILITY FUNCTIONS
+═══════════════════════════════════════════════════════════════════ */
+
+/** Show a toast notification */
+function showToast(msg, type = 'success', duration = 3500) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), duration);
+}
+
+/** Switch visible screen */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(`screen-${id}`).classList.add('active');
+}
+
+/** Toggle password visibility */
+function togglePwd(inputId, eyeId) {
+  const inp = document.getElementById(inputId);
+  const eye = document.getElementById(eyeId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.textContent = inp.type === 'password' ? '👁️' : '🙈';
+}
+
+/** Shuffle an array (Fisher-Yates) */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Show / close global modal */
+function showModal(html) {
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('global-modal').style.display = 'flex';
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('global-modal')) {
+    document.getElementById('global-modal').style.display = 'none';
+  }
+}
+
+/** Motivational quotes pool */
+const QUOTES = [
+  "Every expert was once a beginner. Keep going! 🚀",
+  "You're doing amazing – one sentence at a time! ✨",
+  "English mastery is yours for the taking! 🌟",
+  "Brilliant work! Your brain is growing stronger! 🧠",
+  "You are unstoppable! 💪",
+  "Wonderful! Keep climbing those levels! 🏔️",
+  "Your hard work is paying off! 🎯",
+  "Language is power – and you have it! ⚡"
+];
+function randomQuote() { return QUOTES[Math.floor(Math.random() * QUOTES.length)]; }
+
+/** Generate animated background bubbles */
+function initBubbles() {
+  const container = document.getElementById('bgBubbles');
+  for (let i = 0; i < 12; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 40 + Math.random() * 120;
+    b.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random() * 100}%;
+      animation-duration:${8 + Math.random() * 14}s;
+      animation-delay:${Math.random() * 8}s;
+    `;
+    container.appendChild(b);
+  }
+}
+initBubbles();
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 3 – AUTH MODULE
+═══════════════════════════════════════════════════════════════════ */
+
+/** Switch between login / register tabs */
+function switchAuthTab(tab) {
+  const loginForm = document.getElementById('login-form');
+  const regForm   = document.getElementById('register-form');
+  const tabLogin  = document.getElementById('tab-login');
+  const tabReg    = document.getElementById('tab-register');
+  if (tab === 'login') {
+    loginForm.style.display = 'block';
+    regForm.style.display   = 'none';
+    tabLogin.className = 'btn btn-primary';
+    tabReg.className   = 'btn btn-ghost';
+    tabLogin.style.flex = '1'; tabLogin.style.borderRadius = '2rem'; tabLogin.style.justifyContent = 'center';
+    tabReg.style.flex = '1'; tabReg.style.borderRadius = '2rem'; tabReg.style.justifyContent = 'center'; tabReg.style.border = 'none'; tabReg.style.color = '#64748b';
+  } else {
+    loginForm.style.display = 'none';
+    regForm.style.display   = 'block';
+    tabReg.className   = 'btn btn-secondary';
+    tabLogin.className = 'btn btn-ghost';
+    tabReg.style.flex = '1'; tabReg.style.borderRadius = '2rem'; tabReg.style.justifyContent = 'center'; tabReg.style.border = 'none'; tabReg.style.color = '#fff';
+    tabLogin.style.flex = '1'; tabLogin.style.borderRadius = '2rem'; tabLogin.style.justifyContent = 'center'; tabLogin.style.border = '2px solid var(--color-primary)'; tabLogin.style.color = 'var(--color-primary)';
+  }
+}
+
+/** Handle student login */
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd   = document.getElementById('login-password').value;
+  if (!email || !pwd) { showToast('Please fill in all fields.', 'error'); return; }
+  try {
+    await auth.signInWithEmailAndPassword(email, pwd);
+    // onAuthStateChanged will handle navigation
+  } catch (err) {
+    showToast('Login failed: ' + err.message, 'error');
+  }
+}
+
+/** Handle student registration */
+async function handleRegister() {
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pwd   = document.getElementById('reg-password').value;
+  if (!name || !email || !pwd) { showToast('Please fill in all fields.', 'error'); return; }
+  if (pwd.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+  // Validate email format
+  const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailReg.test(email)) { showToast('Please enter a valid email address.', 'error'); return; }
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pwd);
+    // Save student profile to Firestore
+    await db.collection('students').doc(cred.user.uid).set({
+      name, email, uid: cred.user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // Initialize progress
+    await db.collection('userProgress').doc(cred.user.uid).set({
+      basic: 0, beginner: 0, intermediate: 0, advanced: 0,
+      totalStars: 0, completedSentences: {}
+    });
+    showToast('Account created! Welcome, ' + name + '! 🎉', 'success');
+  } catch (err) {
+    showToast('Registration failed: ' + err.message, 'error');
+  }
+}
+
+/** Password recovery */
+async function handleForgotPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { showToast('Enter your email address first.', 'warning'); return; }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showToast('Password reset email sent! Check your inbox. 📧', 'info');
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+/** Logout */
+async function handleLogout() {
+  try {
+    await auth.signOut();
+    STATE.currentUser = null;
+    STATE.isAdmin = false;
+    showScreen('auth');
+    showToast('Logged out successfully.', 'info');
+  } catch (err) { showToast('Logout error: ' + err.message, 'error'); }
+}
+
+/** Auth state listener */
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { showScreen('auth'); return; }
+  STATE.currentUser = user;
+  // Check if admin
+  try {
+    const adminDoc = await db.collection('admins').doc(user.uid).get();
+    if (adminDoc.exists) {
+      STATE.isAdmin   = true;
+      STATE.adminData = adminDoc.data();
+      await loadGameConfig();
+      await loadCertConfig();
+      loadThemeFromStorage();
+      showAdminDashboard();
+      return;
+    }
+    // Regular student
+    STATE.isAdmin = false;
+    await loadStudentProfile(user.uid);
+    await loadStudentProgress(user.uid);
+    await loadGameConfig();
+    loadThemeFromStorage();
+    showStudentDashboard();
+  } catch (err) {
+    console.error('Auth check error:', err);
+    showToast('Error loading profile. Please try again.', 'error');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 4 – STUDENT PROFILE & PROGRESS
+═══════════════════════════════════════════════════════════════════ */
+
+async function loadStudentProfile(uid) {
+  const doc = await db.collection('students').doc(uid).get();
+  if (doc.exists) STATE.studentProfile = doc.data();
+  else STATE.studentProfile = { name: STATE.currentUser.email, email: STATE.currentUser.email, uid };
+}
+
+async function loadStudentProgress(uid) {
+  const doc = await db.collection('userProgress').doc(uid).get();
+  if (doc.exists) {
+    const d = doc.data();
+    STATE.userProgress   = { basic: d.basic||0, beginner: d.beginner||0, intermediate: d.intermediate||0, advanced: d.advanced||0 };
+    STATE.totalStars     = d.totalStars || 0;
+    STATE.sessionCompleted = new Set(Object.keys(d.completedSentences || {}));
+  } else {
+    STATE.userProgress = { basic:0, beginner:0, intermediate:0, advanced:0 };
+    STATE.totalStars   = 0;
+  }
+}
+
+async function saveStudentProgress() {
+  if (!STATE.currentUser || STATE.isAdminPreview) return;
+  const uid = STATE.currentUser.uid;
+  const completedObj = {};
+  STATE.sessionCompleted.forEach(id => completedObj[id] = true);
+  await db.collection('userProgress').doc(uid).set({
+    ...STATE.userProgress,
+    totalStars: STATE.totalStars,
+    completedSentences: completedObj,
+    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+}
+
+/** Award a star for completing a sentence */
+async function awardStar(levelKey, sentenceId) {
+  if (!STATE.isAdminPreview) {
+    STATE.userProgress[levelKey]++;
+    STATE.totalStars++;
+    STATE.sessionCompleted.add(String(sentenceId));
+    await saveStudentProgress();
+  }
+  updateNavStars();
+}
+
+function updateNavStars() {
+  const el = document.getElementById('nav-student-stars');
+  if (el) el.textContent = `⭐ ${STATE.totalStars} stars`;
+  const el2 = document.getElementById('total-stars-display');
+  if (el2) el2.textContent = `⭐ ${STATE.totalStars}`;
+  const el3 = document.getElementById('game-nav-score');
+  if (el3) el3.textContent = `⭐ ${STATE.totalStars}`;
+  const el4 = document.getElementById('basic-nav-score');
+  if (el4) el4.textContent = `⭐ ${STATE.totalStars}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 5 – GAME CONFIG
+═══════════════════════════════════════════════════════════════════ */
+
+async function loadGameConfig() {
+  try {
+    const doc = await db.collection('config').doc('gameSettings').get();
+    if (doc.exists) {
+      const d = doc.data();
+      STATE.trialsConfig = d.trials || STATE.trialsConfig;
+      STATE.countConfig  = d.counts || STATE.countConfig;
+    }
+  } catch (e) { console.warn('Config not found, using defaults.'); }
+}
+
+async function loadCertConfig() {
+  try {
+    const doc = await db.collection('config').doc('certSettings').get();
+    if (doc.exists) STATE.certConfig = { ...STATE.certConfig, ...doc.data() };
+  } catch (e) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 6 – STUDENT DASHBOARD
+═══════════════════════════════════════════════════════════════════ */
+
+const LEVEL_META = {
+  basic:        { label:'Basic',        icon:'📂', color:'#6366f1', bg:'linear-gradient(135deg,#6366f1,#818cf8)', desc:'Word Matching Game' },
+  beginner:     { label:'Beginner',     icon:'🟢', color:'#10b981', bg:'linear-gradient(135deg,#10b981,#34d399)', desc:'Simple Sentences' },
+  intermediate: { label:'Intermediate', icon:'🟡', color:'#f59e0b', bg:'linear-gradient(135deg,#f59e0b,#fbbf24)', desc:'Complex Structures' },
+  advanced:     { label:'Advanced',     icon:'🔴', color:'#ef4444', bg:'linear-gradient(135deg,#ef4444,#f87171)', desc:'Advanced Grammar' }
+};
+
+function showStudentDashboard() {
+  const name = STATE.studentProfile?.name || 'Student';
+  document.getElementById('nav-student-name').textContent  = name;
+  document.getElementById('welcome-title').textContent      = `Welcome back, ${name}! 👋`;
+  document.getElementById('welcome-subtitle').textContent   = 'Keep learning – every sentence makes you stronger!';
+  updateNavStars();
+  renderProgressBars();
+  renderLevelCards();
+  showScreen('student');
+}
+
+function renderProgressBars() {
+  const container = document.getElementById('overall-progress-bars');
+  const levels    = ['basic','beginner','intermediate','advanced'];
+  container.innerHTML = levels.map(lv => {
+    const meta = LEVEL_META[lv];
+    const done = STATE.userProgress[lv] || 0;
+    const total = STATE.countConfig[lv] || 100;
+    const pct   = Math.min(100, Math.round(done / total * 100));
+    return `
+      <div style="margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;">
+          <span style="font-weight:700;">${meta.icon} ${meta.label}</span>
+          <span style="font-size:0.85rem;color:#64748b;">${done}/${total} (${pct}%)</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" style="width:${pct}%;background:${meta.bg};"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderLevelCards() {
+  const grid   = document.getElementById('level-cards-grid');
+  const levels = ['basic','beginner','intermediate','advanced'];
+  grid.innerHTML = levels.map((lv, idx) => {
+    const meta  = LEVEL_META[lv];
+    const done  = STATE.userProgress[lv] || 0;
+    const total = STATE.countConfig[lv] || 100;
+    const pct   = Math.min(100, Math.round(done / total * 100));
+    // Lock logic: level N is locked if level N-1 is not 100% complete
+    const prevLv   = levels[idx - 1];
+    const prevDone = prevLv ? (STATE.userProgress[prevLv] || 0) : (STATE.countConfig['basic'] || 100);
+    const prevTotal= prevLv ? (STATE.countConfig[prevLv] || 100) : (STATE.countConfig['basic'] || 100);
+    const locked   = idx > 0 && prevDone < prevTotal;
+    const medals   = Math.floor(done / 10);
+    return `
+      <div class="level-card ${locked ? 'locked' : ''}" style="background:${meta.bg};color:#fff;"
+           onclick="${locked ? '' : `startLevel('${lv}')`}">
+        ${locked ? `<div class="lock-overlay">🔒</div>` : ''}
+        <div style="font-size:2.5rem;margin-bottom:0.5rem;">${meta.icon}</div>
+        <h3 style="font-family:var(--font-heading);font-size:1.3rem;font-weight:900;">${meta.label}</h3>
+        <p style="opacity:0.85;font-size:0.85rem;">${meta.desc}</p>
+        <div style="margin:0.75rem 0;">
+          <div style="background:rgba(255,255,255,0.25);border-radius:99px;height:10px;overflow:hidden;">
+            <div style="height:100%;border-radius:99px;background:rgba(255,255,255,0.9);width:${pct}%;transition:width 0.6s;"></div>
+          </div>
+          <div style="font-size:0.8rem;margin-top:0.3rem;opacity:0.9;">${done}/${total} sentences • ${pct}%</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>${'🏅'.repeat(Math.min(medals, 10))}</div>
+          ${locked ? `<span style="opacity:0.8;font-size:0.8rem;">Complete ${LEVEL_META[prevLv]?.label} first</span>` : `<span style="opacity:0.8;font-size:0.8rem;">${pct===100?'✅ Complete':'▶ Play'}</span>`}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 7 – SENTENCE GAME ENGINE (Beginner / Intermediate / Advanced)
+═══════════════════════════════════════════════════════════════════ */
+
+async function startLevel(levelKey) {
+  STATE.currentLevel    = levelKey;
+  STATE.currentIndex    = 0;
+  STATE.isAdminPreview  = false;
+
+  if (levelKey === 'basic') {
+    await startBasicLevel();
+    return;
+  }
+
+  // Load sentences for this level from Firestore
+  try {
+    showToast('Loading sentences...', 'info', 1500);
+    const maxCount = STATE.countConfig[levelKey] || 100;
+    const snap = await db.collection('sentences')
+      .where('level', '==', levelKey)
+      .get();
+    let all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Filter out already completed
+    all = all.filter(s => !STATE.sessionCompleted.has(String(s.id)));
+    if (all.length === 0) {
+      // All completed – level done!
+      showLevelComplete(levelKey);
+      return;
+    }
+    // Randomly pick up to maxCount sentences
+    STATE.currentSentences = shuffle(all).slice(0, maxCount);
+    STATE.currentIndex     = 0;
+    initSentenceGame();
+  } catch (err) {
+    showToast('Error loading sentences: ' + err.message, 'error');
+  }
+}
+
+function initSentenceGame() {
+  const level = STATE.currentLevel;
+  const meta  = LEVEL_META[level];
+  document.getElementById('game-nav-title').textContent = `${meta.icon} ${meta.label} Level`;
+  updateNavStars();
+  showScreen('game');
+  loadSentenceQuestion();
+}
+
+function loadSentenceQuestion() {
+  const s      = STATE.currentSentences[STATE.currentIndex];
+  const total  = STATE.currentSentences.length;
+  const done   = STATE.userProgress[STATE.currentLevel] || 0;
+
+  STATE.trialsLeft = STATE.trialsConfig[STATE.currentLevel] || 3;
+
+  // Update progress bar
+  document.getElementById('game-progress-label').textContent = `${STATE.currentIndex + 1} / ${total}`;
+  const pct = Math.round((STATE.currentIndex / total) * 100);
+  document.getElementById('game-progress-bar').style.width   = pct + '%';
+  document.getElementById('game-trials-display').textContent = `Trials: ${STATE.trialsLeft}`;
+
+  // Stars row
+  const starsRow = document.getElementById('game-stars-row');
+  starsRow.innerHTML = Array(STATE.trialsConfig[STATE.currentLevel] || 3).fill('⭐').join(' ');
+
+  // Medals
+  renderMedals(done);
+
+  // Hide feedback / hint
+  document.getElementById('game-feedback').style.display = 'none';
+  document.getElementById('hint-area').style.display     = 'none';
+
+  // Build word chips
+  const answerZone = document.getElementById('answer-zone');
+  const wordBank   = document.getElementById('word-bank');
+  answerZone.innerHTML = '';
+  wordBank.innerHTML   = '';
+
+  // Scramble words from Correct_Sentence or Scrambled_Words field
+  let words = [];
+  if (s.Scrambled_Words) {
+    words = s.Scrambled_Words.split(/\s+/).filter(Boolean);
+    words = shuffle(words);
+  } else if (s.Correct_Sentence) {
+    words = shuffle(s.Correct_Sentence.split(/\s+/).filter(Boolean));
+  }
+
+  words.forEach(w => {
+    const chip = document.createElement('div');
+    chip.className     = 'word-chip';
+    chip.textContent   = w;
+    chip.dataset.word  = w;
+    wordBank.appendChild(chip);
+  });
+
+  // Initialize SortableJS
+  if (STATE.sortableBank)   STATE.sortableBank.destroy();
+  if (STATE.sortableAnswer) STATE.sortableAnswer.destroy();
+
+  STATE.sortableBank = new Sortable(wordBank, {
+    group: 'words', animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen'
+  });
+  STATE.sortableAnswer = new Sortable(answerZone, {
+    group: 'words', animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen'
+  });
+}
+
+function checkSentenceAnswer() {
+  const s       = STATE.currentSentences[STATE.currentIndex];
+  const correct = (s.Correct_Sentence || '').trim().toLowerCase().replace(/\s+/g,' ');
+  const chips   = document.getElementById('answer-zone').querySelectorAll('.word-chip');
+  const given   = Array.from(chips).map(c => c.textContent.trim()).join(' ').toLowerCase();
+
+  const feedback = document.getElementById('game-feedback');
+  feedback.style.display = 'block';
+
+  if (given === correct) {
+    // ✅ Correct!
+    feedback.innerHTML = `
+      <div class="celebration-box">
+        <div style="font-size:2rem;">🎉</div>
+        <div style="font-size:1.1rem;font-weight:900;">Correct! Brilliant!</div>
+        <div style="margin-top:0.5rem;font-style:italic;">"${randomQuote()}"</div>
+      </div>
+      ${s.Grammar_Rule ? `<div class="grammar-box"><strong>🔎 Grammar Spotlight:</strong> ${s.Grammar_Rule}</div>` : ''}
+      ${s.Teacher_Note ? `<div style="margin-top:0.5rem;font-size:0.85rem;color:#64748b;">📝 Teacher's Note: ${s.Teacher_Note}</div>` : ''}
+    `;
+    triggerConfetti();
+    awardStar(STATE.currentLevel, s.id || STATE.currentIndex);
+    // Auto-advance after 3 seconds
+    setTimeout(() => advanceSentence(), 3000);
+  } else {
+    // ❌ Wrong
+    STATE.trialsLeft--;
+    document.getElementById('game-trials-display').textContent = `Trials: ${STATE.trialsLeft}`;
+    if (STATE.trialsLeft <= 0) {
+      // No more trials
+      feedback.innerHTML = `
+        <div style="background:#fef2f2;border-left:5px solid #ef4444;border-radius:0 0.75rem 0.75rem 0;padding:1rem;">
+          <strong>❌ Out of trials!</strong><br>
+          Correct answer: <em style="color:var(--color-primary);">${s.Correct_Sentence}</em>
+        </div>
+        ${s.Grammar_Rule ? `<div class="grammar-box"><strong>🔎 Grammar Spotlight:</strong> ${s.Grammar_Rule}</div>` : ''}
+      `;
+      // Show hint forced
+      showHint();
+      setTimeout(() => advanceSentence(), 4000);
+    } else {
+      feedback.innerHTML = `
+        <div style="background:#fef2f2;border-left:5px solid #ef4444;border-radius:0 0.75rem 0.75rem 0;padding:0.75rem 1rem;">
+          ❌ Not quite right. You have <strong>${STATE.trialsLeft}</strong> trial(s) left.
+        </div>`;
+      if (STATE.trialsLeft <= 1) showHint(); // auto-show hint on last trial
+    }
+  }
+}
+
+function advanceSentence() {
+  STATE.currentIndex++;
+  const total = STATE.currentSentences.length;
+  if (STATE.currentIndex >= total) {
+    if (!STATE.isAdminPreview) showLevelComplete(STATE.currentLevel);
+    else { showToast('Preview complete! All sentences done.', 'success'); goBackToDashboard(); }
+    return;
+  }
+  loadSentenceQuestion();
+  document.getElementById('game-feedback').style.display = 'none';
+}
+
+function resetWordBank() {
+  const answerZone = document.getElementById('answer-zone');
+  const wordBank   = document.getElementById('word-bank');
+  Array.from(answerZone.querySelectorAll('.word-chip')).forEach(c => wordBank.appendChild(c));
+}
+
+function showHint() {
+  const s    = STATE.currentSentences[STATE.currentIndex];
+  const hint = s.Hint || s.Teacher_Note || 'Think about subject + verb order.';
+  document.getElementById('hint-text').textContent    = hint;
+  document.getElementById('hint-area').style.display  = 'block';
+}
+
+function renderMedals(done) {
+  const medals = Math.floor(done / 10);
+  const row    = document.getElementById('medals-row');
+  row.innerHTML = '';
+  for (let i = 0; i < medals; i++) {
+    const m = document.createElement('span');
+    m.className   = 'medal-icon';
+    m.textContent = '🏅';
+    row.appendChild(m);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 8 – BASIC MATCH GAME
+═══════════════════════════════════════════════════════════════════ */
+
+async function startBasicLevel() {
+  try {
+    showToast('Loading Basic level...', 'info', 1500);
+    const snap = await db.collection('basic_sentences').get();
+    let allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (allData.length === 0) { showToast('No Basic level data found. Please upload data first.', 'warning'); return; }
+
+    // Group by Main_Category
+    const groups = {};
+    allData.forEach(row => {
+      const cat = row.Main_Category || 'General';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(row);
+    });
+
+    // Each "round" = one main category with all its subcategories
+    STATE.basicRounds = Object.keys(groups).map(cat => ({
+      mainCategory: cat,
+      rows: groups[cat]
+    }));
+    STATE.basicRounds = shuffle(STATE.basicRounds);
+    STATE.basicRoundIndex = 0;
+    STATE.basicTrialsLeft = STATE.trialsConfig.basic || 3;
+
+    showScreen('basic');
+    updateNavStars();
+    loadBasicRound();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function loadBasicRound() {
+  if (STATE.basicRoundIndex >= STATE.basicRounds.length) {
+    if (!STATE.isAdminPreview) showLevelComplete('basic');
+    else { showToast('Basic preview complete!', 'success'); goBackToDashboard(); }
+    return;
+  }
+
+  const round = STATE.basicRounds[STATE.basicRoundIndex];
+  STATE.basicRound      = round;
+  STATE.basicTrialsLeft = STATE.trialsConfig.basic || 3;
+
+  // Progress
+  const total = STATE.basicRounds.length;
+  const pct   = Math.round((STATE.basicRoundIndex / total) * 100);
+  document.getElementById('basic-progress-label').textContent = `Round ${STATE.basicRoundIndex+1} of ${total}`;
+  document.getElementById('basic-progress-bar').style.width   = pct + '%';
+
+  // Main category title
+  document.getElementById('basic-main-category-title').textContent = `📂 ${round.mainCategory}`;
+
+  // Get all subcategories for this round
+  const subcats = {};
+  round.rows.forEach(row => {
+    const sub = row.subcategory || 'General';
+    if (!subcats[sub]) subcats[sub] = [];
+    subcats[sub].push(row);
+  });
+
+  // Build word pool – all Jumbled_Words from all subcategories combined & shuffled
+  const pool    = document.getElementById('basic-word-pool');
+  const zonesEl = document.getElementById('basic-subcategory-zones');
+  pool.innerHTML   = '';
+  zonesEl.innerHTML= '';
+
+  let allWords = [];
+  Object.keys(subcats).forEach(sub => {
+    subcats[sub].forEach(row => {
+      const words = (row.Jumbled_Words || '').split(/[,\s]+/).filter(Boolean);
+      words.forEach(w => allWords.push({ word: w.trim(), subcategory: sub }));
+    });
+  });
+  allWords = shuffle(allWords);
+
+  // Render word chips in pool
+  allWords.forEach(item => {
+    const chip = document.createElement('div');
+    chip.className            = 'word-chip';
+    chip.textContent          = item.word;
+    chip.dataset.correctSub   = item.subcategory;
+    chip.dataset.word         = item.word;
+    pool.appendChild(chip);
+  });
+
+  // Render subcategory drop zones
+  const subKeys = Object.keys(subcats);
+  subKeys.forEach(sub => {
+    const zone = document.createElement('div');
+    zone.className = 'match-category';
+    zone.dataset.subcategory = sub;
+    zone.innerHTML = `<div class="match-category-title">${sub}</div>`;
+    zonesEl.appendChild(zone);
+  });
+
+  // Hide feedback / hint
+  document.getElementById('basic-feedback').style.display  = 'none';
+  document.getElementById('basic-hint-area').style.display = 'none';
+
+  // Destroy old sortables
+  if (STATE.sortableBasicPool) STATE.sortableBasicPool.destroy();
+  STATE.sortableBasicZones.forEach(s => s.destroy());
+  STATE.sortableBasicZones = [];
+
+  // Init pool sortable
+  STATE.sortableBasicPool = new Sortable(pool, {
+    group: 'basic-words', animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen'
+  });
+
+  // Init each subcategory zone sortable
+  zonesEl.querySelectorAll('.match-category').forEach(zone => {
+    const s = new Sortable(zone, {
+      group: 'basic-words', animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen'
+    });
+    STATE.sortableBasicZones.push(s);
+  });
+}
+
+function checkBasicAnswer() {
+  const zonesEl = document.getElementById('basic-subcategory-zones');
+  const feedback= document.getElementById('basic-feedback');
+  let allCorrect = true;
+
+  zonesEl.querySelectorAll('.match-category').forEach(zone => {
+    const sub   = zone.dataset.subcategory;
+    const chips = zone.querySelectorAll('.word-chip');
+    chips.forEach(chip => {
+      if (chip.dataset.correctSub !== sub) allCorrect = false;
+    });
+  });
+
+  // Check if pool is empty (all words placed)
+  const poolChips = document.getElementById('basic-word-pool').querySelectorAll('.word-chip');
+  if (poolChips.length > 0) { showToast('Place ALL words before checking!', 'warning'); return; }
+
+  feedback.style.display = 'block';
+  if (allCorrect) {
+    feedback.innerHTML = `
+      <div class="celebration-box">
+        <div style="font-size:2rem;">🎉</div>
+        <div style="font-size:1.1rem;font-weight:900;">Perfect Match! Excellent!</div>
+        <div style="margin-top:0.5rem;font-style:italic;">"${randomQuote()}"</div>
+      </div>`;
+    triggerConfetti();
+    awardStar('basic', `basic_${STATE.basicRoundIndex}`);
+    setTimeout(() => {
+      STATE.basicRoundIndex++;
+      loadBasicRound();
+      feedback.style.display = 'none';
+    }, 3000);
+  } else {
+    STATE.basicTrialsLeft--;
+    if (STATE.basicTrialsLeft <= 0) {
+      feedback.innerHTML = `<div style="background:#fef2f2;border-left:5px solid #ef4444;border-radius:0 0.75rem 0.75rem 0;padding:1rem;">
+        ❌ Out of trials! Moving to next round...</div>`;
+      showBasicHint();
+      setTimeout(() => {
+        STATE.basicRoundIndex++;
+        loadBasicRound();
+        feedback.style.display = 'none';
+      }, 4000);
+    } else {
+      feedback.innerHTML = `<div style="background:#fef2f2;border-left:5px solid #ef4444;border-radius:0 0.75rem 0.75rem 0;padding:0.75rem 1rem;">
+        ❌ Some words are in the wrong place. <strong>${STATE.basicTrialsLeft}</strong> trial(s) left.</div>`;
+      if (STATE.basicTrialsLeft <= 1) showBasicHint();
+    }
+  }
+}
+
+function resetBasicRound() { loadBasicRound(); }
+
+function showBasicHint() {
+  const round = STATE.basicRound;
+  const hints = round.rows.map(r => r.Hint || r.Teacher_Note || '').filter(Boolean);
+  const hint  = hints[0] || 'Look at the category titles carefully!';
+  document.getElementById('basic-hint-text').textContent    = hint;
+  document.getElementById('basic-hint-area').style.display = 'block';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 9 – LEVEL COMPLETE & CERTIFICATE
+═══════════════════════════════════════════════════════════════════ */
+
+function showLevelComplete(levelKey) {
+  const meta  = LEVEL_META[levelKey];
+  const done  = STATE.userProgress[levelKey] || 0;
+  const medals= Math.floor(done / 10);
+  document.getElementById('complete-title').textContent    = `${meta.icon} ${meta.label} Level Complete!`;
+  document.getElementById('complete-subtitle').textContent = `You earned ${done} stars and ${medals} medals! ${randomQuote()}`;
+  const starsEl = document.getElementById('complete-stars');
+  starsEl.innerHTML = Array(Math.min(done, 20)).fill('⭐').join('') + (done > 20 ? `<span style="font-weight:900;"> +${done-20} more!</span>` : '');
+  document.getElementById('cert-area').style.display = 'none';
+  showScreen('complete');
+  triggerConfetti();
+}
+
+function generateCertificate() {
+  const name   = STATE.studentProfile?.name || 'Student';
+  const level  = LEVEL_META[STATE.currentLevel]?.label || STATE.currentLevel;
+  const canvas = document.getElementById('cert-canvas');
+  drawCertificate(canvas, name, level, STATE.certConfig);
+  document.getElementById('cert-area').style.display = 'block';
+}
+
+/** Core certificate drawing function – used by both student and admin preview */
+function drawCertificate(canvas, studentName, levelName, cfg) {
+  const ctx = canvas.getContext('2d');
+  const w   = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, cfg.bg1 || '#0d9488');
+  grad.addColorStop(1, cfg.bg2 || '#f97316');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Decorative border
+  const borderCol = cfg.borderColor || 'rgba(255,255,255,0.5)';
+  ctx.strokeStyle = borderCol;
+  ctx.lineWidth   = 12;
+  ctx.roundRect(20, 20, w-40, h-40, 20);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth   = 3;
+  ctx.roundRect(36, 36, w-72, h-72, 14);
+  ctx.stroke();
+
+  // Decorative circles
+  ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  [[-60,-60,180],[w+30,h+30,200],[w/2, h+40, 150]].forEach(([x,y,r]) => {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  });
+
+  // Stars decoration
+  ctx.font = '24px serif';
+  ['⭐','🌟','✨'].forEach((em, i) => {
+    ctx.fillText(em, 60 + i*40, 80);
+    ctx.fillText(em, w - 140 + i*40, 80);
+  });
+
+  // Logo / App Title
+  ctx.fillStyle    = cfg.textColor || '#fff';
+  ctx.font         = `900 42px 'Poppins', sans-serif`;
+  ctx.textAlign    = 'center';
+  ctx.fillText('JumbleJump', w/2, 110);
+
+  // Certificate title
+  ctx.font      = `700 26px 'Nunito', sans-serif`;
+  ctx.fillText(cfg.titleText || 'Certificate of Achievement', w/2, 158);
+
+  // Subtitle
+  ctx.font      = `400 18px 'Nunito', sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText(cfg.subtitleText || 'This certificate is proudly awarded to', w/2, 210);
+
+  // Student name
+  ctx.fillStyle = cfg.textColor || '#fff';
+  ctx.font      = `900 36px 'Poppins', sans-serif`;
+  ctx.fillText(studentName, w/2, 268);
+
+  // Underline
+  const nameW = ctx.measureText(studentName).width;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(w/2 - nameW/2 - 10, 278);
+  ctx.lineTo(w/2 + nameW/2 + 10, 278);
+  ctx.stroke();
+
+  // Level completion text
+  ctx.font      = `700 20px 'Nunito', sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  const compText = cfg.completionText || 'for successfully completing the';
+  ctx.fillText(`${compText} ${levelName} Level`, w/2, 318);
+
+  // School name
+  ctx.font      = `600 16px 'Nunito', sans-serif`;
+  ctx.fillStyle = cfg.textColor || '#fff';
+  ctx.fillText(cfg.schoolText || 'JumbleJump Academy', w/2, 348);
+
+  // Date
+  const today = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  ctx.font      = `400 15px 'Nunito', sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText(`Date: ${today}`, w/2, 374);
+
+  // Trophy emoji
+  const trophyEmoji = cfg.trophy || '🏆';
+  ctx.font      = '52px serif';
+  ctx.fillText(trophyEmoji, w/2, 442);
+
+  // Footer
+  ctx.font      = `600 13px 'Nunito', sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.fillText(cfg.footerText || 'JumbleJump – English Learning Excellence', w/2, 492);
+
+  // Bottom stars row
+  ctx.font = '20px serif';
+  ctx.fillText('⭐ ⭐ ⭐ ⭐ ⭐', w/2, 528);
+}
+
+function downloadCertificate() {
+  const name  = STATE.studentProfile?.name || 'Student';
+  const level = LEVEL_META[STATE.currentLevel]?.label || STATE.currentLevel;
+  const canvas= document.getElementById('cert-canvas');
+  const img   = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf   = new jsPDF({ orientation: 'landscape', unit: 'px', format: [800, 560] });
+  pdf.addImage(img, 'PNG', 0, 0, 800, 560);
+  pdf.save(`JumbleJump_Certificate_${name}_${level}.pdf`);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 10 – CONFETTI
+═══════════════════════════════════════════════════════════════════ */
+
+function triggerConfetti() {
+  confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 }, colors: ['#0d9488','#f97316','#fbbf24','#fff','#6366f1'] });
+  setTimeout(() => confetti({ particleCount: 80, angle: 60, spread: 55, origin: { x: 0, y: 0.6 } }), 300);
+  setTimeout(() => confetti({ particleCount: 80, angle: 120, spread: 55, origin: { x: 1, y: 0.6 } }), 500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 11 – NAVIGATION HELPERS
+═══════════════════════════════════════════════════════════════════ */
+
+function goBackToDashboard() {
+  if (STATE.isAdmin && STATE.isAdminPreview) {
+    STATE.isAdminPreview = false;
+    showScreen('admin');
+    return;
+  }
+  if (STATE.isAdmin) { showScreen('admin'); return; }
+  // Reload progress then show dashboard
+  loadStudentProgress(STATE.currentUser.uid).then(() => {
+    renderProgressBars();
+    renderLevelCards();
+    showStudentDashboard();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 12 – ADMIN DASHBOARD
+═══════════════════════════════════════════════════════════════════ */
+
+/** All admin panels keyed by their ID suffix */
+const ADMIN_PANELS = ['upload','correction','dbstats','students','settings','theme','certificate','preview'];
+
+function showAdminDashboard() {
+  showScreen('admin');
+  // Display admin email
+  const emailEl = document.getElementById('admin-email-display');
+  if (emailEl && STATE.currentUser) emailEl.textContent = STATE.currentUser.email;
+  const avatarEl = document.getElementById('admin-avatar');
+  if (avatarEl && STATE.currentUser) avatarEl.textContent = (STATE.currentUser.email || 'A')[0].toUpperCase();
+  adminNav('upload');
+  loadAdminGameSettings();
+}
+
+/** Switch admin navigation panels */
+function adminNav(panel) {
+  const PANEL_TITLES = {
+    upload:      '📤 Upload Data',
+    correction:  '✏️ Manual Data Correction',
+    dbstats:     '📊 Database Statistics',
+    students:    '👨‍🎓 Student Progress',
+    settings:    '⚙️ Game Settings',
+    theme:       '🎨 Theme Editor',
+    certificate: '📜 Certificate Editor',
+    preview:     '🎮 Try the App'
+  };
+  ADMIN_PANELS.forEach(p => {
+    const el  = document.getElementById(`admin-${p}`);
+    const nav = document.getElementById(`anav-${p}`);
+    if (el)  { el.classList.remove('active'); el.style.display = 'none'; }
+    if (nav) nav.className = 'nav-item' + (p === panel ? ' active' : '');
+  });
+  const activeEl = document.getElementById(`admin-${panel}`);
+  if (activeEl) { activeEl.classList.add('active'); activeEl.style.display = 'block'; }
+  // Update topbar title
+  const titleEl = document.getElementById('admin-panel-title');
+  if (titleEl) titleEl.textContent = PANEL_TITLES[panel] || panel;
+  // Panel-specific init
+  if (panel === 'students')    loadStudentsList();
+  if (panel === 'certificate') { syncCertEditorFromState(); previewCertificate(); }
+  if (panel === 'dbstats')     loadDbStats();
+  if (panel === 'theme')       syncThemeEditorFromStorage();
+}
+
+/* ─── Upload Basic Excel ─── */
+async function uploadBasicExcel() {
+  const file = document.getElementById('basic-excel-input').files[0];
+  if (!file) { showToast('Please select a file first.', 'warning'); return; }
+  const statusEl  = document.getElementById('basic-upload-status');
+  const progressW = document.getElementById('basic-upload-progress');
+  const progressB = document.getElementById('basic-upload-bar');
+  statusEl.innerHTML = '⏳ Parsing file...';
+  progressW.style.display = 'block';
+  progressB.style.width   = '10%';
+  try {
+    const data = await file.arrayBuffer();
+    const wb   = XLSX.read(data, { type: 'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (rows.length === 0) { showToast('Excel file is empty.', 'error'); return; }
+    statusEl.innerHTML = `⏳ Uploading ${rows.length} rows to Firestore...`;
+    progressB.style.width = '30%';
+
+    // Batch in groups of 499
+    let count = 0;
+    const validRows = rows.filter(r => r.Main_Category);
+    for (let i = 0; i < validRows.length; i += 499) {
+      const chunk = validRows.slice(i, i + 499);
+      const batch = db.batch();
+      chunk.forEach(row => {
+        const ref = db.collection('basic_sentences').doc();
+        batch.set(ref, {
+          Main_Category: row.Main_Category || '',
+          subcategory:   row.subcategory   || '',
+          Jumbled_Words: row.Jumbled_Words  || '',
+          Hint:          row.Hint          || '',
+          Teacher_Note:  row.Teacher_Note  || '',
+          Question_ID:   String(row.Question_ID || ''),
+          uploadedAt:    firebase.firestore.FieldValue.serverTimestamp()
+        });
+        count++;
+      });
+      await batch.commit();
+      progressB.style.width = Math.min(90, 30 + (i / validRows.length) * 60) + '%';
+    }
+    progressB.style.width = '100%';
+    statusEl.innerHTML = `<span style="color:green;">✅ Successfully uploaded ${count} rows!</span>`;
+    showToast(`${count} Basic sentences uploaded!`, 'success');
+    setTimeout(() => { progressW.style.display = 'none'; progressB.style.width = '0%'; }, 2000);
+  } catch (err) {
+    statusEl.innerHTML = `<span style="color:red;">❌ ${err.message}</span>`;
+    showToast('Upload error: ' + err.message, 'error');
+    progressW.style.display = 'none';
+  }
+}
+
+/* ─── Upload Sentence Excel ─── */
+async function uploadSentenceExcel() {
+  const file = document.getElementById('sentence-excel-input').files[0];
+  if (!file) { showToast('Please select a file first.', 'warning'); return; }
+  const statusEl  = document.getElementById('sentence-upload-status');
+  const progressW = document.getElementById('sentence-upload-progress');
+  const progressB = document.getElementById('sentence-upload-bar');
+  statusEl.innerHTML = '⏳ Parsing file...';
+  progressW.style.display = 'block';
+  progressB.style.width   = '10%';
+  try {
+    const data = await file.arrayBuffer();
+    const wb   = XLSX.read(data, { type: 'array' });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (rows.length === 0) { showToast('Excel file is empty.', 'error'); return; }
+    statusEl.innerHTML = `⏳ Uploading ${rows.length} rows...`;
+    progressB.style.width = '20%';
+
+    let count = 0;
+    const validRows = rows.filter(r => r.Level);
+    for (let i = 0; i < validRows.length; i += 499) {
+      const chunk = validRows.slice(i, i + 499);
+      const batch = db.batch();
+      chunk.forEach(row => {
+        const ref = db.collection('sentences').doc();
+        batch.set(ref, {
+          level:            String(row.Level).toLowerCase().trim(),
+          Scrambled_Words:  row.Scrambled_Words  || '',
+          Correct_Sentence: row.Correct_Sentence || '',
+          Grammar_Rule:     row.Grammar_Rule     || '',
+          Teacher_Note:     row.Teacher_Note     || '',
+          uploadedAt:       firebase.firestore.FieldValue.serverTimestamp()
+        });
+        count++;
+      });
+      await batch.commit();
+      progressB.style.width = Math.min(90, 20 + (i / validRows.length) * 70) + '%';
+    }
+    progressB.style.width = '100%';
+    statusEl.innerHTML = `<span style="color:green;">✅ Uploaded ${count} sentences!</span>`;
+    showToast(`${count} sentences uploaded!`, 'success');
+    setTimeout(() => { progressW.style.display = 'none'; progressB.style.width = '0%'; }, 2000);
+  } catch (err) {
+    statusEl.innerHTML = `<span style="color:red;">❌ ${err.message}</span>`;
+    showToast('Upload error: ' + err.message, 'error');
+    progressW.style.display = 'none';
+  }
+}
+
+/* ─── Delete All Sentences ─── */
+function confirmDeleteAll(scope = 'both') {
+  const labels = {
+    both:      'ALL sentences (Basic + all levels)',
+    sentences: 'all Sentence Level data (Beginner/Intermediate/Advanced)',
+    basic:     'all Basic Level data only'
+  };
+  showModal(`
+    <h2 style="font-weight:900;color:#ef4444;margin-bottom:1rem;">⚠️ Delete ${labels[scope]}</h2>
+    <p style="color:#64748b;margin-bottom:1.5rem;">
+      This will permanently delete <strong>${labels[scope]}</strong> from Firestore.<br>
+      This action <strong>CANNOT be undone</strong>.
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="deleteAllSentences('${scope}')">🗑️ Yes, Delete</button>
+    </div>
+  `);
+}
+
+async function deleteAllSentences(scope = 'both') {
+  closeModal();
+  const statusEl = document.getElementById('delete-status');
+  if (statusEl) statusEl.innerHTML = '⏳ Deleting...';
+  showToast('Deleting data...', 'info', 5000);
+  try {
+    async function deleteCollection(name) {
+      const snap = await db.collection(name).get();
+      for (let i = 0; i < snap.docs.length; i += 499) {
+        const batch = db.batch();
+        snap.docs.slice(i, i+499).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+      return snap.docs.length;
+    }
+    let total = 0;
+    if (scope === 'both' || scope === 'sentences') total += await deleteCollection('sentences');
+    if (scope === 'both' || scope === 'basic')     total += await deleteCollection('basic_sentences');
+    if (statusEl) statusEl.innerHTML = `<span style="color:green;">✅ Deleted ${total} records.</span>`;
+    showToast(`${total} records deleted successfully.`, 'success');
+  } catch (err) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:red;">❌ ${err.message}</span>`;
+    showToast('Delete error: ' + err.message, 'error');
+  }
+}
+
+/* ─── Excel Templates ─── */
+function downloadBasicTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Main_Category','subcategory','Jumbled_Words','Hint','Teacher_Note','Question_ID'],
+    ['Nouns','Animals','cat dog bird','Think about living creatures','Common animals',1],
+    ['Nouns','Colors','red blue green','Think about colors','Basic colors',2],
+    ['Verbs','Action Verbs','run jump swim','Action words you do','Physical actions',3],
+    ['Verbs','State Verbs','know believe feel','Mental states','Stative verbs',4]
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'BasicTemplate');
+  XLSX.writeFile(wb, 'JumbleJump_Basic_Template.xlsx');
+}
+
+function downloadSentenceTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Level','Scrambled_Words','Correct_Sentence','Grammar_Rule','Teacher_Note'],
+    ['beginner','school goes to he','He goes to school.','Subject + Verb + Object','Simple present tense'],
+    ['beginner','cat the is black','The cat is black.','Article + Noun + Verb + Adjective','Use "is" for singular'],
+    ['intermediate','been has she studying','She has been studying.','Present Perfect Continuous','Focus on tense'],
+    ['intermediate','yesterday did you what do','What did you do yesterday?','Past Simple Question','Inversion with did'],
+    ['advanced','had they finished already work the','They had already finished the work.','Past Perfect with adverb placement','Adverb position'],
+    ['advanced','such eloquence rarely encountered is','Such eloquence is rarely encountered.','Fronting for emphasis','Formal register']
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SentenceTemplate');
+  XLSX.writeFile(wb, 'JumbleJump_Sentence_Template.xlsx');
+}
+
+/* ─── Load Game Settings into Admin UI ─── */
+async function loadAdminGameSettings() {
+  try {
+    const doc = await db.collection('config').doc('gameSettings').get();
+    if (doc.exists) {
+      const d = doc.data();
+      const c = d.counts  || {};
+      const t = d.trials  || {};
+      if (c.basic)        document.getElementById('set-basic-count').value        = c.basic;
+      if (c.beginner)     document.getElementById('set-beginner-count').value     = c.beginner;
+      if (c.intermediate) document.getElementById('set-intermediate-count').value = c.intermediate;
+      if (c.advanced)     document.getElementById('set-advanced-count').value     = c.advanced;
+      if (t.basic)        document.getElementById('set-basic-trials').value        = t.basic;
+      if (t.beginner)     document.getElementById('set-beginner-trials').value     = t.beginner;
+      if (t.intermediate) document.getElementById('set-intermediate-trials').value = t.intermediate;
+      if (t.advanced)     document.getElementById('set-advanced-trials').value     = t.advanced;
+    }
+  } catch(e) {}
+}
+
+/* ─── Save Game Settings ─── */
+async function saveGameSettings() {
+  const counts = {
+    basic:        parseInt(document.getElementById('set-basic-count').value)        || 100,
+    beginner:     parseInt(document.getElementById('set-beginner-count').value)     || 100,
+    intermediate: parseInt(document.getElementById('set-intermediate-count').value) || 100,
+    advanced:     parseInt(document.getElementById('set-advanced-count').value)     || 100
+  };
+  const trials = {
+    basic:        parseInt(document.getElementById('set-basic-trials').value)        || 3,
+    beginner:     parseInt(document.getElementById('set-beginner-trials').value)     || 3,
+    intermediate: parseInt(document.getElementById('set-intermediate-trials').value) || 3,
+    advanced:     parseInt(document.getElementById('set-advanced-trials').value)     || 3
+  };
+  try {
+    await db.collection('config').doc('gameSettings').set({ counts, trials }, { merge: true });
+    STATE.countConfig  = counts;
+    STATE.trialsConfig = trials;
+    showToast('Game settings saved! ✅', 'success');
+  } catch (err) { showToast('Save error: ' + err.message, 'error'); }
+}
+
+/* ─── Load Students List (enhanced) ─── */
+let ALL_STUDENTS_DATA = []; // cached for filtering/sorting
+
+async function loadStudentsList() {
+  const tbody = document.getElementById('students-tbody');
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:1.5rem;"><div class="loader"></div></td></tr>';
+  try {
+    const studentsSnap  = await db.collection('students').get();
+    const progressSnap  = await db.collection('userProgress').get();
+    const progressMap   = {};
+    progressSnap.docs.forEach(d => progressMap[d.id] = d.data());
+
+    ALL_STUDENTS_DATA = studentsSnap.docs.map(d => {
+      const s = d.data();
+      const p = progressMap[d.id] || {};
+      return { ...s, progress: p, docId: d.id };
+    });
+
+    // Summary stats
+    const totalStarsAll = ALL_STUDENTS_DATA.reduce((sum, r) => sum + (r.progress.totalStars || 0), 0);
+    const activeCount   = ALL_STUDENTS_DATA.filter(r => (r.progress.totalStars || 0) > 0).length;
+    const completedCount= ALL_STUDENTS_DATA.filter(r =>
+      (r.progress.basic >= (STATE.countConfig.basic || 100)) ||
+      (r.progress.beginner >= (STATE.countConfig.beginner || 100)) ||
+      (r.progress.intermediate >= (STATE.countConfig.intermediate || 100)) ||
+      (r.progress.advanced >= (STATE.countConfig.advanced || 100))
+    ).length;
+    document.getElementById('sstat-total').textContent     = ALL_STUDENTS_DATA.length;
+    document.getElementById('sstat-active').textContent    = activeCount;
+    document.getElementById('sstat-completed').textContent = completedCount;
+    document.getElementById('sstat-stars').textContent     = totalStarsAll;
+
+    renderStudentsTable(ALL_STUDENTS_DATA);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:red;padding:1rem;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderStudentsTable(data) {
+  const tbody = document.getElementById('students-tbody');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:#64748b;">No students found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((r, idx) => {
+    const joined = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('en-GB') : '—';
+    const stars  = r.progress.totalStars || 0;
+    const lvls   = ['basic','beginner','intermediate','advanced'];
+    const activeLvl = lvls.filter(l => (r.progress[l] || 0) > 0).pop() || '—';
+    return `
+      <tr>
+        <td style="color:#94a3b8;font-size:0.8rem;">${idx+1}</td>
+        <td>
+          <strong>${r.name || '—'}</strong><br>
+          <span class="tag">${r.uid ? r.uid.slice(0,8) : ''}…</span>
+        </td>
+        <td style="font-size:0.8rem;">${r.email || '—'}</td>
+        <td><strong style="color:var(--color-accent);">⭐ ${stars}</strong></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <span>${r.progress.basic || 0}</span>
+            ${(r.progress.basic||0) >= (STATE.countConfig.basic||100) ? '✅' : ''}
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <span>${r.progress.beginner || 0}</span>
+            ${(r.progress.beginner||0) >= (STATE.countConfig.beginner||100) ? '✅' : ''}
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <span>${r.progress.intermediate || 0}</span>
+            ${(r.progress.intermediate||0) >= (STATE.countConfig.intermediate||100) ? '✅' : ''}
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.4rem;">
+            <span>${r.progress.advanced || 0}</span>
+            ${(r.progress.advanced||0) >= (STATE.countConfig.advanced||100) ? '✅' : ''}
+          </div>
+        </td>
+        <td style="font-size:0.78rem;color:#64748b;">${joined}</td>
+        <td>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="resetStudentProgress('${r.uid}')">🔄 Reset</button>
+            <button class="btn btn-danger btn-sm" onclick="removeStudentModal('${r.uid}','${(r.name||'').replace(/'/g,"\\'")}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+/** Filter students table by search term */
+function filterStudentsTable() {
+  const q = (document.getElementById('students-search')?.value || '').toLowerCase();
+  const filtered = ALL_STUDENTS_DATA.filter(r =>
+    (r.name || '').toLowerCase().includes(q) ||
+    (r.email || '').toLowerCase().includes(q)
+  );
+  renderStudentsTable(filtered);
+}
+
+/** Sort students table */
+function sortStudentsTable() {
+  const mode = document.getElementById('students-sort')?.value || 'name';
+  const sorted = [...ALL_STUDENTS_DATA];
+  if (mode === 'name')        sorted.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  if (mode === 'stars-desc')  sorted.sort((a,b) => (b.progress.totalStars||0) - (a.progress.totalStars||0));
+  if (mode === 'stars-asc')   sorted.sort((a,b) => (a.progress.totalStars||0) - (b.progress.totalStars||0));
+  if (mode === 'level') {
+    const lvlScore = r => (['advanced','intermediate','beginner','basic'].findIndex(l => (r.progress[l]||0) > 0));
+    sorted.sort((a,b) => lvlScore(a) - lvlScore(b));
+  }
+  renderStudentsTable(sorted);
+}
+
+/** Export students to CSV */
+function exportStudentsCSV() {
+  const header = ['Name','Email','Stars','Basic','Beginner','Intermediate','Advanced'];
+  const rows   = ALL_STUDENTS_DATA.map(r => [
+    r.name || '',
+    r.email || '',
+    r.progress.totalStars || 0,
+    r.progress.basic || 0,
+    r.progress.beginner || 0,
+    r.progress.intermediate || 0,
+    r.progress.advanced || 0
+  ]);
+  const csv    = [header, ...rows].map(r => r.join(',')).join('\n');
+  const blob   = new Blob([csv], { type: 'text/csv' });
+  const url    = URL.createObjectURL(blob);
+  const a      = document.createElement('a');
+  a.href = url; a.download = 'JumbleJump_Students.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('CSV exported!', 'success');
+}
+
+async function resetStudentProgress(uid) {
+  if (!confirm("Reset this student's progress? This cannot be undone.")) return;
+  await db.collection('userProgress').doc(uid).set({
+    basic:0, beginner:0, intermediate:0, advanced:0,
+    totalStars:0, completedSentences: {}
+  });
+  showToast('Progress reset successfully.', 'success');
+  loadStudentsList();
+}
+
+function removeStudentModal(uid, name) {
+  showModal(`
+    <h2 style="font-weight:900;color:#ef4444;margin-bottom:1rem;">🗑️ Remove Student</h2>
+    <p style="color:#64748b;margin-bottom:1.5rem;">
+      Remove <strong>${name}</strong> from the student list? Their Auth account will remain but all Firestore data will be deleted.
+    </p>
+    <div style="display:flex;gap:1rem;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="removeStudent('${uid}')">🗑️ Remove</button>
+    </div>
+  `);
+}
+
+async function removeStudent(uid) {
+  closeModal();
+  try {
+    await db.collection('students').doc(uid).delete();
+    await db.collection('userProgress').doc(uid).delete();
+    showToast('Student removed.', 'success');
+    loadStudentsList();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+/* ─── Admin Preview ─── */
+async function adminPreviewLevel(levelKey) {
+  STATE.isAdmin        = true;
+  STATE.isAdminPreview = true;
+  STATE.currentLevel   = levelKey;
+  STATE.studentProfile = { name: 'Teacher Preview', email: 'admin@jumblejump.sa' };
+
+  if (levelKey === 'basic') {
+    await startBasicLevel();
+  } else {
+    await startLevel(levelKey);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 12B – MANUAL DATA CORRECTION
+═══════════════════════════════════════════════════════════════════ */
+
+/** Load sentences for manual editing */
+async function loadCorrectionData() {
+  const collection = document.getElementById('correction-collection').value;
+  const levelFilter= document.getElementById('correction-level').value;
+  const tbody      = document.getElementById('correction-tbody');
+  const thead      = document.getElementById('correction-thead');
+  const countEl    = document.getElementById('correction-count');
+
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;"><div class="loader"></div></td></tr>';
+
+  try {
+    let query = db.collection(collection);
+    if (collection === 'sentences' && levelFilter) {
+      query = query.where('level', '==', levelFilter);
+    }
+    const snap = await query.limit(200).get();
+    STATE.correctionData = snap.docs.map(d => ({ _id: d.id, _col: collection, ...d.data() }));
+    STATE.correctionDataFiltered = [...STATE.correctionData];
+    countEl.textContent = `${STATE.correctionData.length} records`;
+    renderCorrectionTable(collection);
+  } catch(err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:red;padding:1rem;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+/** Render the correction table based on collection */
+function renderCorrectionTable(collection) {
+  const thead = document.getElementById('correction-thead');
+  const tbody = document.getElementById('correction-tbody');
+  const data  = STATE.correctionDataFiltered;
+
+  if (collection === 'sentences') {
+    thead.innerHTML = `<tr><th>#</th><th>Level</th><th>Correct Sentence</th><th>Grammar Rule</th><th>Teacher Note</th><th>Actions</th></tr>`;
+    tbody.innerHTML = data.map((r, i) => `
+      <tr>
+        <td style="color:#94a3b8;font-size:0.78rem;">${i+1}</td>
+        <td><span class="badge badge-teal">${r.level || ''}</span></td>
+        <td style="max-width:240px;font-size:0.82rem;">${r.Correct_Sentence || ''}</td>
+        <td style="max-width:200px;font-size:0.82rem;">${r.Grammar_Rule || ''}</td>
+        <td style="max-width:160px;font-size:0.8rem;color:#64748b;">${r.Teacher_Note || ''}</td>
+        <td>
+          <div style="display:flex;gap:0.4rem;">
+            <button class="btn btn-ghost btn-sm" onclick="editSentenceModal('${r._id}','${collection}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSentenceDoc('${r._id}','${collection}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  } else {
+    thead.innerHTML = `<tr><th>#</th><th>Main Category</th><th>Subcategory</th><th>Jumbled Words</th><th>Hint</th><th>Actions</th></tr>`;
+    tbody.innerHTML = data.map((r, i) => `
+      <tr>
+        <td style="color:#94a3b8;font-size:0.78rem;">${i+1}</td>
+        <td><strong>${r.Main_Category || ''}</strong></td>
+        <td><span class="badge badge-purple">${r.subcategory || ''}</span></td>
+        <td style="font-size:0.82rem;">${r.Jumbled_Words || ''}</td>
+        <td style="font-size:0.8rem;color:#64748b;">${r.Hint || ''}</td>
+        <td>
+          <div style="display:flex;gap:0.4rem;">
+            <button class="btn btn-ghost btn-sm" onclick="editSentenceModal('${r._id}','${collection}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSentenceDoc('${r._id}','${collection}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+}
+
+/** Filter correction table by keyword */
+function filterCorrectionTable() {
+  const q = (document.getElementById('correction-search')?.value || '').toLowerCase();
+  STATE.correctionDataFiltered = STATE.correctionData.filter(r =>
+    JSON.stringify(r).toLowerCase().includes(q)
+  );
+  const collection = document.getElementById('correction-collection').value;
+  document.getElementById('correction-count').textContent = `${STATE.correctionDataFiltered.length} records`;
+  renderCorrectionTable(collection);
+}
+
+/** Open edit modal for a sentence */
+function editSentenceModal(docId, collection) {
+  const row = STATE.correctionData.find(r => r._id === docId);
+  if (!row) return;
+
+  const isSentence = collection === 'sentences';
+  const fields     = isSentence
+    ? [
+        { key:'level',            label:'Level',            val: row.level || '' },
+        { key:'Correct_Sentence', label:'Correct Sentence', val: row.Correct_Sentence || '' },
+        { key:'Scrambled_Words',  label:'Scrambled Words',  val: row.Scrambled_Words || '' },
+        { key:'Grammar_Rule',     label:'Grammar Rule',     val: row.Grammar_Rule || '' },
+        { key:'Teacher_Note',     label:'Teacher Note',     val: row.Teacher_Note || '' }
+      ]
+    : [
+        { key:'Main_Category', label:'Main Category', val: row.Main_Category || '' },
+        { key:'subcategory',   label:'Subcategory',   val: row.subcategory || '' },
+        { key:'Jumbled_Words', label:'Jumbled Words',  val: row.Jumbled_Words || '' },
+        { key:'Hint',          label:'Hint',           val: row.Hint || '' },
+        { key:'Teacher_Note',  label:'Teacher Note',   val: row.Teacher_Note || '' },
+        { key:'Question_ID',   label:'Question ID',    val: row.Question_ID || '' }
+      ];
+
+  const formHtml = fields.map(f => `
+    <div class="field-group" style="margin-bottom:0.75rem;">
+      <label>${f.label}</label>
+      <input type="text" class="field-input" id="edit-field-${f.key}" value="${(f.val+'').replace(/"/g,'&quot;')}" />
+    </div>`).join('');
+
+  showModal(`
+    <h2 style="font-weight:900;color:var(--color-primary);margin-bottom:1.25rem;">✏️ Edit Record</h2>
+    <div style="max-height:380px;overflow-y:auto;">
+      ${formHtml}
+    </div>
+    <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.25rem;">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSentenceEdit('${docId}','${collection}',${JSON.stringify(fields.map(f=>f.key))})">💾 Save</button>
+    </div>
+  `);
+}
+
+async function saveSentenceEdit(docId, collection, fieldKeys) {
+  const updates = {};
+  fieldKeys.forEach(k => {
+    const el = document.getElementById(`edit-field-${k}`);
+    if (el) updates[k] = el.value.trim();
+  });
+  try {
+    await db.collection(collection).doc(docId).update(updates);
+    closeModal();
+    showToast('Record updated! ✅', 'success');
+    loadCorrectionData();
+  } catch(err) { showToast('Save error: ' + err.message, 'error'); }
+}
+
+async function deleteSentenceDoc(docId, collection) {
+  if (!confirm('Delete this record permanently?')) return;
+  try {
+    await db.collection(collection).doc(docId).delete();
+    showToast('Record deleted.', 'success');
+    loadCorrectionData();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+/** Add new sentence modal */
+function addNewSentenceModal() {
+  const collection = document.getElementById('correction-collection').value;
+  const isSentence = collection === 'sentences';
+  const fields     = isSentence
+    ? ['level','Correct_Sentence','Scrambled_Words','Grammar_Rule','Teacher_Note']
+    : ['Main_Category','subcategory','Jumbled_Words','Hint','Teacher_Note','Question_ID'];
+
+  const formHtml = fields.map(k => `
+    <div class="field-group" style="margin-bottom:0.75rem;">
+      <label>${k.replace(/_/g,' ')}</label>
+      <input type="text" class="field-input" id="new-field-${k}" placeholder="${k}" />
+    </div>`).join('');
+
+  showModal(`
+    <h2 style="font-weight:900;color:var(--color-secondary);margin-bottom:1.25rem;">➕ Add New Record</h2>
+    <div style="max-height:380px;overflow-y:auto;">${formHtml}</div>
+    <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.25rem;">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-secondary" onclick="saveNewSentence('${collection}',${JSON.stringify(fields)})">➕ Add</button>
+    </div>
+  `);
+}
+
+async function saveNewSentence(collection, fieldKeys) {
+  const data = {};
+  fieldKeys.forEach(k => {
+    const el = document.getElementById(`new-field-${k}`);
+    if (el) data[k] = el.value.trim();
+  });
+  if (collection === 'sentences' && data.level) {
+    data.level = data.level.toLowerCase().trim();
+  }
+  data.uploadedAt = firebase.firestore.FieldValue.serverTimestamp();
+  try {
+    await db.collection(collection).add(data);
+    closeModal();
+    showToast('Record added! ✅', 'success');
+    loadCorrectionData();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+/* ─── Database Stats ─── */
+async function loadDbStats() {
+  showToast('Loading stats...', 'info', 2000);
+  try {
+    const [basicSnap, sentenceSnap, studentsSnap, progressSnap] = await Promise.all([
+      db.collection('basic_sentences').get(),
+      db.collection('sentences').get(),
+      db.collection('students').get(),
+      db.collection('userProgress').get()
+    ]);
+
+    const bCount  = basicSnap.size;
+    const beginn  = sentenceSnap.docs.filter(d => d.data().level === 'beginner').length;
+    const inter   = sentenceSnap.docs.filter(d => d.data().level === 'intermediate').length;
+    const advanc  = sentenceSnap.docs.filter(d => d.data().level === 'advanced').length;
+    const studs   = studentsSnap.size;
+    const starsAll= progressSnap.docs.reduce((s, d) => s + (d.data().totalStars || 0), 0);
+
+    document.getElementById('stat-basic-count').textContent        = bCount;
+    document.getElementById('stat-beginner-count').textContent     = beginn;
+    document.getElementById('stat-intermediate-count').textContent = inter;
+    document.getElementById('stat-advanced-count').textContent     = advanc;
+    document.getElementById('stat-students-count').textContent     = studs;
+    document.getElementById('stat-total-stars').textContent        = starsAll;
+    showToast('Stats loaded!', 'success');
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 13 – THEME ENGINE
+═══════════════════════════════════════════════════════════════════ */
+
+/** Quick palette presets */
+const PALETTES = {
+  teal:   { primary:'#0d9488', secondary:'#f97316', accent:'#fbbf24', bg:'#f0fdfa' },
+  purple: { primary:'#7c3aed', secondary:'#f97316', accent:'#fbbf24', bg:'#f5f3ff' },
+  rose:   { primary:'#e11d48', secondary:'#f59e0b', accent:'#fbbf24', bg:'#fff1f2' },
+  sky:    { primary:'#0284c7', secondary:'#f97316', accent:'#fbbf24', bg:'#f0f9ff' },
+  forest: { primary:'#15803d', secondary:'#f97316', accent:'#fbbf24', bg:'#f0fdf4' }
+};
+
+function applyPalette(name) {
+  const p = PALETTES[name];
+  if (!p) return;
+  document.getElementById('theme-primary').value   = p.primary;
+  document.getElementById('theme-secondary').value = p.secondary;
+  document.getElementById('theme-accent').value    = p.accent;
+  document.getElementById('theme-bg').value        = p.bg;
+  applyThemePreview();
+}
+
+function applyThemePreview() {
+  const primary   = document.getElementById('theme-primary').value;
+  const secondary = document.getElementById('theme-secondary').value;
+  const accent    = document.getElementById('theme-accent').value;
+  const bg        = document.getElementById('theme-bg').value;
+  const card      = document.getElementById('theme-card').value;
+  const textColor = document.getElementById('theme-text').value;
+  const font      = document.getElementById('theme-font').value;
+  const radius    = document.getElementById('theme-radius').value;
+  const logoText  = document.getElementById('theme-logo-text').value;
+
+  document.getElementById('theme-radius-label').textContent = radius + 'px';
+
+  const root = document.documentElement;
+  root.style.setProperty('--color-primary',   primary);
+  root.style.setProperty('--color-secondary', secondary);
+  root.style.setProperty('--color-accent',    accent);
+  root.style.setProperty('--color-bg',        bg);
+  root.style.setProperty('--color-card',      card);
+  root.style.setProperty('--color-text',      textColor);
+  root.style.setProperty('--font-main',       font);
+  root.style.setProperty('--radius',          radius + 'px');
+
+  // Update logo text everywhere
+  document.querySelectorAll('#auth-logo-text, #nav-logo-text, .logo-text').forEach(el => {
+    el.textContent = logoText;
+  });
+
+  // Update preview box
+  const previewLogo = document.getElementById('theme-preview-logo');
+  if (previewLogo) previewLogo.textContent = logoText;
+}
+
+async function saveThemeSettings() {
+  const theme = {
+    primary:   document.getElementById('theme-primary').value,
+    secondary: document.getElementById('theme-secondary').value,
+    accent:    document.getElementById('theme-accent').value,
+    bg:        document.getElementById('theme-bg').value,
+    card:      document.getElementById('theme-card').value,
+    text:      document.getElementById('theme-text').value,
+    font:      document.getElementById('theme-font').value,
+    radius:    document.getElementById('theme-radius').value,
+    logoText:  document.getElementById('theme-logo-text').value
+  };
+  try {
+    await db.collection('config').doc('theme').set(theme);
+    localStorage.setItem('jj_theme', JSON.stringify(theme));
+    showToast('Theme saved! ✅', 'success');
+  } catch (err) { showToast('Save error: ' + err.message, 'error'); }
+}
+
+function resetTheme() {
+  document.getElementById('theme-primary').value   = '#0d9488';
+  document.getElementById('theme-secondary').value = '#f97316';
+  document.getElementById('theme-accent').value    = '#fbbf24';
+  document.getElementById('theme-bg').value        = '#f0fdfa';
+  document.getElementById('theme-card').value      = '#ffffff';
+  document.getElementById('theme-text').value      = '#1e293b';
+  document.getElementById('theme-font').value      = "'Nunito', sans-serif";
+  document.getElementById('theme-radius').value    = '16';
+  document.getElementById('theme-logo-text').value = 'JumbleJump';
+  applyThemePreview();
+}
+
+/** Sync theme editor controls from localStorage / Firestore */
+function syncThemeEditorFromStorage() {
+  const saved = localStorage.getItem('jj_theme');
+  if (!saved) return;
+  try {
+    const theme = JSON.parse(saved);
+    if (theme.primary)   document.getElementById('theme-primary').value   = theme.primary;
+    if (theme.secondary) document.getElementById('theme-secondary').value = theme.secondary;
+    if (theme.accent)    document.getElementById('theme-accent').value    = theme.accent;
+    if (theme.bg)        document.getElementById('theme-bg').value        = theme.bg;
+    if (theme.card)      document.getElementById('theme-card').value      = theme.card;
+    if (theme.text)      document.getElementById('theme-text').value      = theme.text;
+    if (theme.font)      document.getElementById('theme-font').value      = theme.font;
+    if (theme.radius)    { document.getElementById('theme-radius').value = theme.radius; document.getElementById('theme-radius-label').textContent = theme.radius + 'px'; }
+    if (theme.logoText)  document.getElementById('theme-logo-text').value = theme.logoText;
+    if (document.getElementById('theme-preview-logo') && theme.logoText) {
+      document.getElementById('theme-preview-logo').textContent = theme.logoText;
+    }
+  } catch(e) {}
+}
+
+function loadThemeFromStorage() {
+  const saved = localStorage.getItem('jj_theme');
+  if (!saved) { loadThemeFromFirestore(); return; }
+  try {
+    const theme = JSON.parse(saved);
+    applyThemeObj(theme);
+  } catch(e) {}
+}
+
+async function loadThemeFromFirestore() {
+  try {
+    const doc = await db.collection('config').doc('theme').get();
+    if (doc.exists) {
+      const theme = doc.data();
+      localStorage.setItem('jj_theme', JSON.stringify(theme));
+      applyThemeObj(theme);
+    }
+  } catch(e) {}
+}
+
+function applyThemeObj(theme) {
+  const root = document.documentElement;
+  if (theme.primary)   root.style.setProperty('--color-primary',   theme.primary);
+  if (theme.secondary) root.style.setProperty('--color-secondary', theme.secondary);
+  if (theme.accent)    root.style.setProperty('--color-accent',    theme.accent);
+  if (theme.bg)        root.style.setProperty('--color-bg',        theme.bg);
+  if (theme.card)      root.style.setProperty('--color-card',      theme.card);
+  if (theme.text)      root.style.setProperty('--color-text',      theme.text);
+  if (theme.font)      root.style.setProperty('--font-main',       theme.font);
+  if (theme.radius)    root.style.setProperty('--radius',          theme.radius + 'px');
+  if (theme.logoText) {
+    document.querySelectorAll('#auth-logo-text, #nav-logo-text, .logo-text').forEach(el => {
+      el.textContent = theme.logoText;
+    });
+  }
+  // Sync UI controls if in admin panel
+  if (document.getElementById('theme-primary')) {
+    if (theme.primary)   document.getElementById('theme-primary').value   = theme.primary;
+    if (theme.secondary) document.getElementById('theme-secondary').value = theme.secondary;
+    if (theme.accent)    document.getElementById('theme-accent').value    = theme.accent;
+    if (theme.bg)        document.getElementById('theme-bg').value        = theme.bg;
+    if (theme.card)      document.getElementById('theme-card').value      = theme.card;
+    if (theme.text)      document.getElementById('theme-text').value      = theme.text;
+    if (theme.font)      document.getElementById('theme-font').value      = theme.font;
+    if (theme.radius)    document.getElementById('theme-radius').value    = theme.radius;
+    if (theme.logoText)  document.getElementById('theme-logo-text').value = theme.logoText;
+    if (theme.radius)    document.getElementById('theme-radius-label').textContent = theme.radius + 'px';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 14 – CERTIFICATE EDITOR (Admin)
+═══════════════════════════════════════════════════════════════════ */
+
+/** Sync certificate editor controls from STATE.certConfig */
+function syncCertEditorFromState() {
+  const cfg = STATE.certConfig;
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  setVal('cert-bg1',          cfg.bg1);
+  setVal('cert-bg2',          cfg.bg2);
+  setVal('cert-text-color',   cfg.textColor);
+  setVal('cert-body-color',   cfg.bodyColor);
+  setVal('cert-border-color', cfg.borderColor);
+  setVal('cert-title-text',   cfg.titleText);
+  setVal('cert-subtitle-text',cfg.subtitleText);
+  setVal('cert-completion-text', cfg.completionText);
+  setVal('cert-school-text',  cfg.schoolText);
+  setVal('cert-footer-text',  cfg.footerText);
+  setVal('cert-trophy',       cfg.trophy);
+}
+
+function previewCertificate() {
+  const canvas = document.getElementById('admin-cert-canvas');
+  if (!canvas) return;
+  const cfg = {
+    bg1:           document.getElementById('cert-bg1')?.value          || '#0d9488',
+    bg2:           document.getElementById('cert-bg2')?.value          || '#f97316',
+    textColor:     document.getElementById('cert-text-color')?.value   || '#ffffff',
+    bodyColor:     document.getElementById('cert-body-color')?.value   || '#1e293b',
+    borderColor:   document.getElementById('cert-border-color')?.value || '#ffffff',
+    titleText:     document.getElementById('cert-title-text')?.value   || 'Certificate of Achievement',
+    subtitleText:  document.getElementById('cert-subtitle-text')?.value|| 'This certificate is proudly awarded to',
+    completionText:document.getElementById('cert-completion-text')?.value || 'for successfully completing the',
+    schoolText:    document.getElementById('cert-school-text')?.value  || 'JumbleJump Academy',
+    footerText:    document.getElementById('cert-footer-text')?.value  || 'JumbleJump – English Learning Excellence',
+    trophy:        document.getElementById('cert-trophy')?.value       || '🏆'
+  };
+  drawCertificate(canvas, 'Ahmed Al-Rashid', 'Intermediate', cfg);
+}
+
+async function saveCertSettings() {
+  const cfg = {
+    bg1:           document.getElementById('cert-bg1').value,
+    bg2:           document.getElementById('cert-bg2').value,
+    textColor:     document.getElementById('cert-text-color').value,
+    bodyColor:     document.getElementById('cert-body-color').value,
+    borderColor:   document.getElementById('cert-border-color')?.value || '#ffffff',
+    titleText:     document.getElementById('cert-title-text').value,
+    subtitleText:  document.getElementById('cert-subtitle-text').value,
+    completionText:document.getElementById('cert-completion-text')?.value || 'for successfully completing the',
+    schoolText:    document.getElementById('cert-school-text')?.value || 'JumbleJump Academy',
+    footerText:    document.getElementById('cert-footer-text').value,
+    trophy:        document.getElementById('cert-trophy')?.value || '🏆'
+  };
+  try {
+    await db.collection('config').doc('certSettings').set(cfg);
+    STATE.certConfig = cfg;
+    showToast('Certificate settings saved! ✅', 'success');
+  } catch(err) { showToast('Save error: ' + err.message, 'error'); }
+}
+
+/** Download preview certificate as PDF */
+function downloadCertificatePreview() {
+  const canvas = document.getElementById('admin-cert-canvas');
+  if (!canvas) return;
+  const img = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [560, 392] });
+  pdf.addImage(img, 'PNG', 0, 0, 560, 392);
+  pdf.save('JumbleJump_Certificate_Preview.pdf');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODULE 15 – INITIALIZATION
+═══════════════════════════════════════════════════════════════════ */
+
+window.addEventListener('load', () => {
+  // Immediately apply saved theme from localStorage
+  const saved = localStorage.getItem('jj_theme');
+  if (saved) {
+    try { applyThemeObj(JSON.parse(saved)); } catch(e) {}
+  }
+});
+
+/*
+═══════════════════════════════════════════════════════════════════
+FIREBASE SECURITY RULES (deploy to Firebase Console)
+═══════════════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // Admins collection – only admins can read, no one can write via client
+    match /admins/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    // Students – only owner or admin
+    match /students/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // User Progress – only owner or admin
+    match /userProgress/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+    }
+
+    // Sentences – read by any signed-in user, write by admin only
+    match /sentences/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Basic Sentences – read by any signed-in user, write by admin only
+    match /basic_sentences/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Config – read by any signed-in user, write by admin only
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
+
+═══════════════════════════════════════════════════════════════════
+FIRESTORE SETUP INSTRUCTIONS:
+═══════════════════════════════════════════════════════════════════
+1. Go to Firebase Console → Firestore → Start in production mode
+2. Apply the Security Rules above
+3. Create an admin user:
+   a. Register via the app with your teacher email
+   b. In Firestore Console, manually create collection 'admins'
+   c. Add a document with ID = the teacher's UID (find in Firebase Auth)
+   d. Add field: role = "admin"
+4. Upload sentences via Admin → Upload Data
+═══════════════════════════════════════════════════════════════════
+*/
+</script>
+</body>
+</html>
