@@ -3,66 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>JumbleJump - تعلم الإنجليزية بطريقة ممتعة</title>
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&family=Cairo:wght@600;800&family=Fredoka:wght@600&display=swap" rel="stylesheet">
-
-  <!-- Icons -->
-  <link rel="icon" href="assets/icon-192.png">
-
-  <!-- Styles -->
+  <title>جمبل جمب | تسجيل الدخول</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Fredoka:wght@600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/theme.css" />
-  <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="css/game.css" />
   <link rel="stylesheet" href="css/auth.css" />
-
-  <!-- Libraries (CDN - No download needed) -->
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
-  <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#00695c">
 </head>
-<body style="text-align:center;padding:50px;background:#00695c;color:white;">
-  <h1>جمبل جمب</h1>
-  <input type="email" id="email" placeholder="البريد الإلكتروني" style="padding:15px;margin:10px;width:300px;border-radius:50px;border:none;"><br>
-  <input type="password" id="pass" placeholder="كلمة المرور" style="padding:15px;margin:10px;width:300px;border-radius:50px;border:none;"><br>
-  <button onclick="login()" style="padding:15px 40px;margin:20px;background:#ff6f00;color:white;border:none;border-radius:50px;font-size:18px;">دخول</button>
-  <p>أول مرة؟ <a href="#" onclick="signup()" style="color:#fff700">إنشاء حساب</a></p>
+<body class="auth-body">
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="js/firebase/config.js"></script>
-  <script>
-    function login() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('pass').value;
-      auth.signInWithEmailAndPassword(email, pass).then(() => location.href = 'index.html');
-    }
-    function signup() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('pass').value;
-      auth.createUserWithEmailAndPassword(email, pass).then(() => location.href = 'index.html');
-    }
-  </script>
-<!-- Firebase (Latest) -->
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="logo">
+      <h1>جمبل جمب</h1>
+      <p>تعلم الإنجليزية بطريقة ممتعة</p>
+    </div>
+
+    <div class="toggle-tabs">
+      <button class="tab-active" id="loginTab">تسجيل الدخول</button>
+      <button id="signupTab">إنشاء حساب</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" required />
+      <div class="password-wrapper">
+        <input type="password" id="loginPassword" placeholder="كلمة المرور" required />
+        <span class="toggle-pass" onclick="togglePass('loginPassword')">إظهار</span>
+      </div>
+      <button type="submit" class="btn-primary">دخول</button>
+    </form>
+
+    <!-- Sign Up Form -->
+    <form id="signupForm" style="display:none">
+      <input type="text" id="displayName" placeholder="اسمك الكامل (مثل: أحمد محمد)" required />
+      <input type="email" id="signupEmail" placeholder="البريد الإلكتروني" required />
+      <div class="password-wrapper">
+        <input type="password" id="signupPassword" placeholder="كلمة مرور (6 أحرف على الأقل)" required minlength="6" />
+        <span class="toggle-pass" onclick="togglePass('signupPassword')">إظهار</span>
+      </div>
+      <button type="submit" class="btn-primary">إنشاء حساب جديد</button>
+    </form>
+  </div>
+</div>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-<!-- Your Firebase Config (SAFE) -->
 <script src="js/firebase/config.js"></script>
 
-<!-- Service Worker (PWA Offline) -->
 <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js');
-    });
-  }
+// تبديل بين تسجيل الدخول والتسجيل
+document.getElementById('loginTab').onclick = () => { document.getElementById('loginForm').style.display = 'block'; document.getElementById('signupForm').style.display = 'none'; document.getElementById('loginTab').classList.add('tab-active'); document.getElementById('signupTab').classList.remove('tab-active'); };
+document.getElementById('signupTab').onclick = () => { document.getElementById('signupForm').style.display = 'block'; document.getElementById('loginForm').style.display = 'none'; document.getElementById('signupTab').classList.add('tab-active'); document.getElementById('loginTab').classList.remove('tab-active'); };
+
+// إظهار/إخفاء كلمة المرور
+function togglePass(id) {
+  const x = document.getElementById(id);
+  const btn = x.nextElementSibling;
+  if (x.type === "password") { x.type = "text"; btn.textContent = "إخفاء"; } 
+  else { x.type = "password"; btn.textContent = "إظهار"; }
+}
+
+// تسجيل الدخول
+document.getElementById('loginForm').onsubmit = e => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPassword').value;
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => location.href = 'index.html')
+    .catch(err => alert("البريد أو كلمة المرور خطأ"));
+};
+
+// إنشاء حساب
+document.getElementById('signupForm').onsubmit = e => {
+  e.preventDefault();
+  const name = document.getElementById('displayName').value;
+  const email = document.getElementById('signupEmail').value;
+  const pass = document.getElementById('signupPassword').value;
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(cred => cred.user.updateProfile({ displayName: name }))
+    .then(() => location.href = 'index.html')
+    .catch(err => alert(err.message));
+};
 </script>
 </body>
 </html>
