@@ -1595,11 +1595,41 @@
             const password = document.getElementById('teacherLoginPassword').value;
             
             try {
+                // Special case: Create first admin if it doesn't exist
+                const adminsSnapshot = await db.collection('admins').get();
+                
+                if (adminsSnapshot.empty) {
+                    // No admins exist - create first admin
+                    if (confirm('No admin accounts exist. Would you like to create the first admin account with these credentials?')) {
+                        try {
+                            // Create auth user
+                            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                            
+                            // Add to admins collection
+                            await db.collection('admins').doc(email).set({
+                                email: email,
+                                role: 'admin',
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            showSuccess('First admin account created successfully! You are now logged in.');
+                            hideError();
+                            return;
+                        } catch (createError) {
+                            showError('Error creating admin: ' + createError.message);
+                            return;
+                        }
+                    } else {
+                        showError('Admin account creation cancelled');
+                        return;
+                    }
+                }
+                
                 // Check if admin exists in Firestore
                 const adminDoc = await db.collection('admins').doc(email).get();
                 
                 if (!adminDoc.exists) {
-                    showError('Invalid admin credentials');
+                    showError('Invalid admin credentials. Email not found in admin list.');
                     return;
                 }
                 
