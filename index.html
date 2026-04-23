@@ -1072,6 +1072,14 @@
             <div class="levels-grid" id="levelsGrid">
                 <!-- Levels will be dynamically generated -->
             </div>
+            
+            <!-- Certificates Section -->
+            <div class="card" style="margin-top: 30px;">
+                <h2 style="color: var(--color-primary); margin-bottom: 20px;">🏆 My Certificates</h2>
+                <div class="levels-grid" id="certificatesGrid">
+                    <!-- Certificate cards will be generated -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1089,8 +1097,8 @@
                         <span id="currentQuestionNum">1/100</span>
                     </div>
                     <div class="game-info-item">
-                        <span>🎯 Trials:</span>
-                        <span id="trialsLeft">3</span>
+                        <span>🎯 Success Count:</span>
+                        <span id="successCount">0</span>/<span id="requiredSuccess">3</span>
                     </div>
                 </div>
                 <div>
@@ -1107,8 +1115,20 @@
                     
                     <!-- Basic Level Interface -->
                     <div id="basicLevelInterface" class="hidden">
+                        <!-- Category Headers -->
+                        <div style="background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); padding: 20px; border-radius: var(--border-radius-md); margin-bottom: 20px; color: white;">
+                            <div style="text-align: center; margin-bottom: 15px;">
+                                <h3 style="font-size: 1.3rem; margin-bottom: 5px;">Main Category</h3>
+                                <p style="font-size: 1.5rem; font-weight: 700;" id="mainCategoryDisplay">-</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <h3 style="font-size: 1.3rem; margin-bottom: 5px;">Sub Category</h3>
+                                <p style="font-size: 1.5rem; font-weight: 700;" id="subCategoryDisplay">-</p>
+                            </div>
+                        </div>
+                        
                         <div class="words-pool" id="wordsPool">
-                            <h3 class="pool-title">Words to Match</h3>
+                            <h3 class="pool-title">Scrambled Words - Drag to Match</h3>
                             <div class="words-pool-content" id="wordsPoolContent">
                                 <!-- Words will be added dynamically -->
                             </div>
@@ -1145,13 +1165,29 @@
                     </div>
                     
                     <div class="game-actions">
-                        <button class="btn btn-primary" onclick="checkAnswer()">Check Answer</button>
+                        <button class="btn btn-primary" id="submitBtn" onclick="submitAndNext()" disabled>Submit & Next Question</button>
                         <button class="btn btn-outline" onclick="resetQuestion()">Reset</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Well Done Message (appears in center) -->
+    <div id="wellDoneMessage" class="modal hidden" style="background: rgba(0,0,0,0.5);">
+        <div style="background: white; padding: 40px; border-radius: var(--border-radius-lg); text-align: center; animation: bounceIn 0.5s;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">🎉</div>
+            <h2 style="font-size: 2rem; color: var(--color-success); font-weight: 700;">Well Done!</h2>
+            <p style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 10px;">Keep practicing!</p>
+        </div>
+    </div>
+    
+    @keyframes bounceIn {
+        0% { transform: scale(0.3); opacity: 0; }
+        50% { transform: scale(1.05); }
+        70% { transform: scale(0.9); }
+        100% { transform: scale(1); opacity: 1; }
+    }
 
     <!-- Success Modal -->
     <div id="successModal" class="modal hidden">
@@ -1223,6 +1259,8 @@
                 <div class="admin-tab" onclick="switchAdminTab('students')">Students</div>
                 <div class="admin-tab" onclick="switchAdminTab('theme')">Theme</div>
                 <div class="admin-tab" onclick="switchAdminTab('certificate')">Certificate</div>
+                <div class="admin-tab" onclick="switchAdminTab('appearance')">Appearance</div>
+                <div class="admin-tab" onclick="switchAdminTab('printcerts')">Print Certificates</div>
                 <div class="admin-tab" onclick="switchAdminTab('playground')">Playground</div>
             </div>
             
@@ -1416,6 +1454,20 @@
                     </div>
                 </div>
                 
+                <div class="input-group">
+                    <label>Certificate Background Template</label>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
+                        Upload a custom background template for certificates (recommended size: 1920x1080px)
+                    </p>
+                    <div class="upload-area">
+                        <input type="file" id="certBgTemplate" accept="image/*" onchange="handleCertBgUpload(this)">
+                        <label for="certBgTemplate" class="upload-label">
+                            🖼️ Click to upload certificate background template
+                        </label>
+                    </div>
+                    <div id="certBgPreview" style="margin-top: 20px; text-align: center;"></div>
+                </div>
+                
                 <div style="margin-top: 30px;">
                     <button class="btn btn-primary" onclick="saveCertificateSettings()">Save Certificate Settings</button>
                     <button class="btn btn-outline" onclick="previewCertificate()">Preview Certificate</button>
@@ -1437,6 +1489,80 @@
                         <option value="Advanced">Advanced</option>
                     </select>
                     <button class="btn btn-primary" onclick="startPlayground()">Start Playing</button>
+                </div>
+            </div>
+            
+            <!-- Appearance Tab -->
+            <div id="appearanceTab" class="admin-section hidden">
+                <h3>🖼️ Application Appearance</h3>
+                
+                <div style="margin-bottom: 40px;">
+                    <h4 style="margin-bottom: 15px;">Application Logo</h4>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 15px;">
+                        Upload a custom logo for the application (recommended size: 200x200px)
+                    </p>
+                    <div class="upload-area">
+                        <input type="file" id="logoFile" accept="image/*" onchange="handleLogoUpload(this)">
+                        <label for="logoFile" class="upload-label">
+                            🖼️ Click to upload logo image
+                        </label>
+                    </div>
+                    <div id="logoPreview" style="margin-top: 20px; text-align: center;"></div>
+                    <button class="btn btn-primary" onclick="saveAppLogo()">Save Logo</button>
+                </div>
+                
+                <div style="margin-bottom: 40px;">
+                    <h4 style="margin-bottom: 15px;">Application Background</h4>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 15px;">
+                        Upload a custom background image for the entire application
+                    </p>
+                    <div class="upload-area">
+                        <input type="file" id="bgFile" accept="image/*" onchange="handleBgUpload(this)">
+                        <label for="bgFile" class="upload-label">
+                            🖼️ Click to upload background image
+                        </label>
+                    </div>
+                    <div id="bgPreview" style="margin-top: 20px; text-align: center;"></div>
+                    <button class="btn btn-primary" onclick="saveAppBackground()">Save Background</button>
+                    <button class="btn btn-outline" onclick="removeAppBackground()">Remove Background</button>
+                </div>
+            </div>
+            
+            <!-- Print Certificates Tab -->
+            <div id="printcertsTab" class="admin-section hidden">
+                <h3>🖨️ Print Student Certificates</h3>
+                
+                <div class="input-group">
+                    <label>Select Student</label>
+                    <select id="studentSelectForCert" onchange="loadStudentCertificates()">
+                        <option value="">-- Select a student --</option>
+                    </select>
+                </div>
+                
+                <div id="studentCertsDisplay" class="hidden" style="margin-top: 30px;">
+                    <h4 style="margin-bottom: 20px;">Available Certificates for <span id="selectedStudentName"></span></h4>
+                    <div class="levels-grid">
+                        <div class="level-card" id="certBasic">
+                            <h3 class="level-name">Basic Level</h3>
+                            <p style="margin: 15px 0;">Status: <span id="certBasicStatus">Not Completed</span></p>
+                            <button class="btn btn-primary" onclick="printCertificate('Basic')" disabled id="certBasicBtn">Print Certificate</button>
+                        </div>
+                        <div class="level-card" id="certBeginner">
+                            <h3 class="level-name">Beginner Level</h3>
+                            <p style="margin: 15px 0;">Status: <span id="certBeginnerStatus">Not Completed</span></p>
+                            <button class="btn btn-primary" onclick="printCertificate('Beginner')" disabled id="certBeginnerBtn">Print Certificate</button>
+                        </div>
+                        <div class="level-card" id="certIntermediate">
+                            <h3 class="level-name">Intermediate Level</h3>
+                            <p style="margin: 15px 0;">Status: <span id="certIntermediateStatus">Not Completed</span></p>
+                            <button class="btn btn-primary" onclick="printCertificate('Intermediate')" disabled id="certIntermediateBtn">Print Certificate</button>
+                        </div>
+                        <div class="level-card" id="certAdvanced">
+                            <h3 class="level-name">Advanced Level</h3>
+                            <p style="margin: 15px 0;">Status: <span id="certAdvancedStatus">Not Completed</span></p>
+                            <button class="btn btn-primary" onclick="printCertificate('Advanced')" disabled id="certAdvancedBtn">Print Certificate</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1790,6 +1916,41 @@
                 
                 levelsGrid.appendChild(card);
             });
+            
+            // Generate certificate cards
+            generateCertificateCards();
+        }
+        
+        // Generate certificate cards
+        function generateCertificateCards() {
+            const certificatesGrid = document.getElementById('certificatesGrid');
+            const levels = ['Basic', 'Beginner', 'Intermediate', 'Advanced'];
+            
+            certificatesGrid.innerHTML = '';
+            
+            levels.forEach(level => {
+                const progress = userProgress.progress[level] || { completed: 0, total: appSettings.sentencesPerLevel };
+                const isCompleted = progress.completed >= progress.total;
+                
+                const card = document.createElement('div');
+                card.className = `level-card ${!isCompleted ? 'locked' : ''}`;
+                card.innerHTML = `
+                    <div class="level-header">
+                        <h3 class="level-name">📜 ${level} Certificate</h3>
+                        ${!isCompleted ? '<span class="lock-icon">🔒</span>' : '<span class="lock-icon">🏆</span>'}
+                    </div>
+                    <p style="margin: 15px 0; color: var(--color-text-secondary);">
+                        ${isCompleted ? 'Congratulations! You can download your certificate.' : 'Complete this level to unlock the certificate.'}
+                    </p>
+                    ${isCompleted ? `
+                        <button class="btn btn-primary" onclick="downloadCertificateForLevel('${level}')" style="width: 100%; margin-top: 10px;">
+                            Download Certificate
+                        </button>
+                    ` : ''}
+                `;
+                
+                certificatesGrid.appendChild(card);
+            });
         }
         
         // ========================================
@@ -1932,9 +2093,15 @@
         let currentLevel = '';
         let currentQuestion = null;
         let currentQuestionIndex = 0;
-        let trialsRemaining = 3;
+        let successCount = 0;
+        let requiredSuccessCount = 3;
         let levelQuestions = [];
         let sortableInstances = [];
+        let currentBasicLevelWords = [];
+        let appLogoUrl = '';
+        let appBackgroundUrl = '';
+        let certBackgroundUrl = '';
+        let studentPhotoUrl = '';
         
         // Motivational quotes
         const motivationalQuotes = [
@@ -1995,13 +2162,18 @@
             }
             
             currentQuestion = levelQuestions[currentQuestionIndex];
-            trialsRemaining = appSettings.trialsPerSentence;
+            successCount = 0;
+            requiredSuccessCount = appSettings.trialsPerSentence || 3;
             
             // Update header
             document.getElementById('currentLevelName').textContent = currentLevel;
             document.getElementById('currentQuestionNum').textContent = `${currentQuestionIndex + 1}/${levelQuestions.length}`;
-            document.getElementById('trialsLeft').textContent = trialsRemaining;
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('requiredSuccess').textContent = requiredSuccessCount;
             document.getElementById('questionNumDisplay').textContent = currentQuestionIndex + 1;
+            
+            // Disable submit button
+            document.getElementById('submitBtn').disabled = true;
             
             // Hide hint and teacher note
             document.getElementById('hintBox').classList.add('hidden');
@@ -2024,71 +2196,138 @@
             }
         }
         
-        function loadBasicQuestion() {
+        async function loadBasicQuestion() {
             document.getElementById('basicLevelInterface').classList.remove('hidden');
             document.getElementById('sentenceLevelInterface').classList.add('hidden');
-            document.getElementById('instructionText').textContent = 'Drag each word to its correct category';
+            document.getElementById('instructionText').textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
             
-            // Parse the data
-            const categories = {};
-            const words = currentQuestion.jumbledWords.split(',').map(w => w.trim());
+            // Get random words from same subcategory (minimum 4 words)
+            const questionsInLevel = await db.collection('questions')
+                .where('level', '==', 'Basic')
+                .get();
             
-            // For basic level, we need to parse main category and subcategory
-            // We'll create a simple structure where main category contains words
-            const mainCat = currentQuestion.mainCategory;
-            const subCat = currentQuestion.subcategory;
+            const allBasicQuestions = questionsInLevel.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
             
-            if (!categories[mainCat]) {
-                categories[mainCat] = [];
+            // Group by subcategory
+            const subcategoryGroups = {};
+            allBasicQuestions.forEach(q => {
+                const key = `${q.mainCategory}|${q.subcategory}`;
+                if (!subcategoryGroups[key]) {
+                    subcategoryGroups[key] = [];
+                }
+                if (q.jumbledWords) {
+                    const words = q.jumbledWords.split(',').map(w => w.trim());
+                    subcategoryGroups[key].push(...words.map(w => ({ 
+                        word: w, 
+                        mainCategory: q.mainCategory,
+                        subcategory: q.subcategory
+                    })));
+                }
+            });
+            
+            // Select random subcategory with at least 4 words
+            const validGroups = Object.keys(subcategoryGroups).filter(key => 
+                subcategoryGroups[key].length >= 4
+            );
+            
+            if (validGroups.length === 0) {
+                showError('Not enough Basic level questions. Please upload more data.');
+                return;
             }
-            categories[mainCat].push(subCat);
             
-            // Create words pool
+            const randomGroup = validGroups[Math.floor(Math.random() * validGroups.length)];
+            const [mainCat, subCat] = randomGroup.split('|');
+            let selectedWords = subcategoryGroups[randomGroup];
+            
+            // Select exactly 4 random words from this subcategory
+            selectedWords = shuffleArray(selectedWords).slice(0, Math.min(selectedWords.length, 4));
+            
+            currentBasicLevelWords = selectedWords;
+            
+            // Update headers
+            document.getElementById('mainCategoryDisplay').textContent = mainCat;
+            document.getElementById('subCategoryDisplay').textContent = subCat;
+            
+            // Create scrambled words pool
             const poolContent = document.getElementById('wordsPoolContent');
             poolContent.innerHTML = '';
             
-            words.forEach(word => {
+            const scrambledWords = shuffleArray([...selectedWords]);
+            scrambledWords.forEach(item => {
                 const wordEl = document.createElement('div');
                 wordEl.className = 'word-item';
-                wordEl.textContent = word;
-                wordEl.dataset.word = word;
+                wordEl.textContent = item.word;
+                wordEl.dataset.word = item.word;
+                wordEl.dataset.category = item.subcategory;
                 poolContent.appendChild(wordEl);
             });
             
-            // Create category columns
+            // Create category container
             const matchContainer = document.getElementById('matchContainer');
             matchContainer.innerHTML = '';
             
-            Object.keys(categories).forEach(category => {
-                const column = document.createElement('div');
-                column.className = 'category-column';
-                column.dataset.category = category;
-                column.innerHTML = `<div class="category-title">${category}</div>`;
-                matchContainer.appendChild(column);
-            });
+            const column = document.createElement('div');
+            column.className = 'category-column';
+            column.dataset.category = subCat;
+            column.innerHTML = `<div class="category-title">${subCat}</div>`;
+            matchContainer.appendChild(column);
             
             // Initialize SortableJS
             const poolSortable = new Sortable(poolContent, {
                 group: 'words',
                 animation: 150,
-                ghostClass: 'dragging'
+                ghostClass: 'dragging',
+                onEnd: () => checkBasicAnswerAuto()
             });
             sortableInstances.push(poolSortable);
             
-            document.querySelectorAll('.category-column').forEach(column => {
-                const sortable = new Sortable(column, {
-                    group: 'words',
-                    animation: 150,
-                    ghostClass: 'dragging'
-                });
-                sortableInstances.push(sortable);
+            const categorySortable = new Sortable(column, {
+                group: 'words',
+                animation: 150,
+                ghostClass: 'dragging',
+                onAdd: () => checkBasicAnswerAuto()
             });
+            sortableInstances.push(categorySortable);
+        }
+        
+        async function checkBasicAnswerAuto() {
+            // Auto-check when all words are placed
+            const pool = document.getElementById('wordsPoolContent');
+            const category = document.querySelector('.category-column');
+            
+            if (pool.children.length === 0 && category.querySelectorAll('.word-item').length === currentBasicLevelWords.length) {
+                // All words placed, check if correct
+                const wordsInCategory = Array.from(category.querySelectorAll('.word-item'));
+                let allCorrect = true;
+                
+                wordsInCategory.forEach(wordEl => {
+                    const word = wordEl.dataset.word;
+                    const expectedCategory = wordEl.dataset.category;
+                    const actualCategory = category.dataset.category;
+                    
+                    if (expectedCategory !== actualCategory) {
+                        allCorrect = false;
+                        // Show hint
+                        if (currentQuestion.hint) {
+                            document.getElementById('hintText').textContent = currentQuestion.hint;
+                            document.getElementById('hintBox').classList.remove('hidden');
+                        }
+                    }
+                });
+                
+                if (allCorrect) {
+                    handleCorrectBasicAnswer();
+                }
+            }
         }
         
         function loadSentenceQuestion() {
             document.getElementById('basicLevelInterface').classList.add('hidden');
             document.getElementById('sentenceLevelInterface').classList.remove('hidden');
-            document.getElementById('instructionText').textContent = 'Drag the words to form the correct sentence';
+            document.getElementById('instructionText').textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
             
             // Get scrambled words
             const words = currentQuestion.scrambledWords.split(' ');
@@ -2111,7 +2350,7 @@
                 scrambledContainer.appendChild(wordEl);
             });
             
-            // Initialize SortableJS
+            // Initialize SortableJS with auto-check on drop
             const dropZoneSortable = new Sortable(dropZone, {
                 group: 'sentence',
                 animation: 150,
@@ -2120,6 +2359,10 @@
                     if (dropZone.children.length > 0) {
                         dropZone.classList.remove('empty');
                     }
+                    checkSentenceAnswerAuto();
+                },
+                onUpdate: () => {
+                    checkSentenceAnswerAuto();
                 }
             });
             sortableInstances.push(dropZoneSortable);
@@ -2137,70 +2380,103 @@
             sortableInstances.push(scrambledSortable);
         }
         
-        function checkAnswer() {
-            let isCorrect = false;
+        function checkSentenceAnswerAuto() {
+            const dropZone = document.getElementById('dropZone');
+            const scrambledContainer = document.getElementById('scrambledWords');
             
-            if (currentLevel === 'Basic') {
-                isCorrect = checkBasicAnswer();
-            } else {
-                isCorrect = checkSentenceAnswer();
-            }
-            
-            if (isCorrect) {
-                handleCorrectAnswer();
-            } else {
-                handleWrongAnswer();
-            }
-        }
-        
-        function checkBasicAnswer() {
-            // For basic level, check if words are in correct categories
-            const categories = document.querySelectorAll('.category-column');
-            let allCorrect = true;
-            
-            categories.forEach(column => {
-                const categoryName = column.dataset.category;
-                const wordsInCategory = Array.from(column.querySelectorAll('.word-item')).map(el => el.dataset.word);
+            // Only check if all words are in drop zone
+            if (scrambledContainer.children.length === 0 && dropZone.children.length > 0) {
+                const userSentence = Array.from(dropZone.children)
+                    .map(el => el.dataset.word)
+                    .join(' ');
                 
-                // Check if the subcategory word is in the main category
-                if (categoryName === currentQuestion.mainCategory) {
-                    if (!wordsInCategory.includes(currentQuestion.subcategory)) {
-                        allCorrect = false;
+                const correctSentence = currentQuestion.correctSentence.trim();
+                
+                if (userSentence.toLowerCase() === correctSentence.toLowerCase()) {
+                    handleCorrectSentenceAnswer();
+                } else {
+                    // Show hint
+                    if (currentQuestion.hint) {
+                        document.getElementById('hintText').textContent = currentQuestion.hint;
+                        document.getElementById('hintBox').classList.remove('hidden');
                     }
                 }
-            });
-            
-            // Also check if pool is empty
-            const pool = document.getElementById('wordsPoolContent');
-            if (pool.children.length > 0) {
-                allCorrect = false;
             }
-            
-            return allCorrect;
         }
         
-        function checkSentenceAnswer() {
-            const dropZone = document.getElementById('dropZone');
-            const userSentence = Array.from(dropZone.children)
-                .map(el => el.dataset.word)
-                .join(' ');
+        function handleCorrectBasicAnswer() {
+            successCount++;
+            document.getElementById('successCount').textContent = successCount;
             
-            const correctSentence = currentQuestion.correctSentence.trim();
+            // Show "Well Done!" message
+            showWellDoneMessage();
             
-            return userSentence.toLowerCase() === correctSentence.toLowerCase();
+            if (successCount >= requiredSuccessCount) {
+                // Enable submit button
+                document.getElementById('submitBtn').disabled = false;
+                
+                // Show celebration
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 150,
+                        spread: 100,
+                        origin: { y: 0.6 }
+                    });
+                    showFullScreenCelebration();
+                }, 1000);
+            } else {
+                // Reset words to scrambled positions for next repetition
+                setTimeout(() => {
+                    loadBasicQuestion();
+                }, 1500);
+            }
         }
         
-        function handleCorrectAnswer() {
-            // Trigger confetti
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
+        function handleCorrectSentenceAnswer() {
+            successCount++;
+            document.getElementById('successCount').textContent = successCount;
             
-            // Show success modal
+            // Show "Well Done!" message
+            showWellDoneMessage();
+            
+            if (successCount >= requiredSuccessCount) {
+                // Enable submit button
+                document.getElementById('submitBtn').disabled = false;
+                
+                // Show celebration
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 150,
+                        spread: 100,
+                        origin: { y: 0.6 }
+                    });
+                    showFullScreenCelebration();
+                }, 1000);
+            } else {
+                // Reset words to scrambled positions for next repetition
+                setTimeout(() => {
+                    loadSentenceQuestion();
+                }, 1500);
+            }
+        }
+        
+        function showWellDoneMessage() {
+            const modal = document.getElementById('wellDoneMessage');
+            modal.classList.remove('hidden');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 1500);
+        }
+        
+        function showFullScreenCelebration() {
+            const modal = document.getElementById('successModal');
             const quote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
             document.getElementById('motivationalQuote').textContent = `"${quote}"`;
+            
+            // Update title with student name
+            const userName = userProgress?.name || 'Student';
+            document.querySelector('#successModal .modal-title').textContent = `Well Done, ${userName}!`;
             
             if (currentLevel !== 'Basic' && currentQuestion.grammarRule) {
                 document.getElementById('grammarText').textContent = currentQuestion.grammarRule;
@@ -2209,31 +2485,12 @@
                 document.getElementById('grammarSpotlight').classList.add('hidden');
             }
             
-            document.getElementById('successModal').classList.remove('hidden');
+            modal.classList.remove('hidden');
         }
         
-        function handleWrongAnswer() {
-            trialsRemaining--;
-            document.getElementById('trialsLeft').textContent = trialsRemaining;
-            
-            if (trialsRemaining > 0) {
-                // Show hint
-                if (currentQuestion.hint) {
-                    document.getElementById('hintText').textContent = currentQuestion.hint;
-                    document.getElementById('hintBox').classList.remove('hidden');
-                }
-                showError('Not quite right. Try again!');
-            } else {
-                // Show correct answer and move to next
-                if (confirm('You\'ve used all trials. Would you like to see the correct answer and move on?')) {
-                    if (currentLevel === 'Basic') {
-                        alert(`Correct answer: ${currentQuestion.subcategory} belongs to ${currentQuestion.mainCategory}`);
-                    } else {
-                        alert(`Correct sentence: ${currentQuestion.correctSentence}`);
-                    }
-                    nextQuestion();
-                }
-            }
+        function submitAndNext() {
+            document.getElementById('successModal').classList.add('hidden');
+            nextQuestion();
         }
         
         async function nextQuestion() {
@@ -2334,6 +2591,10 @@
         }
         
         async function downloadCertificate() {
+            await downloadCertificateForLevel(currentLevel);
+        }
+        
+        async function downloadCertificateForLevel(level) {
             await loadCertificateSettings();
             
             const { jsPDF } = window.jspdf;
@@ -2343,9 +2604,19 @@
                 format: 'a4'
             });
             
-            // Set background color
-            doc.setFillColor(certificateSettings.bgColor);
-            doc.rect(0, 0, 297, 210, 'F');
+            // If custom background exists, add it
+            if (certBackgroundUrl) {
+                try {
+                    doc.addImage(certBackgroundUrl, 'JPEG', 0, 0, 297, 210);
+                } catch (e) {
+                    // Fallback to color background
+                    doc.setFillColor(certificateSettings.bgColor);
+                    doc.rect(0, 0, 297, 210, 'F');
+                }
+            } else {
+                doc.setFillColor(certificateSettings.bgColor);
+                doc.rect(0, 0, 297, 210, 'F');
+            }
             
             // Add decorative border
             doc.setDrawColor(certificateSettings.borderColor);
@@ -2358,7 +2629,7 @@
             // Add title
             doc.setFontSize(40);
             doc.setTextColor(certificateSettings.titleColor);
-            doc.setFont(certificateSettings.fontFamily, 'bold');
+            doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
             doc.text(certificateSettings.title, 148.5, 50, { align: 'center' });
             
             // Add subtitle
@@ -2366,44 +2637,54 @@
             doc.setTextColor('#64748B');
             doc.text(certificateSettings.subtitle, 148.5, 65, { align: 'center' });
             
+            // Add student photo if available
+            if (studentPhotoUrl) {
+                try {
+                    doc.addImage(studentPhotoUrl, 'JPEG', 125, 75, 20, 20);
+                } catch (e) {
+                    console.log('Could not add student photo');
+                }
+            }
+            
             // Add student name
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
-            doc.text('This is to certify that', 148.5, 85, { align: 'center' });
+            doc.text('This is to certify that', 148.5, studentPhotoUrl ? 105 : 85, { align: 'center' });
             
             doc.setFontSize(28);
             doc.setTextColor(certificateSettings.borderColor);
-            doc.setFont(certificateSettings.fontFamily, 'bold');
-            doc.text(userProgress.name, 148.5, 100, { align: 'center' });
+            doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
+            doc.text(userProgress?.name || 'Student', 148.5, studentPhotoUrl ? 120 : 100, { align: 'center' });
             
             // Add achievement text
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
-            doc.setFont(certificateSettings.fontFamily, 'normal');
-            doc.text('has successfully completed', 148.5, 115, { align: 'center' });
+            doc.setFont(certificateSettings.fontFamily || 'helvetica', 'normal');
+            doc.text('has successfully completed', 148.5, studentPhotoUrl ? 135 : 115, { align: 'center' });
             
             doc.setFontSize(20);
             doc.setTextColor(certificateSettings.titleColor);
-            doc.setFont(certificateSettings.fontFamily, 'bold');
-            doc.text(`${currentLevel} Level`, 148.5, 130, { align: 'center' });
+            doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
+            doc.text(`${level} Level`, 148.5, studentPhotoUrl ? 150 : 130, { align: 'center' });
             
             // Add stars and medals
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
-            doc.text(`⭐ 100 Stars   🏅 10 Medals`, 148.5, 145, { align: 'center' });
+            const progress = userProgress?.progress[level] || {};
+            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, studentPhotoUrl ? 165 : 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
             doc.setTextColor('#64748B');
             const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            doc.text(`Date: ${today}`, 148.5, 170, { align: 'center' });
+            doc.text(`Date: ${today}`, 148.5, 180, { align: 'center' });
             
             // Add footer
             doc.setFontSize(10);
-            doc.text('Designed by Ayman Nasser © 2026', 148.5, 190, { align: 'center' });
+            doc.text('Designed by Ayman Nasser © 2026', 148.5, 195, { align: 'center' });
             
             // Save PDF
-            doc.save(`JumbleJump_Certificate_${currentLevel}_${userProgress.name}.pdf`);
+            doc.save(`JumbleJump_Certificate_${level}_${userProgress?.name || 'Student'}.pdf`);
         }
         
         // ========================================
@@ -2422,13 +2703,296 @@
             document.getElementById('themeTab').classList.add('hidden');
             document.getElementById('certificateTab').classList.add('hidden');
             document.getElementById('playgroundTab').classList.add('hidden');
+            document.getElementById('appearanceTab')?.classList.add('hidden');
+            document.getElementById('printcertsTab')?.classList.add('hidden');
             
             // Show selected section
             document.getElementById(`${tab}Tab`).classList.remove('hidden');
             
             if (tab === 'students') {
                 loadStudentProgress();
+            } else if (tab === 'printcerts') {
+                loadStudentsForCertificates();
             }
+        }
+        
+        // Appearance customization handlers
+        let logoFileData = null;
+        let bgFileData = null;
+        let certBgFileData = null;
+        
+        function handleLogoUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                logoFileData = e.target.result;
+                document.getElementById('logoPreview').innerHTML = `
+                    <img src="${e.target.result}" style="max-width: 200px; max-height: 200px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-md);">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function handleBgUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                bgFileData = e.target.result;
+                document.getElementById('bgPreview').innerHTML = `
+                    <img src="${e.target.result}" style="max-width: 100%; max-height: 300px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-md);">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function handleCertBgUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                certBgFileData = e.target.result;
+                document.getElementById('certBgPreview').innerHTML = `
+                    <img src="${e.target.result}" style="max-width: 100%; max-height: 300px; border-radius: var(--border-radius-md); box-shadow: var(--shadow-md);">
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        async function saveAppLogo() {
+            if (!logoFileData) {
+                showError('Please select a logo file first');
+                return;
+            }
+            
+            try {
+                await db.collection('settings').doc('appearance').set({
+                    logo: logoFileData
+                }, { merge: true });
+                
+                appLogoUrl = logoFileData;
+                applyAppLogo();
+                showSuccess('Logo saved successfully!');
+            } catch (error) {
+                showError('Error saving logo: ' + error.message);
+            }
+        }
+        
+        async function saveAppBackground() {
+            if (!bgFileData) {
+                showError('Please select a background image first');
+                return;
+            }
+            
+            try {
+                await db.collection('settings').doc('appearance').set({
+                    background: bgFileData
+                }, { merge: true });
+                
+                appBackgroundUrl = bgFileData;
+                applyAppBackground();
+                showSuccess('Background saved successfully!');
+            } catch (error) {
+                showError('Error saving background: ' + error.message);
+            }
+        }
+        
+        async function removeAppBackground() {
+            try {
+                await db.collection('settings').doc('appearance').set({
+                    background: ''
+                }, { merge: true });
+                
+                appBackgroundUrl = '';
+                document.body.style.backgroundImage = '';
+                showSuccess('Background removed successfully!');
+            } catch (error) {
+                showError('Error removing background: ' + error.message);
+            }
+        }
+        
+        function applyAppLogo() {
+            if (appLogoUrl) {
+                document.querySelectorAll('.logo').forEach(logo => {
+                    logo.style.backgroundImage = `url(${appLogoUrl})`;
+                    logo.style.backgroundSize = 'contain';
+                    logo.style.backgroundRepeat = 'no-repeat';
+                    logo.style.backgroundPosition = 'center';
+                    logo.style.height = '100px';
+                });
+            }
+        }
+        
+        function applyAppBackground() {
+            if (appBackgroundUrl) {
+                document.body.style.backgroundImage = `url(${appBackgroundUrl})`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+                document.body.style.backgroundAttachment = 'fixed';
+            }
+        }
+        
+        // Load appearance settings
+        async function loadAppearanceSettings() {
+            try {
+                const doc = await db.collection('settings').doc('appearance').get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.logo) {
+                        appLogoUrl = data.logo;
+                        applyAppLogo();
+                    }
+                    if (data.background) {
+                        appBackgroundUrl = data.background;
+                        applyAppBackground();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading appearance settings:', error);
+            }
+        }
+        
+        // Print certificates functionality
+        async function loadStudentsForCertificates() {
+            const select = document.getElementById('studentSelectForCert');
+            select.innerHTML = '<option value="">-- Select a student --</option>';
+            
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = `${user.name} (${user.email})`;
+                    option.dataset.userData = JSON.stringify(user);
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                showError('Error loading students: ' + error.message);
+            }
+        }
+        
+        async function loadStudentCertificates() {
+            const select = document.getElementById('studentSelectForCert');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (!selectedOption.value) {
+                document.getElementById('studentCertsDisplay').classList.add('hidden');
+                return;
+            }
+            
+            const userData = JSON.parse(selectedOption.dataset.userData);
+            document.getElementById('selectedStudentName').textContent = userData.name;
+            document.getElementById('studentCertsDisplay').classList.remove('hidden');
+            
+            const levels = ['Basic', 'Beginner', 'Intermediate', 'Advanced'];
+            levels.forEach(level => {
+                const progress = userData.progress[level] || { completed: 0, total: 100 };
+                const isCompleted = progress.completed >= progress.total;
+                
+                const statusEl = document.getElementById(`cert${level}Status`);
+                const btnEl = document.getElementById(`cert${level}Btn`);
+                
+                if (isCompleted) {
+                    statusEl.textContent = '✅ Completed';
+                    statusEl.style.color = 'var(--color-success)';
+                    btnEl.disabled = false;
+                    btnEl.onclick = () => printCertificate(level, userData);
+                } else {
+                    statusEl.textContent = '❌ Not Completed';
+                    statusEl.style.color = 'var(--color-danger)';
+                    btnEl.disabled = true;
+                }
+            });
+        }
+        
+        async function printCertificate(level, userData = null) {
+            const studentData = userData || userProgress;
+            
+            await loadCertificateSettings();
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+            
+            // If custom background exists, add it
+            if (certBackgroundUrl) {
+                try {
+                    doc.addImage(certBackgroundUrl, 'JPEG', 0, 0, 297, 210);
+                } catch (e) {
+                    doc.setFillColor(certificateSettings.bgColor);
+                    doc.rect(0, 0, 297, 210, 'F');
+                }
+            } else {
+                doc.setFillColor(certificateSettings.bgColor);
+                doc.rect(0, 0, 297, 210, 'F');
+            }
+            
+            // Add decorative border
+            doc.setDrawColor(certificateSettings.borderColor);
+            doc.setLineWidth(5);
+            doc.rect(10, 10, 277, 190);
+            doc.setLineWidth(1);
+            doc.rect(15, 15, 267, 180);
+            
+            // Add title
+            doc.setFontSize(40);
+            doc.setTextColor(certificateSettings.titleColor);
+            doc.setFont('helvetica', 'bold');
+            doc.text(certificateSettings.title, 148.5, 50, { align: 'center' });
+            
+            // Add subtitle
+            doc.setFontSize(16);
+            doc.setTextColor('#64748B');
+            doc.text(certificateSettings.subtitle, 148.5, 65, { align: 'center' });
+            
+            // Add student name
+            doc.setFontSize(14);
+            doc.setTextColor('#0F172A');
+            doc.text('This is to certify that', 148.5, 85, { align: 'center' });
+            
+            doc.setFontSize(28);
+            doc.setTextColor(certificateSettings.borderColor);
+            doc.setFont('helvetica', 'bold');
+            doc.text(studentData.name, 148.5, 100, { align: 'center' });
+            
+            // Add achievement text
+            doc.setFontSize(14);
+            doc.setTextColor('#0F172A');
+            doc.setFont('helvetica', 'normal');
+            doc.text('has successfully completed', 148.5, 115, { align: 'center' });
+            
+            doc.setFontSize(20);
+            doc.setTextColor(certificateSettings.titleColor);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
+            
+            // Add stars and medals
+            doc.setFontSize(14);
+            doc.setTextColor('#0F172A');
+            const progress = studentData.progress[level] || {};
+            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, 145, { align: 'center' });
+            
+            // Add date
+            doc.setFontSize(12);
+            doc.setTextColor('#64748B');
+            const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            doc.text(`Date: ${today}`, 148.5, 170, { align: 'center' });
+            
+            // Add footer
+            doc.setFontSize(10);
+            doc.text('Designed by Ayman Nasser © 2026', 148.5, 190, { align: 'center' });
+            
+            // Auto-print
+            doc.autoPrint();
+            window.open(doc.output('bloburl'), '_blank');
         }
         
         async function saveSettings() {
@@ -2544,8 +3108,14 @@
                 fontFamily: document.getElementById('certFontFamily').value
             };
             
+            // Add certificate background if uploaded
+            if (certBgFileData) {
+                settings.backgroundTemplate = certBgFileData;
+                certBackgroundUrl = certBgFileData;
+            }
+            
             try {
-                await db.collection('settings').doc('certificate').set(settings);
+                await db.collection('settings').doc('certificate').set(settings, { merge: true });
                 certificateSettings = settings;
                 showSuccess('Certificate settings saved successfully!');
             } catch (error) {
