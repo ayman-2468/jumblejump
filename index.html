@@ -1352,6 +1352,14 @@
                 
                 <div style="margin-bottom: 40px;">
                     <h4 style="margin-bottom: 15px;">Upload Basic Level Data</h4>
+                    
+                    <!-- Quick Test Data Button -->
+                    <div style="background: #D1FAE5; padding: 15px; border-radius: var(--border-radius-md); margin-bottom: 20px;">
+                        <h5 style="color: var(--color-success); margin-bottom: 10px;">🚀 Quick Start - Generate Test Data</h5>
+                        <p style="font-size: 0.9rem; margin-bottom: 10px;">Click below to instantly add sample Basic level questions to test the app:</p>
+                        <button class="btn btn-success" onclick="generateTestBasicData()">Generate Test Data (20 Questions)</button>
+                    </div>
+                    
                     <p style="color: var(--color-text-secondary); margin-bottom: 15px;">
                         Excel columns: <strong>Main_Category | Subcategory | Jumbled_Words | Hint | Teacher_Note | Question_ID</strong>
                     </p>
@@ -1373,6 +1381,14 @@
                 
                 <div style="margin-bottom: 40px;">
                     <h4 style="margin-bottom: 15px;">Upload Sentence Levels Data</h4>
+                    
+                    <!-- Quick Test Data Button for Sentences -->
+                    <div style="background: #D1FAE5; padding: 15px; border-radius: var(--border-radius-md); margin-bottom: 20px;">
+                        <h5 style="color: var(--color-success); margin-bottom: 10px;">🚀 Quick Start - Generate Test Sentences</h5>
+                        <p style="font-size: 0.9rem; margin-bottom: 10px;">Click below to instantly add sample sentences for all levels:</p>
+                        <button class="btn btn-success" onclick="generateTestSentenceData()">Generate Test Sentences (30 Questions)</button>
+                    </div>
+                    
                     <p style="color: var(--color-text-secondary); margin-bottom: 15px;">
                         Excel columns: Level | Scrambled_Words | Correct_Sentence | Grammar_Rule | Teacher_Note
                     </p>
@@ -2138,6 +2154,141 @@
             // Download
             XLSX.writeFile(wb, "JumbleJump_Basic_Level_Template.xlsx");
             showSuccess('Template downloaded! Fill it with your data and upload.');
+        }
+        
+        // Generate test data for Basic level
+        async function generateTestBasicData() {
+            if (!confirm('This will add 20 sample Basic level questions to your database. Continue?')) {
+                return;
+            }
+            
+            document.getElementById('uploadProgress').classList.remove('hidden');
+            
+            const testData = [
+                // Parts of Speech Category
+                { mainCategory: 'Parts of Speech', subcategory: 'Noun', jumbledWords: 'book,pen,desk,door', hint: 'Nouns are naming words for things you can see or touch', teacherNote: 'Common classroom objects' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Noun', jumbledWords: 'teacher,student,doctor,pilot', hint: 'Nouns can be people and their jobs', teacherNote: 'Professions' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Verb', jumbledWords: 'run,walk,jump,swim', hint: 'Verbs are action words - things you can do', teacherNote: 'Physical actions' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Verb', jumbledWords: 'read,write,speak,listen', hint: 'Verbs show what we do', teacherNote: 'Learning activities' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Adjective', jumbledWords: 'big,small,tall,short', hint: 'Adjectives describe size and height', teacherNote: 'Size descriptors' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Adjective', jumbledWords: 'happy,sad,angry,excited', hint: 'Adjectives can describe feelings', teacherNote: 'Emotions' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Pronoun', jumbledWords: 'I,you,he,she', hint: 'Pronouns replace names of people', teacherNote: 'Subject pronouns' },
+                { mainCategory: 'Parts of Speech', subcategory: 'Pronoun', jumbledWords: 'we,they,it,them', hint: 'Pronouns can refer to groups or things', teacherNote: 'Plural and object pronouns' },
+                
+                // Tenses Category
+                { mainCategory: 'Verb Tenses', subcategory: 'Present Simple', jumbledWords: 'go,goes,play,plays', hint: 'Present simple verbs show habits and facts', teacherNote: 'Base form and third person' },
+                { mainCategory: 'Verb Tenses', subcategory: 'Present Simple', jumbledWords: 'eat,eats,drink,drinks', hint: 'Add -s for he, she, it', teacherNote: 'Daily routines' },
+                { mainCategory: 'Verb Tenses', subcategory: 'Past Simple', jumbledWords: 'went,played,ate,drank', hint: 'Past simple shows completed actions', teacherNote: 'Irregular and regular past' },
+                { mainCategory: 'Verb Tenses', subcategory: 'Past Simple', jumbledWords: 'walked,talked,watched,listened', hint: 'Regular past verbs end in -ed', teacherNote: 'Regular past tense' },
+                { mainCategory: 'Verb Tenses', subcategory: 'Present Continuous', jumbledWords: 'running,walking,eating,playing', hint: 'Present continuous uses -ing for actions happening now', teacherNote: 'Progressive form' },
+                { mainCategory: 'Verb Tenses', subcategory: 'Future', jumbledWords: 'will go,will eat,will play,will read', hint: 'Use will for future actions', teacherNote: 'Simple future' },
+                
+                // Question Words Category
+                { mainCategory: 'Question Words', subcategory: 'Wh-Questions', jumbledWords: 'what,when,where,why', hint: 'These words start questions about information', teacherNote: 'Basic question words' },
+                { mainCategory: 'Question Words', subcategory: 'Wh-Questions', jumbledWords: 'who,whom,whose,which', hint: 'Question words help us ask about people and choices', teacherNote: 'Advanced question words' },
+                { mainCategory: 'Question Words', subcategory: 'How Questions', jumbledWords: 'how,how many,how much,how often', hint: 'How questions ask about manner and quantity', teacherNote: 'How variations' },
+                
+                // Prepositions Category
+                { mainCategory: 'Prepositions', subcategory: 'Place', jumbledWords: 'in,on,under,behind', hint: 'Prepositions of place show where things are', teacherNote: 'Location prepositions' },
+                { mainCategory: 'Prepositions', subcategory: 'Place', jumbledWords: 'between,next to,in front of,near', hint: 'These show position relative to other things', teacherNote: 'Position words' },
+                { mainCategory: 'Prepositions', subcategory: 'Time', jumbledWords: 'at,on,in,during', hint: 'Prepositions of time tell when something happens', teacherNote: 'Time expressions' }
+            ];
+            
+            try {
+                const batch = db.batch();
+                
+                testData.forEach((data, index) => {
+                    const docRef = db.collection('questions').doc(`basic_test_${index}_${Date.now()}`);
+                    batch.set(docRef, {
+                        level: 'Basic',
+                        mainCategory: data.mainCategory,
+                        subcategory: data.subcategory,
+                        jumbledWords: data.jumbledWords,
+                        hint: data.hint,
+                        teacherNote: data.teacherNote,
+                        questionId: index + 1
+                    });
+                });
+                
+                await batch.commit();
+                showSuccess(`✅ Successfully added ${testData.length} Basic level test questions! You can now play the Basic level.`);
+            } catch (error) {
+                showError('Error generating test data: ' + error.message);
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('uploadProgress').classList.add('hidden');
+            }
+        }
+        
+        // Generate test data for Sentence levels
+        async function generateTestSentenceData() {
+            if (!confirm('This will add 30 sample sentences (10 per level) to your database. Continue?')) {
+                return;
+            }
+            
+            document.getElementById('uploadProgress').classList.remove('hidden');
+            
+            const testSentences = [
+                // Beginner Level
+                { level: 'Beginner', correctSentence: 'I am a student', hint: 'Subject + verb to be + article + noun', grammarRule: 'Simple present with "to be"' },
+                { level: 'Beginner', correctSentence: 'She is happy', hint: 'Subject + verb to be + adjective', grammarRule: 'Using adjectives with "to be"' },
+                { level: 'Beginner', correctSentence: 'They are playing', hint: 'Subject + verb to be + verb-ing', grammarRule: 'Present continuous tense' },
+                { level: 'Beginner', correctSentence: 'We go to school', hint: 'Subject + verb + preposition + place', grammarRule: 'Simple present tense' },
+                { level: 'Beginner', correctSentence: 'He likes apples', hint: 'Subject + verb + object', grammarRule: 'Third person singular -s' },
+                { level: 'Beginner', correctSentence: 'The cat is sleeping', hint: 'Article + noun + verb to be + verb-ing', grammarRule: 'Present continuous with articles' },
+                { level: 'Beginner', correctSentence: 'I can swim', hint: 'Subject + modal verb + base verb', grammarRule: 'Using modal verbs' },
+                { level: 'Beginner', correctSentence: 'She has a book', hint: 'Subject + has/have + article + object', grammarRule: 'Present simple with "have"' },
+                { level: 'Beginner', correctSentence: 'We are friends', hint: 'Subject + verb to be + noun', grammarRule: 'Identifying with "to be"' },
+                { level: 'Beginner', correctSentence: 'They want water', hint: 'Subject + verb + object', grammarRule: 'Simple present tense structure' },
+                
+                // Intermediate Level
+                { level: 'Intermediate', correctSentence: 'I have been studying English', hint: 'Subject + have been + verb-ing + object', grammarRule: 'Present perfect continuous' },
+                { level: 'Intermediate', correctSentence: 'She will go to the market tomorrow', hint: 'Subject + will + verb + place + time', grammarRule: 'Future simple tense' },
+                { level: 'Intermediate', correctSentence: 'They were playing football yesterday', hint: 'Subject + were + verb-ing + object + time', grammarRule: 'Past continuous tense' },
+                { level: 'Intermediate', correctSentence: 'He has already finished his homework', hint: 'Subject + has + adverb + past participle + object', grammarRule: 'Present perfect with adverbs' },
+                { level: 'Intermediate', correctSentence: 'We should help each other', hint: 'Subject + modal + verb + object', grammarRule: 'Modal verbs for advice' },
+                { level: 'Intermediate', correctSentence: 'The teacher is explaining the lesson carefully', hint: 'Subject + verb-ing + object + adverb', grammarRule: 'Present continuous with adverbs' },
+                { level: 'Intermediate', correctSentence: 'I would like to visit Paris', hint: 'Subject + would like + to-infinitive + object', grammarRule: 'Expressing wishes politely' },
+                { level: 'Intermediate', correctSentence: 'She might come to the party', hint: 'Subject + modal + verb + preposition + object', grammarRule: 'Modal verbs for possibility' },
+                { level: 'Intermediate', correctSentence: 'They have lived here for ten years', hint: 'Subject + have + past participle + place + duration', grammarRule: 'Present perfect with duration' },
+                { level: 'Intermediate', correctSentence: 'We must finish the project by Friday', hint: 'Subject + modal + verb + object + time', grammarRule: 'Modal verbs for obligation' },
+                
+                // Advanced Level
+                { level: 'Advanced', correctSentence: 'If I had known earlier I would have helped you', hint: 'If + past perfect, subject + would have + past participle', grammarRule: 'Third conditional sentences' },
+                { level: 'Advanced', correctSentence: 'Despite being tired she continued working on the assignment', hint: 'Despite + verb-ing, subject + verb + object', grammarRule: 'Contrast with despite' },
+                { level: 'Advanced', correctSentence: 'The book which was written by Shakespeare is very famous', hint: 'Noun + relative clause + verb', grammarRule: 'Relative clauses with which' },
+                { level: 'Advanced', correctSentence: 'Having finished the exam he felt relieved', hint: 'Having + past participle, subject + verb + adjective', grammarRule: 'Perfect participle clauses' },
+                { level: 'Advanced', correctSentence: 'Not only is she intelligent but also very creative', hint: 'Inversion with not only...but also', grammarRule: 'Emphatic structures with inversion' },
+                { level: 'Advanced', correctSentence: 'Were I to win the lottery I would travel the world', hint: 'Were + subject + to-infinitive, conditional clause', grammarRule: 'Formal conditional inversion' },
+                { level: 'Advanced', correctSentence: 'The more you practice the better you will become', hint: 'The + comparative, the + comparative', grammarRule: 'Proportional comparatives' },
+                { level: 'Advanced', correctSentence: 'Rarely have I seen such dedication in a student', hint: 'Adverb + auxiliary + subject + past participle', grammarRule: 'Inversion after negative adverbs' },
+                { level: 'Advanced', correctSentence: 'By the time we arrive the meeting will have started', hint: 'Time clause + future perfect', grammarRule: 'Future perfect tense' },
+                { level: 'Advanced', correctSentence: 'No sooner had she left than it started raining', hint: 'No sooner + past perfect + than + past simple', grammarRule: 'Inversion with no sooner' }
+            ];
+            
+            try {
+                const batch = db.batch();
+                
+                testSentences.forEach((data, index) => {
+                    const docRef = db.collection('questions').doc(`sentence_test_${data.level}_${index}_${Date.now()}`);
+                    batch.set(docRef, {
+                        level: data.level,
+                        correctSentence: data.correctSentence,
+                        scrambledWords: data.correctSentence, // Will be scrambled in game
+                        hint: data.hint,
+                        grammarRule: data.grammarRule,
+                        teacherNote: ''
+                    });
+                });
+                
+                await batch.commit();
+                showSuccess(`✅ Successfully added ${testSentences.length} sentence test questions across all levels!`);
+            } catch (error) {
+                showError('Error generating test sentences: ' + error.message);
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('uploadProgress').classList.add('hidden');
+            }
         }
         
         async function uploadBasicLevel() {
