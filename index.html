@@ -2807,6 +2807,23 @@
                 });
                 sortableInstances.push(sortable);
             });
+            
+            // FINAL VERIFICATION - Check if everything is in the DOM
+            console.log('🔍 FINAL VERIFICATION:');
+            console.log('  - Main Category Display:', document.getElementById('mainCategoryDisplay')?.textContent);
+            console.log('  - Sub Category Boxes Container:', document.getElementById('subCategoryBoxes')?.children.length, 'boxes');
+            console.log('  - Words Pool Container:', document.getElementById('wordsPoolContent')?.children.length, 'words');
+            console.log('  - Basic Interface Visible:', !document.getElementById('basicLevelInterface')?.classList.contains('hidden'));
+            console.log('  - Sentence Interface Hidden:', document.getElementById('sentenceLevelInterface')?.classList.contains('hidden'));
+            
+            // Check if pool is actually visible in the DOM
+            const poolElement = document.getElementById('wordsPoolContent');
+            if (poolElement) {
+                console.log('  - Pool Element Found:', poolElement);
+                console.log('  - Pool HTML:', poolElement.innerHTML.substring(0, 200));
+            } else {
+                console.error('❌ CRITICAL: wordsPoolContent element not found!');
+            }
         }
         
         function loadSentenceQuestion() {
@@ -2872,6 +2889,13 @@
                 }
             });
             sortableInstances.push(scrambledSortable);
+            
+            // FINAL VERIFICATION
+            console.log('🔍 SENTENCE LEVEL VERIFICATION:');
+            console.log('  - Scrambled Words Container:', scrambledContainer?.children.length, 'words');
+            console.log('  - Drop Zone:', dropZone ? 'Found' : 'NOT FOUND');
+            console.log('  - Current Question:', currentQuestion);
+            console.log('  - Correct Sentence:', currentQuestion?.correctSentence);
         }
         
         function checkAnswer() {
@@ -2903,8 +2927,21 @@
             const dropZones = document.querySelectorAll('.sub-category-drop-zone');
             let allCorrect = true;
             let incorrectCount = 0;
+            let totalWordsPlaced = 0;
             
             console.log('Drop zones found:', dropZones.length);
+            
+            // First check if ANY words are placed
+            dropZones.forEach(dropZone => {
+                totalWordsPlaced += dropZone.querySelectorAll('.word-item').length;
+            });
+            
+            if (totalWordsPlaced === 0) {
+                showError('Please place words in the sub-category boxes!');
+                return;
+            }
+            
+            console.log('Total words placed:', totalWordsPlaced);
             
             dropZones.forEach(dropZone => {
                 const expectedSubCat = dropZone.dataset.subcategory;
@@ -2971,14 +3008,15 @@
             console.log('Scrambled words left:', scrambledContainer.children.length);
             console.log('Words in drop zone:', dropZone.children.length);
             
-            // Check if all words are placed in the sentence
-            if (scrambledContainer.children.length > 0) {
-                showError('Please place all words in the sentence first!');
+            // CRITICAL: Check if drop zone has any words
+            if (dropZone.children.length === 0) {
+                showError('Please drag words to build your sentence first!');
                 return;
             }
             
-            if (dropZone.children.length === 0) {
-                showError('Please build your sentence first!');
+            // Check if all words are placed in the sentence
+            if (scrambledContainer.children.length > 0) {
+                showError('Please place ALL words in the sentence!');
                 return;
             }
             
@@ -3247,21 +3285,46 @@
         }
         
         async function updateUserProgress() {
-            const completed = currentQuestionIndex;
-            const total = levelQuestions.length;
-            const stars = completed;
-            const medals = Math.floor(completed / 10);
-            
-            await db.collection('users').doc(currentUser.uid).update({
-                [`progress.${currentLevel}.completed`]: completed,
-                [`progress.${currentLevel}.total`]: total,
-                stars: firebase.firestore.FieldValue.increment(1),
-                medals: medals
-            });
-            
-            // Reload user progress
-            const userDoc = await db.collection('users').doc(currentUser.uid).get();
-            userProgress = userDoc.data();
+            try {
+                const completed = currentQuestionIndex;
+                const total = levelQuestions.length;
+                const stars = completed;
+                const medals = Math.floor(completed / 10);
+                
+                // Check if user document exists first
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                
+                if (!userDoc.exists) {
+                    // Create user document if it doesn't exist
+                    await db.collection('users').doc(currentUser.uid).set({
+                        name: currentUser.displayName || currentUser.email,
+                        email: currentUser.email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        progress: {
+                            Basic: { completed: 0, total: 100 },
+                            Beginner: { completed: 0, total: 100 },
+                            Intermediate: { completed: 0, total: 100 },
+                            Advanced: { completed: 0, total: 100 }
+                        },
+                        stars: 0,
+                        medals: 0
+                    });
+                }
+                
+                // Now update progress
+                await db.collection('users').doc(currentUser.uid).update({
+                    [`progress.${currentLevel}.completed`]: completed,
+                    [`progress.${currentLevel}.total`]: total,
+                    stars: firebase.firestore.FieldValue.increment(1),
+                    medals: medals
+                });
+                
+                // Reload user progress
+                const updatedDoc = await db.collection('users').doc(currentUser.uid).get();
+                userProgress = updatedDoc.data();
+            } catch (error) {
+                console.error('Error updating user progress:', error);
+            }
         }
         
         function resetQuestion() {
