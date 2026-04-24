@@ -2584,13 +2584,14 @@
             document.getElementById('sentenceLevelInterface').classList.add('hidden');
             document.getElementById('instructionText').textContent = 'Drag each word to its correct sub-category box';
             
+            // Get all Basic level questions
+            let allBasicQuestions;
             try {
-                // Get all Basic level questions
                 const questionsInLevel = await db.collection('questions')
                     .where('level', '==', 'Basic')
                     .get();
                 
-                const allBasicQuestions = questionsInLevel.docs.map(doc => ({
+                allBasicQuestions = questionsInLevel.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
