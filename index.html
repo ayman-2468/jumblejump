@@ -1353,8 +1353,14 @@
                 <div style="margin-bottom: 40px;">
                     <h4 style="margin-bottom: 15px;">Upload Basic Level Data</h4>
                     <p style="color: var(--color-text-secondary); margin-bottom: 15px;">
-                        Excel columns: Main_Category | Subcategory | Jumbled_Words | Hint | Teacher_Note | Question_ID
+                        Excel columns: <strong>Main_Category | Subcategory | Jumbled_Words | Hint | Teacher_Note | Question_ID</strong>
                     </p>
+                    <div style="background: #FEF3C7; padding: 15px; border-radius: var(--border-radius-sm); margin-bottom: 15px;">
+                        <p style="font-size: 0.9rem; margin-bottom: 8px;"><strong>📝 Example Format:</strong></p>
+                        <p style="font-size: 0.85rem; font-family: monospace;">Parts of Speech | Noun | book,table,chair,pen | Nouns are naming words | Remember: things you can touch | 1</p>
+                        <p style="font-size: 0.85rem; font-family: monospace;">Parts of Speech | Verb | run,jump,eat,sleep | Verbs are action words | Remember: things you can do | 2</p>
+                        <p style="font-size: 0.85rem; font-family: monospace; margin-top: 8px; color: var(--color-text-secondary);">Each row = 1 subcategory with its words (comma-separated)</p>
+                    </div>
                     <div class="upload-area">
                         <input type="file" id="basicLevelFile" accept=".xlsx,.xls" onchange="handleBasicLevelUpload(this)">
                         <label for="basicLevelFile" class="upload-label">
@@ -1362,6 +1368,7 @@
                         </label>
                     </div>
                     <button class="btn btn-primary" onclick="uploadBasicLevel()">Upload Basic Level</button>
+                    <button class="btn btn-outline" onclick="downloadBasicTemplate()" style="margin-left: 10px;">Download Template</button>
                 </div>
                 
                 <div style="margin-bottom: 40px;">
@@ -1384,6 +1391,15 @@
                     <p style="color: var(--color-text-secondary); margin-top: 10px; font-size: 0.9rem;">
                         This will delete all sentences from Firestore. This action cannot be undone.
                     </p>
+                </div>
+                
+                <div style="margin-bottom: 40px;">
+                    <h4 style="margin-bottom: 15px;">🔍 Debug: View Database Content</h4>
+                    <button class="btn btn-outline" onclick="debugViewBasicQuestions()">View Basic Level Questions</button>
+                    <button class="btn btn-outline" onclick="debugViewSentenceQuestions()" style="margin-left: 10px;">View Sentence Questions</button>
+                    <div id="debugOutput" style="margin-top: 20px; padding: 15px; background: #F9FAFB; border-radius: var(--border-radius-md); max-height: 400px; overflow-y: auto; display: none;">
+                        <pre id="debugContent" style="font-size: 0.85rem; white-space: pre-wrap;"></pre>
+                    </div>
                 </div>
                 
                 <div id="uploadProgress" class="hidden">
@@ -2077,6 +2093,53 @@
             reader.readAsArrayBuffer(file);
         }
         
+        function downloadBasicTemplate() {
+            // Create sample data for Excel template
+            const templateData = [
+                {
+                    'Main_Category': 'Parts of Speech',
+                    'Subcategory': 'Noun',
+                    'Jumbled_Words': 'book,table,chair,pen',
+                    'Hint': 'Nouns are naming words for people, places, or things',
+                    'Teacher_Note': 'Start with common objects students can see',
+                    'Question_ID': 1
+                },
+                {
+                    'Main_Category': 'Parts of Speech',
+                    'Subcategory': 'Verb',
+                    'Jumbled_Words': 'run,jump,eat,sleep',
+                    'Hint': 'Verbs are action words - things you can do',
+                    'Teacher_Note': 'Use simple action verbs',
+                    'Question_ID': 2
+                },
+                {
+                    'Main_Category': 'Parts of Speech',
+                    'Subcategory': 'Adjective',
+                    'Jumbled_Words': 'big,small,happy,sad',
+                    'Hint': 'Adjectives describe nouns',
+                    'Teacher_Note': 'Use descriptive words students know',
+                    'Question_ID': 3
+                },
+                {
+                    'Main_Category': 'Parts of Speech',
+                    'Subcategory': 'Pronoun',
+                    'Jumbled_Words': 'I,you,he,she',
+                    'Hint': 'Pronouns replace nouns',
+                    'Teacher_Note': 'Personal pronouns',
+                    'Question_ID': 4
+                }
+            ];
+            
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(templateData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Basic Level Template");
+            
+            // Download
+            XLSX.writeFile(wb, "JumbleJump_Basic_Level_Template.xlsx");
+            showSuccess('Template downloaded! Fill it with your data and upload.');
+        }
+        
         async function uploadBasicLevel() {
             if (!basicLevelData) {
                 showError('Please select an Excel file first');
@@ -2087,26 +2150,41 @@
             
             try {
                 const batch = db.batch();
+                let uploadCount = 0;
                 
                 basicLevelData.forEach((row, index) => {
-                    const docRef = db.collection('questions').doc(`basic_${row.Question_ID || index}`);
+                    // Validate required fields
+                    if (!row.Main_Category || !row.Subcategory || !row.Jumbled_Words) {
+                        console.warn('Skipping row with missing data:', row);
+                        return;
+                    }
+                    
+                    const docRef = db.collection('questions').doc(`basic_${row.Question_ID || index}_${Date.now()}`);
                     batch.set(docRef, {
                         level: 'Basic',
-                        mainCategory: row.Main_Category,
-                        subcategory: row.Subcategory,
-                        jumbledWords: row.Jumbled_Words,
-                        hint: row.Hint || '',
-                        teacherNote: row.Teacher_Note || '',
+                        mainCategory: row.Main_Category.trim(),
+                        subcategory: row.Subcategory.trim(),
+                        jumbledWords: row.Jumbled_Words.trim(),
+                        hint: (row.Hint || '').trim(),
+                        teacherNote: (row.Teacher_Note || '').trim(),
                         questionId: row.Question_ID || index
                     });
+                    uploadCount++;
                 });
                 
+                if (uploadCount === 0) {
+                    showError('No valid data found in Excel file. Please check the column names.');
+                    document.getElementById('uploadProgress').classList.add('hidden');
+                    return;
+                }
+                
                 await batch.commit();
-                showSuccess(`Successfully uploaded ${basicLevelData.length} Basic level questions!`);
+                showSuccess(`Successfully uploaded ${uploadCount} Basic level questions!`);
                 basicLevelData = null;
                 document.getElementById('basicLevelFile').value = '';
             } catch (error) {
                 showError('Error uploading data: ' + error.message);
+                console.error('Upload error:', error);
             } finally {
                 document.getElementById('uploadProgress').classList.add('hidden');
             }
@@ -2166,6 +2244,73 @@
                 showError('Error clearing database: ' + error.message);
             } finally {
                 document.getElementById('uploadProgress').classList.add('hidden');
+            }
+        }
+        
+        // Debug functions to view database content
+        async function debugViewBasicQuestions() {
+            const debugOutput = document.getElementById('debugOutput');
+            const debugContent = document.getElementById('debugContent');
+            
+            debugOutput.style.display = 'block';
+            debugContent.textContent = 'Loading...';
+            
+            try {
+                const snapshot = await db.collection('questions').where('level', '==', 'Basic').get();
+                
+                if (snapshot.empty) {
+                    debugContent.textContent = '❌ No Basic level questions found in database.\n\nPlease upload data using the Excel template.';
+                    return;
+                }
+                
+                let output = `✅ Found ${snapshot.size} Basic level questions:\n\n`;
+                
+                snapshot.forEach((doc, index) => {
+                    const data = doc.data();
+                    output += `Question ${index + 1} (ID: ${doc.id}):\n`;
+                    output += `  Main Category: ${data.mainCategory || 'NOT SET'}\n`;
+                    output += `  Subcategory: ${data.subcategory || 'NOT SET'}\n`;
+                    output += `  Jumbled Words: ${data.jumbledWords || 'NOT SET'}\n`;
+                    output += `  Hint: ${data.hint || 'None'}\n`;
+                    output += `  Teacher Note: ${data.teacherNote || 'None'}\n`;
+                    output += `\n${'='.repeat(50)}\n\n`;
+                });
+                
+                debugContent.textContent = output;
+            } catch (error) {
+                debugContent.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function debugViewSentenceQuestions() {
+            const debugOutput = document.getElementById('debugOutput');
+            const debugContent = document.getElementById('debugContent');
+            
+            debugOutput.style.display = 'block';
+            debugContent.textContent = 'Loading...';
+            
+            try {
+                const levels = ['Beginner', 'Intermediate', 'Advanced'];
+                let output = '';
+                
+                for (const level of levels) {
+                    const snapshot = await db.collection('questions').where('level', '==', level).get();
+                    output += `\n📚 ${level} Level: ${snapshot.size} questions\n\n`;
+                    
+                    if (!snapshot.empty) {
+                        snapshot.forEach((doc, index) => {
+                            const data = doc.data();
+                            output += `  ${index + 1}. ${data.correctSentence || data.scrambledWords || 'NO SENTENCE'}\n`;
+                        });
+                    } else {
+                        output += `  ❌ No questions found\n`;
+                    }
+                    output += `\n`;
+                }
+                
+                debugContent.textContent = output;
+            } catch (error) {
+                debugContent.textContent = `Error: ${error.message}`;
             }
         }
         
@@ -2288,18 +2433,27 @@
             document.getElementById('sentenceLevelInterface').classList.add('hidden');
             document.getElementById('instructionText').textContent = 'Drag each word to its correct sub-category box';
             
-            // Get all Basic level questions
-            const questionsInLevel = await db.collection('questions')
-                .where('level', '==', 'Basic')
-                .get();
-            
-            const allBasicQuestions = questionsInLevel.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            
-            if (allBasicQuestions.length === 0) {
-                showError('No Basic level questions found. Please upload data first.');
+            try {
+                // Get all Basic level questions
+                const questionsInLevel = await db.collection('questions')
+                    .where('level', '==', 'Basic')
+                    .get();
+                
+                const allBasicQuestions = questionsInLevel.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                console.log('📊 Basic Questions Found:', allBasicQuestions.length);
+                console.log('📝 Sample Data:', allBasicQuestions[0]);
+                
+                if (allBasicQuestions.length === 0) {
+                    showError('❌ No Basic level questions found in database. Please go to Admin Dashboard → Upload Data → Upload Basic Level Excel file.');
+                    return;
+                }
+            } catch (error) {
+                showError('Database error: ' + error.message);
+                console.error('Error loading basic questions:', error);
                 return;
             }
             
@@ -2344,16 +2498,44 @@
             const validMainCategories = Object.keys(mainCategoryGroups).filter(mainCat => {
                 const subCats = Object.keys(mainCategoryGroups[mainCat].subCategories);
                 // Must have at least 2 subcategories
-                if (subCats.length < 2) return false;
+                if (subCats.length < 2) {
+                    console.log(`⚠️ ${mainCat} has only ${subCats.length} subcategory - need at least 2`);
+                    return false;
+                }
                 
                 // Each subcategory should have at least 2 words
-                return subCats.every(subCat => 
+                const hasEnoughWords = subCats.every(subCat => 
                     mainCategoryGroups[mainCat].subCategories[subCat].length >= 2
                 );
+                
+                if (!hasEnoughWords) {
+                    console.log(`⚠️ ${mainCat} doesn't have enough words in all subcategories`);
+                }
+                
+                return hasEnoughWords;
             });
             
+            console.log('✅ Valid Main Categories:', validMainCategories);
+            console.log('📊 Main Category Groups:', mainCategoryGroups);
+            
             if (validMainCategories.length === 0) {
-                showError('Not enough data in Basic level. Please upload questions with multiple subcategories and words.');
+                let errorMsg = '❌ Not enough data in Basic level.\n\n';
+                errorMsg += 'Requirements:\n';
+                errorMsg += '• Each Main Category needs at least 2 subcategories\n';
+                errorMsg += '• Each subcategory needs at least 2 words\n\n';
+                errorMsg += 'Current data:\n';
+                
+                Object.keys(mainCategoryGroups).forEach(mainCat => {
+                    const subCats = Object.keys(mainCategoryGroups[mainCat].subCategories);
+                    errorMsg += `\n${mainCat}: ${subCats.length} subcategories (${subCats.join(', ')})`;
+                    subCats.forEach(subCat => {
+                        const wordCount = mainCategoryGroups[mainCat].subCategories[subCat].length;
+                        errorMsg += `\n  - ${subCat}: ${wordCount} words`;
+                    });
+                });
+                
+                showError(errorMsg);
+                alert(errorMsg); // Show detailed error
                 return;
             }
             
