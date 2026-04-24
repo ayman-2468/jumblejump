@@ -1142,12 +1142,15 @@
                         <div id="studentPhotoPreview" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--color-primary); overflow: hidden; background: white; display: flex; align-items: center; justify-content: center;">
                             <span style="color: var(--color-text-secondary);">No Photo</span>
                         </div>
-                        <div>
-                            <input type="file" id="studentPhotoFile" accept="image/*" style="display: none;" onchange="handleStudentPhotoUpload(this)">
-                            <label for="studentPhotoFile" class="btn btn-primary" style="cursor: pointer;">
-                                Choose Photo
-                            </label>
-                            <button class="btn btn-outline" onclick="saveStudentPhoto()" id="savePhotoBtn" style="display: none;">Save Photo</button>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div>
+                                <input type="file" id="studentPhotoFile" accept="image/*" style="display: none;" onchange="handleStudentPhotoUpload(this)">
+                                <label for="studentPhotoFile" class="btn btn-primary" style="cursor: pointer;">
+                                    Choose Photo
+                                </label>
+                                <button class="btn btn-outline" onclick="saveStudentPhoto()" id="savePhotoBtn" style="display: none; margin-left: 10px;">Save Photo</button>
+                            </div>
+                            <button class="btn btn-danger" onclick="removeStudentPhoto()" id="removePhotoBtn" style="display: none;">Remove Photo</button>
                         </div>
                     </div>
                 </div>
@@ -2467,6 +2470,8 @@
         }
         
         function loadQuestion() {
+            console.log('📝 Loading question', currentQuestionIndex + 1, 'of', levelQuestions.length);
+            
             if (currentQuestionIndex >= levelQuestions.length) {
                 // Level complete
                 levelComplete();
@@ -2474,6 +2479,15 @@
             }
             
             currentQuestion = levelQuestions[currentQuestionIndex];
+            
+            if (!currentQuestion) {
+                console.error('❌ Current question is null/undefined');
+                showError('Error: Question data not found');
+                return;
+            }
+            
+            console.log('Current question:', currentQuestion);
+            
             successCount = 0;
             requiredSuccessCount = appSettings.trialsPerSentence || 3;
             
@@ -2757,13 +2771,23 @@
         }
         
         function loadSentenceQuestion() {
+            console.log('📖 Loading sentence question...');
+            
             // Make sure sentence interface is visible
             const sentenceInterface = document.getElementById('sentenceLevelInterface');
             if (sentenceInterface) {
                 sentenceInterface.classList.remove('hidden');
+                console.log('✅ Sentence interface shown');
+            } else {
+                console.error('❌ Sentence interface element not found!');
+                showError('Interface error: sentenceLevelInterface element not found');
+                return;
             }
             
-            document.getElementById('instructionText').textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
+            const instructionEl = document.getElementById('instructionText');
+            if (instructionEl) {
+                instructionEl.textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
+            }
             
             // Get scrambled words - clean any commas
             const wordsString = currentQuestion.scrambledWords || currentQuestion.correctSentence;
@@ -2977,11 +3001,20 @@
                 console.log('✅ CORRECT!');
                 handleCorrectSentenceAnswer();
             } else {
-                // Incorrect answer - show hint automatically
-                if (currentQuestion.hint) {
-                    document.getElementById('hintText').textContent = currentQuestion.hint;
-                    document.getElementById('hintBox').classList.remove('hidden');
+                // Incorrect answer - ALWAYS show hint
+                console.log('❌ INCORRECT - Showing hint');
+                
+                // Get hint from database or auto-generate
+                let hintText = currentQuestion.hint || '';
+                
+                if (!hintText || hintText.trim() === '') {
+                    // Auto-generate helpful hint if none exists in database
+                    hintText = `The correct order is: "${correctSentence}". Try arranging the words to match this sentence.`;
                 }
+                
+                document.getElementById('hintText').textContent = hintText;
+                document.getElementById('hintBox').classList.remove('hidden');
+                console.log('💡 Hint displayed:', hintText);
                 
                 // Visual feedback - highlight incorrect arrangement
                 Array.from(dropZone.children).forEach(wordEl => {
@@ -2990,7 +3023,7 @@
                     wordEl.style.backgroundColor = '#FEE2E2';
                 });
                 
-                showError('The sentence order is incorrect. Check the hint for guidance!');
+                showError('❌ The sentence order is incorrect. Check the hint below for guidance!');
                 
                 // Remove error styling after 2 seconds
                 setTimeout(() => {
@@ -3608,8 +3641,30 @@
                 studentPhotoUrl = studentPhotoFileData;
                 showSuccess('Photo saved successfully! It will appear on your certificates.');
                 document.getElementById('savePhotoBtn').style.display = 'none';
+                document.getElementById('removePhotoBtn').style.display = 'inline-block';
             } catch (error) {
                 showError('Error saving photo: ' + error.message);
+            }
+        }
+        
+        async function removeStudentPhoto() {
+            if (!confirm('Are you sure you want to remove your photo?')) {
+                return;
+            }
+            
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    photo: firebase.firestore.FieldValue.delete()
+                });
+                
+                studentPhotoUrl = '';
+                studentPhotoFileData = null;
+                document.getElementById('studentPhotoPreview').innerHTML = '<span style="color: var(--color-text-secondary);">No Photo</span>';
+                document.getElementById('removePhotoBtn').style.display = 'none';
+                document.getElementById('studentPhotoFile').value = '';
+                showSuccess('Photo removed successfully.');
+            } catch (error) {
+                showError('Error removing photo: ' + error.message);
             }
         }
         
@@ -3623,6 +3678,10 @@
                         document.getElementById('studentPhotoPreview').innerHTML = `
                             <img src="${data.photo}" style="width: 100%; height: 100%; object-fit: cover;">
                         `;
+                        // Show remove button if photo exists
+                        document.getElementById('removePhotoBtn').style.display = 'inline-block';
+                    } else {
+                        document.getElementById('removePhotoBtn').style.display = 'none';
                     }
                 }
             } catch (error) {
@@ -3920,8 +3979,24 @@
         }
         
         // Teacher playground
-        function startPlayground() {
+        async function startPlayground() {
             const level = document.getElementById('playgroundLevel').value;
+            
+            // Create temporary user progress for admin testing
+            if (!userProgress) {
+                userProgress = {
+                    name: 'Teacher (Playground)',
+                    email: currentUser.email,
+                    progress: {
+                        Beginner: { completed: 0, total: 100 },
+                        Intermediate: { completed: 0, total: 100 },
+                        Advanced: { completed: 0, total: 100 }
+                    },
+                    stars: 0,
+                    medals: 0
+                };
+            }
+            
             startLevel(level);
         }
         
