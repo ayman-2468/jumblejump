@@ -1390,7 +1390,6 @@
                             <tr>
                                 <th>Student Name</th>
                                 <th>Email</th>
-                                <th>Basic Level</th>
                                 <th>Beginner</th>
                                 <th>Intermediate</th>
                                 <th>Advanced</th>
@@ -1594,11 +1593,6 @@
                 <div id="studentCertsDisplay" class="hidden" style="margin-top: 30px;">
                     <h4 style="margin-bottom: 20px;">Available Certificates for <span id="selectedStudentName"></span></h4>
                     <div class="levels-grid">
-                        <div class="level-card" id="certBasic">
-                            <h3 class="level-name">Basic Level</h3>
-                            <p style="margin: 15px 0;">Status: <span id="certBasicStatus">Not Completed</span></p>
-                            <button class="btn btn-primary" onclick="printCertificate('Basic')" disabled id="certBasicBtn">Print Certificate</button>
-                        </div>
                         <div class="level-card" id="certBeginner">
                             <h3 class="level-name">Beginner Level</h3>
                             <p style="margin: 15px 0;">Status: <span id="certBeginnerStatus">Not Completed</span></p>
@@ -2763,8 +2757,12 @@
         }
         
         function loadSentenceQuestion() {
-            document.getElementById('basicLevelInterface').classList.add('hidden');
-            document.getElementById('sentenceLevelInterface').classList.remove('hidden');
+            // Make sure sentence interface is visible
+            const sentenceInterface = document.getElementById('sentenceLevelInterface');
+            if (sentenceInterface) {
+                sentenceInterface.classList.remove('hidden');
+            }
+            
             document.getElementById('instructionText').textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
             
             // Get scrambled words - clean any commas
@@ -3685,7 +3683,7 @@
             document.getElementById('selectedStudentName').textContent = userData.name;
             document.getElementById('studentCertsDisplay').classList.remove('hidden');
             
-            const levels = ['Basic', 'Beginner', 'Intermediate', 'Advanced'];
+            const levels = ['Beginner', 'Intermediate', 'Advanced'];
             levels.forEach(level => {
                 const progress = userData.progress[level] || { completed: 0, total: 100 };
                 const isCompleted = progress.completed >= progress.total;
@@ -3825,7 +3823,6 @@
                     const user = doc.data();
                     const row = document.createElement('tr');
                     
-                    const basicProgress = Math.round((user.progress?.Basic?.completed || 0) / (user.progress?.Basic?.total || 100) * 100);
                     const beginnerProgress = Math.round((user.progress?.Beginner?.completed || 0) / (user.progress?.Beginner?.total || 100) * 100);
                     const intermediateProgress = Math.round((user.progress?.Intermediate?.completed || 0) / (user.progress?.Intermediate?.total || 100) * 100);
                     const advancedProgress = Math.round((user.progress?.Advanced?.completed || 0) / (user.progress?.Advanced?.total || 100) * 100);
@@ -3833,7 +3830,6 @@
                     row.innerHTML = `
                         <td>${user.name || 'N/A'}</td>
                         <td>${user.email}</td>
-                        <td><span class="badge ${basicProgress === 100 ? 'badge-success' : 'badge-warning'}">${basicProgress}%</span></td>
                         <td><span class="badge ${beginnerProgress === 100 ? 'badge-success' : 'badge-warning'}">${beginnerProgress}%</span></td>
                         <td><span class="badge ${intermediateProgress === 100 ? 'badge-success' : 'badge-warning'}">${intermediateProgress}%</span></td>
                         <td><span class="badge ${advancedProgress === 100 ? 'badge-success' : 'badge-warning'}">${advancedProgress}%</span></td>
