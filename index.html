@@ -2718,10 +2718,21 @@
                 hint: selectedData.hints.join(' ') || 'Match each word to its correct category based on grammar rules.'
             };
             
+            // Set currentQuestion for compatibility
+            currentQuestion = {
+                mainCategory: randomMainCategory,
+                hint: currentBasicLevelData.hint,
+                grammarRule: `Understanding ${randomMainCategory}`,
+                level: 'Basic'
+            };
+            
             currentBasicLevelWords = allWords;
+            
+            console.log('✅ Basic question loaded:', currentBasicLevelData);
             
             // Update Main Category display
             document.getElementById('mainCategoryDisplay').textContent = randomMainCategory;
+            console.log('📋 Main Category:', randomMainCategory);
             
             // Update Sub-Category Title display (show "Sub Categories")
             document.getElementById('subCategoryTitleDisplay').textContent = 'Sub Categories';
@@ -2729,6 +2740,8 @@
             // Create Individual Sub-Category Boxes with empty slots
             const subCategoryBoxes = document.getElementById('subCategoryBoxes');
             subCategoryBoxes.innerHTML = '';
+            
+            console.log('📦 Creating', allSubCategories.length, 'sub-category boxes:', allSubCategories);
             
             allSubCategories.forEach(subCat => {
                 const box = document.createElement('div');
@@ -2738,11 +2751,16 @@
                     <div class="sub-category-drop-zone empty" data-subcategory="${subCat}"></div>
                 `;
                 subCategoryBoxes.appendChild(box);
+                console.log(`  Created box for: "${subCat}"`);
             });
+            
+            console.log('✅ Sub-category boxes created:', subCategoryBoxes.children.length);
             
             // Create Scrambled Words at the bottom
             const poolContent = document.getElementById('wordsPoolContent');
             poolContent.innerHTML = '';
+            
+            console.log('📝 Creating scrambled words pool with', allWords.length, 'words');
             
             const scrambledWords = shuffleArray([...allWords]);
             scrambledWords.forEach(item => {
@@ -2752,7 +2770,10 @@
                 wordEl.dataset.word = item.word;
                 wordEl.dataset.subcategory = item.subcategory;
                 poolContent.appendChild(wordEl);
+                console.log(`  Added word: "${item.word}" (subcategory: ${item.subcategory})`);
             });
+            
+            console.log('✅ Scrambled words pool created with', poolContent.children.length, 'word elements');
             
             // Clear previous sortable instances
             sortableInstances.forEach(instance => instance.destroy());
@@ -2853,6 +2874,8 @@
         }
         
         function checkAnswer() {
+            console.log('🔍 Check Answer Called - Current Level:', currentLevel);
+            
             if (currentLevel === 'Basic') {
                 checkBasicAnswer();
             } else {
@@ -2861,11 +2884,15 @@
         }
         
         function checkBasicAnswer() {
+            console.log('🔍 Checking Basic Answer...');
+            
             // Hide hint box initially
             document.getElementById('hintBox').classList.add('hidden');
             
             // Check if all words are placed in drop zones
             const pool = document.getElementById('wordsPoolContent');
+            console.log('Words left in pool:', pool.children.length);
+            
             if (pool.children.length > 0) {
                 showError('Please place all words in their correct sub-category boxes first!');
                 return;
@@ -2876,12 +2903,19 @@
             let allCorrect = true;
             let incorrectCount = 0;
             
+            console.log('Drop zones found:', dropZones.length);
+            
             dropZones.forEach(dropZone => {
                 const expectedSubCat = dropZone.dataset.subcategory;
                 const wordsInZone = Array.from(dropZone.querySelectorAll('.word-item'));
                 
+                console.log(`Zone "${expectedSubCat}": ${wordsInZone.length} words`);
+                
                 wordsInZone.forEach(wordEl => {
                     const actualSubCat = wordEl.dataset.subcategory;
+                    const word = wordEl.dataset.word;
+                    console.log(`  Word "${word}": actual="${actualSubCat}", expected="${expectedSubCat}"`);
+                    
                     if (actualSubCat !== expectedSubCat) {
                         allCorrect = false;
                         incorrectCount++;
@@ -2897,14 +2931,19 @@
                 });
             });
             
+            console.log(`All correct: ${allCorrect}, Incorrect count: ${incorrectCount}`);
+            
             if (allCorrect) {
                 // All words are correctly categorized
+                console.log('✅ CORRECT - All words in correct categories!');
                 handleCorrectBasicAnswer();
             } else {
                 // Some words are incorrectly placed - show hint
+                console.log('❌ INCORRECT - Showing hint');
                 if (currentBasicLevelData && currentBasicLevelData.hint) {
                     document.getElementById('hintText').textContent = currentBasicLevelData.hint;
                     document.getElementById('hintBox').classList.remove('hidden');
+                    console.log('Hint shown:', currentBasicLevelData.hint);
                 }
                 showError(`${incorrectCount} word(s) are in the wrong category. Check the hint for guidance!`);
                 
@@ -2920,11 +2959,16 @@
         }
         
         function checkSentenceAnswer() {
+            console.log('🔍 Checking Sentence Answer...');
+            
             // Hide hint box initially
             document.getElementById('hintBox').classList.add('hidden');
             
             const dropZone = document.getElementById('dropZone');
             const scrambledContainer = document.getElementById('scrambledWords');
+            
+            console.log('Scrambled words left:', scrambledContainer.children.length);
+            console.log('Words in drop zone:', dropZone.children.length);
             
             // Check if all words are placed in the sentence
             if (scrambledContainer.children.length > 0) {
@@ -2940,16 +2984,27 @@
             // Get user's sentence
             const userSentence = Array.from(dropZone.children)
                 .map(el => el.dataset.word)
-                .join(' ');
+                .join(' ')
+                .trim();
             
-            // Get correct sentence (clean any trailing commas)
-            const correctSentence = currentQuestion.correctSentence
+            // Get correct sentence - clean it properly
+            let correctSentence = currentQuestion.correctSentence || '';
+            correctSentence = correctSentence
                 .trim()
-                .replace(/,+$/, ''); // Remove trailing commas
+                .replace(/,+/g, '') // Remove all commas  
+                .replace(/\s+/g, ' ') // Normalize spaces
+                .trim();
+            
+            console.log('👤 User Sentence:', `"${userSentence}"`);
+            console.log('✅ Correct Sentence:', `"${correctSentence}"`);
+            console.log('👤 User (lower):', `"${userSentence.toLowerCase()}"`);
+            console.log('✅ Correct (lower):', `"${correctSentence.toLowerCase()}"`);
+            console.log('🔍 Match:', userSentence.toLowerCase() === correctSentence.toLowerCase());
             
             // Compare sentences (case-insensitive)
             if (userSentence.toLowerCase() === correctSentence.toLowerCase()) {
                 // Correct answer
+                console.log('✅ CORRECT!');
                 handleCorrectSentenceAnswer();
             } else {
                 // Incorrect answer - show hint automatically
