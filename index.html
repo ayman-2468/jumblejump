@@ -491,6 +491,55 @@
             min-height: 250px;
         }
         
+        .sub-category-box {
+            background: white;
+            border: 3px solid var(--color-primary);
+            border-radius: var(--border-radius-md);
+            padding: 15px;
+            min-height: 150px;
+            transition: all var(--transition-normal);
+        }
+        
+        .sub-category-box:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+        
+        .sub-category-box-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: var(--color-bg-main);
+            border-radius: var(--border-radius-sm);
+        }
+        
+        .sub-category-drop-zone {
+            background: #F0FDF4;
+            border: 2px dashed var(--color-success);
+            border-radius: var(--border-radius-sm);
+            padding: 10px;
+            min-height: 80px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        
+        .sub-category-drop-zone.empty {
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .sub-category-drop-zone.empty::before {
+            content: 'Drop here';
+            color: var(--color-text-secondary);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+        
         .category-title {
             font-size: 1.2rem;
             font-weight: 700;
@@ -952,6 +1001,12 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
     </style>
 </head>
 <body>
@@ -1076,6 +1131,27 @@
             <!-- Certificates Section -->
             <div class="card" style="margin-top: 30px;">
                 <h2 style="color: var(--color-primary); margin-bottom: 20px;">🏆 My Certificates</h2>
+                
+                <!-- Student Photo Upload -->
+                <div style="margin-bottom: 30px; padding: 20px; background: var(--color-bg-main); border-radius: var(--border-radius-md);">
+                    <h3 style="margin-bottom: 15px; font-size: 1.2rem;">📸 Certificate Photo</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 15px;">
+                        Upload your photo to appear on all your certificates (recommended size: 300x300px)
+                    </p>
+                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                        <div id="studentPhotoPreview" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--color-primary); overflow: hidden; background: white; display: flex; align-items: center; justify-content: center;">
+                            <span style="color: var(--color-text-secondary);">No Photo</span>
+                        </div>
+                        <div>
+                            <input type="file" id="studentPhotoFile" accept="image/*" style="display: none;" onchange="handleStudentPhotoUpload(this)">
+                            <label for="studentPhotoFile" class="btn btn-primary" style="cursor: pointer;">
+                                Choose Photo
+                            </label>
+                            <button class="btn btn-outline" onclick="saveStudentPhoto()" id="savePhotoBtn" style="display: none;">Save Photo</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="levels-grid" id="certificatesGrid">
                     <!-- Certificate cards will be generated -->
                 </div>
@@ -1115,27 +1191,32 @@
                     
                     <!-- Basic Level Interface -->
                     <div id="basicLevelInterface" class="hidden">
-                        <!-- Category Headers -->
-                        <div style="background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); padding: 20px; border-radius: var(--border-radius-md); margin-bottom: 20px; color: white;">
-                            <div style="text-align: center; margin-bottom: 15px;">
-                                <h3 style="font-size: 1.3rem; margin-bottom: 5px;">Main Category</h3>
-                                <p style="font-size: 1.5rem; font-weight: 700;" id="mainCategoryDisplay">-</p>
-                            </div>
-                            <div style="text-align: center;">
-                                <h3 style="font-size: 1.3rem; margin-bottom: 5px;">Sub Category</h3>
-                                <p style="font-size: 1.5rem; font-weight: 700;" id="subCategoryDisplay">-</p>
+                        <!-- Main Category Header -->
+                        <div style="background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); padding: 20px; border-radius: var(--border-radius-md); margin-bottom: 20px; color: white; text-align: center;">
+                            <h3 style="font-size: 1.3rem; margin-bottom: 5px;">Main Category</h3>
+                            <p style="font-size: 1.8rem; font-weight: 700;" id="mainCategoryDisplay">-</p>
+                        </div>
+                        
+                        <!-- Sub-Category Title -->
+                        <div style="background: var(--color-bg-main); padding: 15px; border-radius: var(--border-radius-md); margin-bottom: 20px; text-align: center; border: 2px solid var(--color-primary);">
+                            <h3 style="font-size: 1.2rem; color: var(--color-primary); margin-bottom: 5px;">Sub-Category Title</h3>
+                            <p style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="subCategoryTitleDisplay">-</p>
+                        </div>
+                        
+                        <!-- Sub-Category Boxes with Drop Zones -->
+                        <div style="margin-bottom: 30px;">
+                            <h4 style="margin-bottom: 15px; color: var(--color-text-primary); font-size: 1.1rem;">Individual Sub-Category Boxes</h4>
+                            <div id="subCategoryBoxes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <!-- Sub-category boxes will be added dynamically -->
                             </div>
                         </div>
                         
+                        <!-- Scrambled Words Container -->
                         <div class="words-pool" id="wordsPool">
-                            <h3 class="pool-title">Scrambled Words - Drag to Match</h3>
+                            <h3 class="pool-title">Scrambled Words - Drag to Correct Category</h3>
                             <div class="words-pool-content" id="wordsPoolContent">
                                 <!-- Words will be added dynamically -->
                             </div>
-                        </div>
-                        
-                        <div class="match-container" id="matchContainer">
-                            <!-- Category columns will be added dynamically -->
                         </div>
                     </div>
                     
@@ -1165,7 +1246,8 @@
                     </div>
                     
                     <div class="game-actions">
-                        <button class="btn btn-primary" id="submitBtn" onclick="submitAndNext()" disabled>Submit & Next Question</button>
+                        <button class="btn btn-primary" id="checkBtn" onclick="checkAnswer()">Check Answer</button>
+                        <button class="btn btn-primary" id="submitBtn" onclick="submitAndNext()" disabled style="display: none;">Next Question</button>
                         <button class="btn btn-outline" onclick="resetQuestion()">Reset</button>
                     </div>
                 </div>
@@ -1865,6 +1947,7 @@
         // Load student dashboard
         async function loadStudentDashboard() {
             await loadAppSettings();
+            await loadStudentPhoto();
             
             const userDoc = await db.collection('users').doc(currentUser.uid).get();
             if (userDoc.exists) {
@@ -2098,10 +2181,12 @@
         let levelQuestions = [];
         let sortableInstances = [];
         let currentBasicLevelWords = [];
+        let currentBasicLevelData = null;
         let appLogoUrl = '';
         let appBackgroundUrl = '';
         let certBackgroundUrl = '';
         let studentPhotoUrl = '';
+        let studentPhotoFileData = null;
         
         // Motivational quotes
         const motivationalQuotes = [
@@ -2172,8 +2257,10 @@
             document.getElementById('requiredSuccess').textContent = requiredSuccessCount;
             document.getElementById('questionNumDisplay').textContent = currentQuestionIndex + 1;
             
-            // Disable submit button
+            // Reset buttons
             document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').style.display = 'none';
+            document.getElementById('checkBtn').style.display = 'inline-block';
             
             // Hide hint and teacher note
             document.getElementById('hintBox').classList.add('hidden');
@@ -2199,9 +2286,9 @@
         async function loadBasicQuestion() {
             document.getElementById('basicLevelInterface').classList.remove('hidden');
             document.getElementById('sentenceLevelInterface').classList.add('hidden');
-            document.getElementById('instructionText').textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
+            document.getElementById('instructionText').textContent = 'Drag each word to its correct sub-category box';
             
-            // Get random words from same subcategory (minimum 4 words)
+            // Get all Basic level questions
             const questionsInLevel = await db.collection('questions')
                 .where('level', '==', 'Basic')
                 .get();
@@ -2211,117 +2298,142 @@
                 ...doc.data()
             }));
             
-            // Group by subcategory
-            const subcategoryGroups = {};
-            allBasicQuestions.forEach(q => {
-                const key = `${q.mainCategory}|${q.subcategory}`;
-                if (!subcategoryGroups[key]) {
-                    subcategoryGroups[key] = [];
-                }
-                if (q.jumbledWords) {
-                    const words = q.jumbledWords.split(',').map(w => w.trim());
-                    subcategoryGroups[key].push(...words.map(w => ({ 
-                        word: w, 
-                        mainCategory: q.mainCategory,
-                        subcategory: q.subcategory
-                    })));
-                }
-            });
-            
-            // Select random subcategory with at least 4 words
-            const validGroups = Object.keys(subcategoryGroups).filter(key => 
-                subcategoryGroups[key].length >= 4
-            );
-            
-            if (validGroups.length === 0) {
-                showError('Not enough Basic level questions. Please upload more data.');
+            if (allBasicQuestions.length === 0) {
+                showError('No Basic level questions found. Please upload data first.');
                 return;
             }
             
-            const randomGroup = validGroups[Math.floor(Math.random() * validGroups.length)];
-            const [mainCat, subCat] = randomGroup.split('|');
-            let selectedWords = subcategoryGroups[randomGroup];
+            // Group by main category
+            const mainCategoryGroups = {};
+            allBasicQuestions.forEach(q => {
+                const mainCat = q.mainCategory;
+                if (!mainCategoryGroups[mainCat]) {
+                    mainCategoryGroups[mainCat] = {};
+                }
+                
+                const subCat = q.subcategory;
+                if (!mainCategoryGroups[mainCat][subCat]) {
+                    mainCategoryGroups[mainCat][subCat] = [];
+                }
+                
+                if (q.jumbledWords) {
+                    // Clean words: remove commas and trim
+                    const words = q.jumbledWords.split(',').map(w => w.trim().replace(/,/g, ''));
+                    mainCategoryGroups[mainCat][subCat].push({
+                        words: words,
+                        hint: q.hint || '',
+                        questionData: q
+                    });
+                }
+            });
             
-            // Select exactly 4 random words from this subcategory
-            selectedWords = shuffleArray(selectedWords).slice(0, Math.min(selectedWords.length, 4));
+            // Select random main category
+            const mainCategories = Object.keys(mainCategoryGroups);
+            const randomMainCategory = mainCategories[Math.floor(Math.random() * mainCategories.length)];
+            const subCategories = mainCategoryGroups[randomMainCategory];
             
-            currentBasicLevelWords = selectedWords;
+            // Get sub-categories with at least 4 words total
+            const validSubCategories = Object.keys(subCategories).filter(subCat => {
+                const totalWords = subCategories[subCat].reduce((sum, item) => sum + item.words.length, 0);
+                return totalWords >= 4;
+            });
+            
+            if (validSubCategories.length === 0) {
+                showError('Not enough words in Basic level categories. Please upload more data.');
+                return;
+            }
+            
+            // Collect all sub-categories and their words
+            const allSubCatWords = {};
+            validSubCategories.forEach(subCat => {
+                allSubCatWords[subCat] = [];
+                subCategories[subCat].forEach(item => {
+                    item.words.forEach(word => {
+                        allSubCatWords[subCat].push({
+                            word: word,
+                            subcategory: subCat,
+                            hint: item.hint
+                        });
+                    });
+                });
+            });
+            
+            // Store current data
+            currentBasicLevelData = {
+                mainCategory: randomMainCategory,
+                subCategories: allSubCatWords,
+                hint: subCategories[validSubCategories[0]][0]?.hint || ''
+            };
             
             // Update headers
-            document.getElementById('mainCategoryDisplay').textContent = mainCat;
-            document.getElementById('subCategoryDisplay').textContent = subCat;
+            document.getElementById('mainCategoryDisplay').textContent = randomMainCategory;
+            document.getElementById('subCategoryTitleDisplay').textContent = validSubCategories.join(', ');
+            
+            // Create sub-category boxes
+            const subCategoryBoxes = document.getElementById('subCategoryBoxes');
+            subCategoryBoxes.innerHTML = '';
+            
+            validSubCategories.forEach(subCat => {
+                const box = document.createElement('div');
+                box.className = 'sub-category-box';
+                box.innerHTML = `
+                    <div class="sub-category-box-title">${subCat}</div>
+                    <div class="sub-category-drop-zone empty" data-subcategory="${subCat}"></div>
+                `;
+                subCategoryBoxes.appendChild(box);
+            });
+            
+            // Collect all words and scramble
+            const allWords = [];
+            validSubCategories.forEach(subCat => {
+                // Take up to 4 words from each subcategory
+                const wordsFromSubCat = allSubCatWords[subCat].slice(0, 4);
+                allWords.push(...wordsFromSubCat);
+            });
+            
+            currentBasicLevelWords = allWords;
             
             // Create scrambled words pool
             const poolContent = document.getElementById('wordsPoolContent');
             poolContent.innerHTML = '';
             
-            const scrambledWords = shuffleArray([...selectedWords]);
+            const scrambledWords = shuffleArray([...allWords]);
             scrambledWords.forEach(item => {
                 const wordEl = document.createElement('div');
                 wordEl.className = 'word-item';
                 wordEl.textContent = item.word;
                 wordEl.dataset.word = item.word;
-                wordEl.dataset.category = item.subcategory;
+                wordEl.dataset.subcategory = item.subcategory;
                 poolContent.appendChild(wordEl);
             });
             
-            // Create category container
-            const matchContainer = document.getElementById('matchContainer');
-            matchContainer.innerHTML = '';
-            
-            const column = document.createElement('div');
-            column.className = 'category-column';
-            column.dataset.category = subCat;
-            column.innerHTML = `<div class="category-title">${subCat}</div>`;
-            matchContainer.appendChild(column);
-            
             // Initialize SortableJS
             const poolSortable = new Sortable(poolContent, {
-                group: 'words',
+                group: 'basicWords',
                 animation: 150,
-                ghostClass: 'dragging',
-                onEnd: () => checkBasicAnswerAuto()
+                ghostClass: 'dragging'
             });
             sortableInstances.push(poolSortable);
             
-            const categorySortable = new Sortable(column, {
-                group: 'words',
-                animation: 150,
-                ghostClass: 'dragging',
-                onAdd: () => checkBasicAnswerAuto()
-            });
-            sortableInstances.push(categorySortable);
-        }
-        
-        async function checkBasicAnswerAuto() {
-            // Auto-check when all words are placed
-            const pool = document.getElementById('wordsPoolContent');
-            const category = document.querySelector('.category-column');
-            
-            if (pool.children.length === 0 && category.querySelectorAll('.word-item').length === currentBasicLevelWords.length) {
-                // All words placed, check if correct
-                const wordsInCategory = Array.from(category.querySelectorAll('.word-item'));
-                let allCorrect = true;
-                
-                wordsInCategory.forEach(wordEl => {
-                    const word = wordEl.dataset.word;
-                    const expectedCategory = wordEl.dataset.category;
-                    const actualCategory = category.dataset.category;
-                    
-                    if (expectedCategory !== actualCategory) {
-                        allCorrect = false;
-                        // Show hint
-                        if (currentQuestion.hint) {
-                            document.getElementById('hintText').textContent = currentQuestion.hint;
-                            document.getElementById('hintBox').classList.remove('hidden');
+            // Initialize sortable for each drop zone
+            document.querySelectorAll('.sub-category-drop-zone').forEach(dropZone => {
+                const sortable = new Sortable(dropZone, {
+                    group: 'basicWords',
+                    animation: 150,
+                    ghostClass: 'dragging',
+                    onAdd: function() {
+                        if (dropZone.children.length > 0) {
+                            dropZone.classList.remove('empty');
+                        }
+                    },
+                    onRemove: function() {
+                        if (dropZone.children.length === 0) {
+                            dropZone.classList.add('empty');
                         }
                     }
                 });
-                
-                if (allCorrect) {
-                    handleCorrectBasicAnswer();
-                }
-            }
+                sortableInstances.push(sortable);
+            });
         }
         
         function loadSentenceQuestion() {
@@ -2404,6 +2516,109 @@
             }
         }
         
+        function checkAnswer() {
+            if (currentLevel === 'Basic') {
+                checkBasicAnswer();
+            } else {
+                checkSentenceAnswer();
+            }
+        }
+        
+        function checkBasicAnswer() {
+            // Check if all words are placed
+            const pool = document.getElementById('wordsPoolContent');
+            if (pool.children.length > 0) {
+                showError('Please place all words in their correct categories first!');
+                return;
+            }
+            
+            // Validate each drop zone
+            const dropZones = document.querySelectorAll('.sub-category-drop-zone');
+            let allCorrect = true;
+            let incorrectWords = [];
+            
+            dropZones.forEach(dropZone => {
+                const expectedSubCat = dropZone.dataset.subcategory;
+                const wordsInZone = Array.from(dropZone.querySelectorAll('.word-item'));
+                
+                wordsInZone.forEach(wordEl => {
+                    const actualSubCat = wordEl.dataset.subcategory;
+                    if (actualSubCat !== expectedSubCat) {
+                        allCorrect = false;
+                        incorrectWords.push(wordEl.dataset.word);
+                        wordEl.style.border = '2px solid var(--color-danger)';
+                        wordEl.style.animation = 'shake 0.5s';
+                    }
+                });
+            });
+            
+            if (allCorrect) {
+                handleCorrectBasicAnswer();
+            } else {
+                // Show hint
+                if (currentBasicLevelData && currentBasicLevelData.hint) {
+                    document.getElementById('hintText').textContent = currentBasicLevelData.hint;
+                    document.getElementById('hintBox').classList.remove('hidden');
+                }
+                showError('Some words are in the wrong category. Check the hint!');
+                
+                // Remove error styling after animation
+                setTimeout(() => {
+                    document.querySelectorAll('.word-item').forEach(el => {
+                        el.style.border = '2px solid transparent';
+                        el.style.animation = '';
+                    });
+                }, 1000);
+            }
+        }
+        
+        function checkSentenceAnswer() {
+            const dropZone = document.getElementById('dropZone');
+            const scrambledContainer = document.getElementById('scrambledWords');
+            
+            // Check if all words are placed
+            if (scrambledContainer.children.length > 0) {
+                showError('Please place all words in the sentence first!');
+                return;
+            }
+            
+            if (dropZone.children.length === 0) {
+                showError('Please build your sentence first!');
+                return;
+            }
+            
+            const userSentence = Array.from(dropZone.children)
+                .map(el => el.dataset.word)
+                .join(' ');
+            
+            const correctSentence = currentQuestion.correctSentence.trim();
+            
+            if (userSentence.toLowerCase() === correctSentence.toLowerCase()) {
+                handleCorrectSentenceAnswer();
+            } else {
+                // Show hint
+                if (currentQuestion.hint) {
+                    document.getElementById('hintText').textContent = currentQuestion.hint;
+                    document.getElementById('hintBox').classList.remove('hidden');
+                }
+                
+                // Highlight incorrect arrangement
+                Array.from(dropZone.children).forEach(wordEl => {
+                    wordEl.style.border = '2px solid var(--color-danger)';
+                    wordEl.style.animation = 'shake 0.5s';
+                });
+                
+                showError('The sentence order is incorrect. Check the hint!');
+                
+                setTimeout(() => {
+                    Array.from(dropZone.children).forEach(wordEl => {
+                        wordEl.style.border = '2px solid transparent';
+                        wordEl.style.animation = '';
+                    });
+                }, 1000);
+            }
+        }
+        
         function handleCorrectBasicAnswer() {
             successCount++;
             document.getElementById('successCount').textContent = successCount;
@@ -2412,7 +2627,9 @@
             showWellDoneMessage();
             
             if (successCount >= requiredSuccessCount) {
-                // Enable submit button
+                // Hide check button, show submit button
+                document.getElementById('checkBtn').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'inline-block';
                 document.getElementById('submitBtn').disabled = false;
                 
                 // Show celebration
@@ -2425,11 +2642,70 @@
                     showFullScreenCelebration();
                 }, 1000);
             } else {
-                // Reset words to scrambled positions for next repetition
+                // Return words to scrambled area in random order
                 setTimeout(() => {
-                    loadBasicQuestion();
+                    returnWordsToScrambledBasic();
                 }, 1500);
             }
+        }
+        
+        function returnWordsToScrambledBasic() {
+            // Collect all words from drop zones
+            const dropZones = document.querySelectorAll('.sub-category-drop-zone');
+            const allWords = [];
+            
+            dropZones.forEach(dropZone => {
+                const words = Array.from(dropZone.querySelectorAll('.word-item'));
+                words.forEach(wordEl => {
+                    allWords.push({
+                        word: wordEl.dataset.word,
+                        subcategory: wordEl.dataset.subcategory
+                    });
+                });
+                dropZone.innerHTML = '';
+                dropZone.classList.add('empty');
+            });
+            
+            // Scramble and return to pool
+            const poolContent = document.getElementById('wordsPoolContent');
+            poolContent.innerHTML = '';
+            
+            const scrambled = shuffleArray(allWords);
+            scrambled.forEach(item => {
+                const wordEl = document.createElement('div');
+                wordEl.className = 'word-item';
+                wordEl.textContent = item.word;
+                wordEl.dataset.word = item.word;
+                wordEl.dataset.subcategory = item.subcategory;
+                poolContent.appendChild(wordEl);
+            });
+        }
+        
+        function returnWordsToScrambledSentence() {
+            // Collect all words from drop zone
+            const dropZone = document.getElementById('dropZone');
+            const allWords = [];
+            
+            const words = Array.from(dropZone.querySelectorAll('.word-item'));
+            words.forEach(wordEl => {
+                allWords.push(wordEl.dataset.word);
+            });
+            
+            dropZone.innerHTML = '';
+            dropZone.classList.add('empty');
+            
+            // Scramble and return to scrambled container
+            const scrambledContainer = document.getElementById('scrambledWords');
+            scrambledContainer.innerHTML = '';
+            
+            const scrambled = shuffleArray(allWords);
+            scrambled.forEach(word => {
+                const wordEl = document.createElement('div');
+                wordEl.className = 'word-item';
+                wordEl.textContent = word;
+                wordEl.dataset.word = word;
+                scrambledContainer.appendChild(wordEl);
+            });
         }
         
         function handleCorrectSentenceAnswer() {
@@ -2440,7 +2716,9 @@
             showWellDoneMessage();
             
             if (successCount >= requiredSuccessCount) {
-                // Enable submit button
+                // Hide check button, show submit button
+                document.getElementById('checkBtn').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'inline-block';
                 document.getElementById('submitBtn').disabled = false;
                 
                 // Show celebration
@@ -2453,9 +2731,9 @@
                     showFullScreenCelebration();
                 }, 1000);
             } else {
-                // Reset words to scrambled positions for next repetition
+                // Return words to scrambled positions for next repetition
                 setTimeout(() => {
-                    loadSentenceQuestion();
+                    returnWordsToScrambledSentence();
                 }, 1500);
             }
         }
@@ -2530,7 +2808,11 @@
         
         function exitGame() {
             if (confirm('Are you sure you want to exit? Your progress has been saved.')) {
-                loadStudentDashboard();
+                if (isAdmin) {
+                    showAdminDashboard();
+                } else {
+                    loadStudentDashboard();
+                }
             }
         }
         
@@ -2626,6 +2908,20 @@
             doc.setLineWidth(1);
             doc.rect(15, 15, 267, 180);
             
+            // Add student photo in top-right corner (absolute positioning)
+            if (studentPhotoUrl) {
+                try {
+                    // Position: top-right corner with margin
+                    doc.addImage(studentPhotoUrl, 'JPEG', 255, 20, 25, 25, undefined, 'FAST');
+                    // Add circular border effect by drawing a circle around it
+                    doc.setDrawColor(certificateSettings.borderColor);
+                    doc.setLineWidth(2);
+                    doc.circle(267.5, 32.5, 13);
+                } catch (e) {
+                    console.log('Could not add student photo');
+                }
+            }
+            
             // Add title
             doc.setFontSize(40);
             doc.setTextColor(certificateSettings.titleColor);
@@ -2637,41 +2933,32 @@
             doc.setTextColor('#64748B');
             doc.text(certificateSettings.subtitle, 148.5, 65, { align: 'center' });
             
-            // Add student photo if available
-            if (studentPhotoUrl) {
-                try {
-                    doc.addImage(studentPhotoUrl, 'JPEG', 125, 75, 20, 20);
-                } catch (e) {
-                    console.log('Could not add student photo');
-                }
-            }
-            
             // Add student name
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
-            doc.text('This is to certify that', 148.5, studentPhotoUrl ? 105 : 85, { align: 'center' });
+            doc.text('This is to certify that', 148.5, 85, { align: 'center' });
             
             doc.setFontSize(28);
             doc.setTextColor(certificateSettings.borderColor);
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
-            doc.text(userProgress?.name || 'Student', 148.5, studentPhotoUrl ? 120 : 100, { align: 'center' });
+            doc.text(userProgress?.name || 'Student', 148.5, 100, { align: 'center' });
             
             // Add achievement text
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'normal');
-            doc.text('has successfully completed', 148.5, studentPhotoUrl ? 135 : 115, { align: 'center' });
+            doc.text('has successfully completed', 148.5, 115, { align: 'center' });
             
             doc.setFontSize(20);
             doc.setTextColor(certificateSettings.titleColor);
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
-            doc.text(`${level} Level`, 148.5, studentPhotoUrl ? 150 : 130, { align: 'center' });
+            doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
             
             // Add stars and medals
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
             const progress = userProgress?.progress[level] || {};
-            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, studentPhotoUrl ? 165 : 145, { align: 'center' });
+            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
@@ -2833,6 +3120,58 @@
                 document.body.style.backgroundSize = 'cover';
                 document.body.style.backgroundPosition = 'center';
                 document.body.style.backgroundAttachment = 'fixed';
+            }
+        }
+        
+        // Student photo upload
+        function handleStudentPhotoUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                studentPhotoFileData = e.target.result;
+                document.getElementById('studentPhotoPreview').innerHTML = `
+                    <img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;">
+                `;
+                document.getElementById('savePhotoBtn').style.display = 'inline-block';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        async function saveStudentPhoto() {
+            if (!studentPhotoFileData) {
+                showError('Please select a photo first');
+                return;
+            }
+            
+            try {
+                await db.collection('users').doc(currentUser.uid).update({
+                    photo: studentPhotoFileData
+                });
+                
+                studentPhotoUrl = studentPhotoFileData;
+                showSuccess('Photo saved successfully! It will appear on your certificates.');
+                document.getElementById('savePhotoBtn').style.display = 'none';
+            } catch (error) {
+                showError('Error saving photo: ' + error.message);
+            }
+        }
+        
+        async function loadStudentPhoto() {
+            try {
+                const userDoc = await db.collection('users').doc(currentUser.uid).get();
+                if (userDoc.exists) {
+                    const data = userDoc.data();
+                    if (data.photo) {
+                        studentPhotoUrl = data.photo;
+                        document.getElementById('studentPhotoPreview').innerHTML = `
+                            <img src="${data.photo}" style="width: 100%; height: 100%; object-fit: cover;">
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading student photo:', error);
             }
         }
         
