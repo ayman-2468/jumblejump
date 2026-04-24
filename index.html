@@ -2303,77 +2303,101 @@
                 return;
             }
             
-            // Group by main category
+            // Group questions by Main Category and then by Subcategory
             const mainCategoryGroups = {};
             allBasicQuestions.forEach(q => {
                 const mainCat = q.mainCategory;
                 if (!mainCategoryGroups[mainCat]) {
-                    mainCategoryGroups[mainCat] = {};
+                    mainCategoryGroups[mainCat] = {
+                        subCategories: {},
+                        hints: []
+                    };
                 }
                 
                 const subCat = q.subcategory;
-                if (!mainCategoryGroups[mainCat][subCat]) {
-                    mainCategoryGroups[mainCat][subCat] = [];
+                if (!mainCategoryGroups[mainCat].subCategories[subCat]) {
+                    mainCategoryGroups[mainCat].subCategories[subCat] = [];
+                }
+                
+                // Store hint for this main category
+                if (q.hint && !mainCategoryGroups[mainCat].hints.includes(q.hint)) {
+                    mainCategoryGroups[mainCat].hints.push(q.hint);
                 }
                 
                 if (q.jumbledWords) {
-                    // Clean words: remove commas and trim
-                    const words = q.jumbledWords.split(',').map(w => w.trim().replace(/,/g, ''));
-                    mainCategoryGroups[mainCat][subCat].push({
-                        words: words,
-                        hint: q.hint || '',
-                        questionData: q
+                    // Clean words: remove all commas, trim whitespace
+                    const words = q.jumbledWords
+                        .split(',')
+                        .map(w => w.trim().replace(/,/g, '').replace(/\s+/g, ' '))
+                        .filter(w => w.length > 0);
+                    
+                    words.forEach(word => {
+                        mainCategoryGroups[mainCat].subCategories[subCat].push({
+                            word: word,
+                            subcategory: subCat
+                        });
                     });
                 }
             });
             
-            // Select random main category
-            const mainCategories = Object.keys(mainCategoryGroups);
-            const randomMainCategory = mainCategories[Math.floor(Math.random() * mainCategories.length)];
-            const subCategories = mainCategoryGroups[randomMainCategory];
-            
-            // Get sub-categories with at least 4 words total
-            const validSubCategories = Object.keys(subCategories).filter(subCat => {
-                const totalWords = subCategories[subCat].reduce((sum, item) => sum + item.words.length, 0);
-                return totalWords >= 4;
+            // Select a random main category that has multiple subcategories with enough words
+            const validMainCategories = Object.keys(mainCategoryGroups).filter(mainCat => {
+                const subCats = Object.keys(mainCategoryGroups[mainCat].subCategories);
+                // Must have at least 2 subcategories
+                if (subCats.length < 2) return false;
+                
+                // Each subcategory should have at least 2 words
+                return subCats.every(subCat => 
+                    mainCategoryGroups[mainCat].subCategories[subCat].length >= 2
+                );
             });
             
-            if (validSubCategories.length === 0) {
-                showError('Not enough words in Basic level categories. Please upload more data.');
+            if (validMainCategories.length === 0) {
+                showError('Not enough data in Basic level. Please upload questions with multiple subcategories and words.');
                 return;
             }
             
-            // Collect all sub-categories and their words
-            const allSubCatWords = {};
-            validSubCategories.forEach(subCat => {
-                allSubCatWords[subCat] = [];
-                subCategories[subCat].forEach(item => {
-                    item.words.forEach(word => {
-                        allSubCatWords[subCat].push({
-                            word: word,
-                            subcategory: subCat,
-                            hint: item.hint
-                        });
-                    });
-                });
+            // Select random main category
+            const randomMainCategory = validMainCategories[Math.floor(Math.random() * validMainCategories.length)];
+            const selectedData = mainCategoryGroups[randomMainCategory];
+            
+            // Get all subcategories for this main category
+            const allSubCategories = Object.keys(selectedData.subCategories);
+            
+            // Collect words from all subcategories (limit to reasonable number)
+            const allWords = [];
+            const subCategoriesUsed = [];
+            
+            allSubCategories.forEach(subCat => {
+                const wordsInSubCat = selectedData.subCategories[subCat];
+                // Take 2-4 random words from each subcategory
+                const numWords = Math.min(wordsInSubCat.length, 3);
+                const selectedWords = shuffleArray([...wordsInSubCat]).slice(0, numWords);
+                allWords.push(...selectedWords);
+                subCategoriesUsed.push(subCat);
             });
             
-            // Store current data
+            // Store current question data
             currentBasicLevelData = {
                 mainCategory: randomMainCategory,
-                subCategories: allSubCatWords,
-                hint: subCategories[validSubCategories[0]][0]?.hint || ''
+                subCategories: allSubCategories,
+                allWords: allWords,
+                hint: selectedData.hints.join(' ') || 'Match each word to its correct category based on grammar rules.'
             };
             
-            // Update headers
-            document.getElementById('mainCategoryDisplay').textContent = randomMainCategory;
-            document.getElementById('subCategoryTitleDisplay').textContent = validSubCategories.join(', ');
+            currentBasicLevelWords = allWords;
             
-            // Create sub-category boxes
+            // Update Main Category display
+            document.getElementById('mainCategoryDisplay').textContent = randomMainCategory;
+            
+            // Update Sub-Category Title display (show "Sub Categories")
+            document.getElementById('subCategoryTitleDisplay').textContent = 'Sub Categories';
+            
+            // Create Individual Sub-Category Boxes with empty slots
             const subCategoryBoxes = document.getElementById('subCategoryBoxes');
             subCategoryBoxes.innerHTML = '';
             
-            validSubCategories.forEach(subCat => {
+            allSubCategories.forEach(subCat => {
                 const box = document.createElement('div');
                 box.className = 'sub-category-box';
                 box.innerHTML = `
@@ -2383,17 +2407,7 @@
                 subCategoryBoxes.appendChild(box);
             });
             
-            // Collect all words and scramble
-            const allWords = [];
-            validSubCategories.forEach(subCat => {
-                // Take up to 4 words from each subcategory
-                const wordsFromSubCat = allSubCatWords[subCat].slice(0, 4);
-                allWords.push(...wordsFromSubCat);
-            });
-            
-            currentBasicLevelWords = allWords;
-            
-            // Create scrambled words pool
+            // Create Scrambled Words at the bottom
             const poolContent = document.getElementById('wordsPoolContent');
             poolContent.innerHTML = '';
             
@@ -2407,7 +2421,11 @@
                 poolContent.appendChild(wordEl);
             });
             
-            // Initialize SortableJS
+            // Clear previous sortable instances
+            sortableInstances.forEach(instance => instance.destroy());
+            sortableInstances = [];
+            
+            // Initialize SortableJS for scrambled words pool
             const poolSortable = new Sortable(poolContent, {
                 group: 'basicWords',
                 animation: 150,
@@ -2441,8 +2459,13 @@
             document.getElementById('sentenceLevelInterface').classList.remove('hidden');
             document.getElementById('instructionText').textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
             
-            // Get scrambled words
-            const words = currentQuestion.scrambledWords.split(' ');
+            // Get scrambled words - clean any commas
+            const wordsString = currentQuestion.scrambledWords || currentQuestion.correctSentence;
+            const words = wordsString
+                .split(' ')
+                .map(w => w.trim().replace(/,+/g, '')) // Remove all commas
+                .filter(w => w.length > 0);
+            
             const scrambledWords = shuffleArray([...words]);
             
             // Clear drop zone
@@ -2462,7 +2485,11 @@
                 scrambledContainer.appendChild(wordEl);
             });
             
-            // Initialize SortableJS with auto-check on drop
+            // Clear previous sortable instances
+            sortableInstances.forEach(instance => instance.destroy());
+            sortableInstances = [];
+            
+            // Initialize SortableJS for drop zone
             const dropZoneSortable = new Sortable(dropZone, {
                 group: 'sentence',
                 animation: 150,
@@ -2471,14 +2498,14 @@
                     if (dropZone.children.length > 0) {
                         dropZone.classList.remove('empty');
                     }
-                    checkSentenceAnswerAuto();
                 },
                 onUpdate: () => {
-                    checkSentenceAnswerAuto();
+                    // Words reordered in drop zone
                 }
             });
             sortableInstances.push(dropZoneSortable);
             
+            // Initialize SortableJS for scrambled container
             const scrambledSortable = new Sortable(scrambledContainer, {
                 group: 'sentence',
                 animation: 150,
@@ -2492,30 +2519,6 @@
             sortableInstances.push(scrambledSortable);
         }
         
-        function checkSentenceAnswerAuto() {
-            const dropZone = document.getElementById('dropZone');
-            const scrambledContainer = document.getElementById('scrambledWords');
-            
-            // Only check if all words are in drop zone
-            if (scrambledContainer.children.length === 0 && dropZone.children.length > 0) {
-                const userSentence = Array.from(dropZone.children)
-                    .map(el => el.dataset.word)
-                    .join(' ');
-                
-                const correctSentence = currentQuestion.correctSentence.trim();
-                
-                if (userSentence.toLowerCase() === correctSentence.toLowerCase()) {
-                    handleCorrectSentenceAnswer();
-                } else {
-                    // Show hint
-                    if (currentQuestion.hint) {
-                        document.getElementById('hintText').textContent = currentQuestion.hint;
-                        document.getElementById('hintBox').classList.remove('hidden');
-                    }
-                }
-            }
-        }
-        
         function checkAnswer() {
             if (currentLevel === 'Basic') {
                 checkBasicAnswer();
@@ -2525,17 +2528,20 @@
         }
         
         function checkBasicAnswer() {
-            // Check if all words are placed
+            // Hide hint box initially
+            document.getElementById('hintBox').classList.add('hidden');
+            
+            // Check if all words are placed in drop zones
             const pool = document.getElementById('wordsPoolContent');
             if (pool.children.length > 0) {
-                showError('Please place all words in their correct categories first!');
+                showError('Please place all words in their correct sub-category boxes first!');
                 return;
             }
             
-            // Validate each drop zone
+            // Validate each drop zone - check if words are in correct subcategories
             const dropZones = document.querySelectorAll('.sub-category-drop-zone');
             let allCorrect = true;
-            let incorrectWords = [];
+            let incorrectCount = 0;
             
             dropZones.forEach(dropZone => {
                 const expectedSubCat = dropZone.dataset.subcategory;
@@ -2545,38 +2551,49 @@
                     const actualSubCat = wordEl.dataset.subcategory;
                     if (actualSubCat !== expectedSubCat) {
                         allCorrect = false;
-                        incorrectWords.push(wordEl.dataset.word);
-                        wordEl.style.border = '2px solid var(--color-danger)';
+                        incorrectCount++;
+                        // Visual feedback for incorrect placement
+                        wordEl.style.border = '3px solid var(--color-danger)';
                         wordEl.style.animation = 'shake 0.5s';
+                        wordEl.style.backgroundColor = '#FEE2E2';
+                    } else {
+                        // Correct placement
+                        wordEl.style.border = '2px solid transparent';
+                        wordEl.style.backgroundColor = '';
                     }
                 });
             });
             
             if (allCorrect) {
+                // All words are correctly categorized
                 handleCorrectBasicAnswer();
             } else {
-                // Show hint
+                // Some words are incorrectly placed - show hint
                 if (currentBasicLevelData && currentBasicLevelData.hint) {
                     document.getElementById('hintText').textContent = currentBasicLevelData.hint;
                     document.getElementById('hintBox').classList.remove('hidden');
                 }
-                showError('Some words are in the wrong category. Check the hint!');
+                showError(`${incorrectCount} word(s) are in the wrong category. Check the hint for guidance!`);
                 
-                // Remove error styling after animation
+                // Remove error styling after 2 seconds
                 setTimeout(() => {
                     document.querySelectorAll('.word-item').forEach(el => {
                         el.style.border = '2px solid transparent';
                         el.style.animation = '';
+                        el.style.backgroundColor = '';
                     });
-                }, 1000);
+                }, 2000);
             }
         }
         
         function checkSentenceAnswer() {
+            // Hide hint box initially
+            document.getElementById('hintBox').classList.add('hidden');
+            
             const dropZone = document.getElementById('dropZone');
             const scrambledContainer = document.getElementById('scrambledWords');
             
-            // Check if all words are placed
+            // Check if all words are placed in the sentence
             if (scrambledContainer.children.length > 0) {
                 showError('Please place all words in the sentence first!');
                 return;
@@ -2587,62 +2604,69 @@
                 return;
             }
             
+            // Get user's sentence
             const userSentence = Array.from(dropZone.children)
                 .map(el => el.dataset.word)
                 .join(' ');
             
-            const correctSentence = currentQuestion.correctSentence.trim();
+            // Get correct sentence (clean any trailing commas)
+            const correctSentence = currentQuestion.correctSentence
+                .trim()
+                .replace(/,+$/, ''); // Remove trailing commas
             
+            // Compare sentences (case-insensitive)
             if (userSentence.toLowerCase() === correctSentence.toLowerCase()) {
+                // Correct answer
                 handleCorrectSentenceAnswer();
             } else {
-                // Show hint
+                // Incorrect answer - show hint automatically
                 if (currentQuestion.hint) {
                     document.getElementById('hintText').textContent = currentQuestion.hint;
                     document.getElementById('hintBox').classList.remove('hidden');
                 }
                 
-                // Highlight incorrect arrangement
+                // Visual feedback - highlight incorrect arrangement
                 Array.from(dropZone.children).forEach(wordEl => {
-                    wordEl.style.border = '2px solid var(--color-danger)';
+                    wordEl.style.border = '3px solid var(--color-danger)';
                     wordEl.style.animation = 'shake 0.5s';
+                    wordEl.style.backgroundColor = '#FEE2E2';
                 });
                 
-                showError('The sentence order is incorrect. Check the hint!');
+                showError('The sentence order is incorrect. Check the hint for guidance!');
                 
+                // Remove error styling after 2 seconds
                 setTimeout(() => {
                     Array.from(dropZone.children).forEach(wordEl => {
                         wordEl.style.border = '2px solid transparent';
                         wordEl.style.animation = '';
+                        wordEl.style.backgroundColor = '';
                     });
-                }, 1000);
+                }, 2000);
             }
         }
         
         function handleCorrectBasicAnswer() {
+            // Increment success count
             successCount++;
             document.getElementById('successCount').textContent = successCount;
             
-            // Show "Well Done!" message
+            // Show "Well Done!" brief message
             showWellDoneMessage();
             
+            // Check if required rounds completed
             if (successCount >= requiredSuccessCount) {
-                // Hide check button, show submit button
+                // All rounds completed - activate Next Question button
                 document.getElementById('checkBtn').style.display = 'none';
                 document.getElementById('submitBtn').style.display = 'inline-block';
                 document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = 'Next Question';
                 
-                // Show celebration
+                // Trigger high-quality celebration after brief delay
                 setTimeout(() => {
-                    confetti({
-                        particleCount: 150,
-                        spread: 100,
-                        origin: { y: 0.6 }
-                    });
                     showFullScreenCelebration();
                 }, 1000);
             } else {
-                // Return words to scrambled area in random order
+                // Need more rounds - return words to scrambled area in NEW random order
                 setTimeout(() => {
                     returnWordsToScrambledBasic();
                 }, 1500);
@@ -2650,7 +2674,10 @@
         }
         
         function returnWordsToScrambledBasic() {
-            // Collect all words from drop zones
+            // Hide hint box
+            document.getElementById('hintBox').classList.add('hidden');
+            
+            // Collect all words from all drop zones
             const dropZones = document.querySelectorAll('.sub-category-drop-zone');
             const allWords = [];
             
@@ -2662,11 +2689,12 @@
                         subcategory: wordEl.dataset.subcategory
                     });
                 });
+                // Clear the drop zone
                 dropZone.innerHTML = '';
                 dropZone.classList.add('empty');
             });
             
-            // Scramble and return to pool
+            // Return words to scrambled area in NEW RANDOM ORDER
             const poolContent = document.getElementById('wordsPoolContent');
             poolContent.innerHTML = '';
             
@@ -2677,11 +2705,18 @@
                 wordEl.textContent = item.word;
                 wordEl.dataset.word = item.word;
                 wordEl.dataset.subcategory = item.subcategory;
+                // Reset any styling
+                wordEl.style.border = '2px solid transparent';
+                wordEl.style.backgroundColor = '';
+                wordEl.style.animation = '';
                 poolContent.appendChild(wordEl);
             });
         }
         
         function returnWordsToScrambledSentence() {
+            // Hide hint box
+            document.getElementById('hintBox').classList.add('hidden');
+            
             // Collect all words from drop zone
             const dropZone = document.getElementById('dropZone');
             const allWords = [];
@@ -2691,10 +2726,11 @@
                 allWords.push(wordEl.dataset.word);
             });
             
+            // Clear drop zone
             dropZone.innerHTML = '';
             dropZone.classList.add('empty');
             
-            // Scramble and return to scrambled container
+            // Return words to scrambled container in NEW RANDOM ORDER
             const scrambledContainer = document.getElementById('scrambledWords');
             scrambledContainer.innerHTML = '';
             
@@ -2704,34 +2740,36 @@
                 wordEl.className = 'word-item';
                 wordEl.textContent = word;
                 wordEl.dataset.word = word;
+                // Reset any styling
+                wordEl.style.border = '2px solid transparent';
+                wordEl.style.backgroundColor = '';
+                wordEl.style.animation = '';
                 scrambledContainer.appendChild(wordEl);
             });
         }
         
         function handleCorrectSentenceAnswer() {
+            // Increment success count
             successCount++;
             document.getElementById('successCount').textContent = successCount;
             
-            // Show "Well Done!" message
+            // Show "Well Done!" brief message
             showWellDoneMessage();
             
+            // Check if required rounds completed
             if (successCount >= requiredSuccessCount) {
-                // Hide check button, show submit button
+                // All rounds completed - activate Next Question button
                 document.getElementById('checkBtn').style.display = 'none';
                 document.getElementById('submitBtn').style.display = 'inline-block';
                 document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = 'Next Question';
                 
-                // Show celebration
+                // Trigger high-quality celebration after brief delay
                 setTimeout(() => {
-                    confetti({
-                        particleCount: 150,
-                        spread: 100,
-                        origin: { y: 0.6 }
-                    });
                     showFullScreenCelebration();
                 }, 1000);
             } else {
-                // Return words to scrambled positions for next repetition
+                // Need more rounds - return words to scrambled area in NEW random order
                 setTimeout(() => {
                     returnWordsToScrambledSentence();
                 }, 1500);
@@ -2748,15 +2786,47 @@
         }
         
         function showFullScreenCelebration() {
+            // Trigger high-quality confetti celebration
+            const duration = 3000;
+            const animationEnd = Date.now() + duration;
+            
+            const colors = ['#14B8A6', '#FB923C', '#F472B6', '#10B981'];
+            
+            const interval = setInterval(() => {
+                const timeLeft = animationEnd - Date.now();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    return;
+                }
+                
+                confetti({
+                    particleCount: 3,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: colors
+                });
+                confetti({
+                    particleCount: 3,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: colors
+                });
+            }, 50);
+            
+            // Show modal with student name
             const modal = document.getElementById('successModal');
             const quote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
             document.getElementById('motivationalQuote').textContent = `"${quote}"`;
             
-            // Update title with student name
+            // Update title with "Well Done" + Student Name
             const userName = userProgress?.name || 'Student';
             document.querySelector('#successModal .modal-title').textContent = `Well Done, ${userName}!`;
             
-            if (currentLevel !== 'Basic' && currentQuestion.grammarRule) {
+            // Show grammar rule if available (for sentence levels)
+            if (currentLevel !== 'Basic' && currentQuestion?.grammarRule) {
                 document.getElementById('grammarText').textContent = currentQuestion.grammarRule;
                 document.getElementById('grammarSpotlight').classList.remove('hidden');
             } else {
@@ -2767,7 +2837,10 @@
         }
         
         function submitAndNext() {
+            // Close success modal
             document.getElementById('successModal').classList.add('hidden');
+            
+            // Move to next question
             nextQuestion();
         }
         
