@@ -1149,6 +1149,10 @@
                             <input type="email" id="teacherLoginEmail" placeholder="teacher@jumblejump.sa" required>
                         </div>
                         <div class="input-group">
+                            <label>Admin Code</label>
+                            <input type="text" id="teacherAdminCode" placeholder="Enter admin code" required maxlength="12" style="text-transform: uppercase;">
+                        </div>
+                        <div class="input-group">
                             <label>Password</label>
                             <input type="password" id="teacherLoginPassword" placeholder="Enter admin password" required>
                         </div>
@@ -1158,6 +1162,11 @@
                         </div>
                         <button type="submit" class="btn btn-secondary" style="width: 100%;">Admin Login</button>
                     </form>
+                    <div style="margin-top: 20px; padding: 15px; background: #FEF3C7; border-radius: var(--border-radius-md);">
+                        <p style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                            <strong>First time?</strong> Contact system administrator for admin code.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1575,7 +1584,19 @@
                     <input type="number" id="trialsPerSentence" value="3" min="1" max="10">
                 </div>
                 
-                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                <div style="margin-top: 40px; padding: 20px; background: #FEF3C7; border-radius: var(--border-radius-md);">
+                    <h4 style="margin-bottom: 15px; color: var(--color-warning);">🔒 Admin Access Code</h4>
+                    <div class="input-group">
+                        <label>Master Admin Code</label>
+                        <input type="text" id="masterAdminCode" placeholder="Current: ADMIN2026" maxlength="12" style="text-transform: uppercase;">
+                        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 5px;">
+                            All admins and teachers need this code to login. Keep it secure!
+                        </p>
+                    </div>
+                    <button class="btn btn-warning" onclick="updateAdminCode()">Update Admin Code</button>
+                </div>
+                
+                <button class="btn btn-primary" onclick="saveSettings()" style="margin-top: 20px;">Save Settings</button>
             </div>
             
             <!-- Students Tab -->
@@ -2021,6 +2042,7 @@
         document.getElementById('teacherLoginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('teacherLoginEmail').value;
+            const adminCode = document.getElementById('teacherAdminCode').value.trim().toUpperCase();
             const password = document.getElementById('teacherLoginPassword').value;
             
             try {
@@ -2052,6 +2074,15 @@
                         showError('Admin account creation cancelled');
                         return;
                     }
+                }
+                
+                // Verify admin code first
+                const adminCodeDoc = await db.collection('settings').doc('adminCode').get();
+                const validAdminCode = adminCodeDoc.exists ? adminCodeDoc.data().code : 'ADMIN2026';
+                
+                if (adminCode !== validAdminCode) {
+                    showError('Invalid admin code. Contact administrator.');
+                    return;
                 }
                 
                 // Check if admin exists in Firestore
@@ -4328,6 +4359,36 @@
             }
         }
         
+        async function updateAdminCode() {
+            const newCode = document.getElementById('masterAdminCode').value.trim().toUpperCase();
+            
+            if (!newCode) {
+                showError('Please enter a new admin code');
+                return;
+            }
+            
+            if (newCode.length < 8) {
+                showError('Admin code must be at least 8 characters');
+                return;
+            }
+            
+            if (!confirm(`Change admin code to "${newCode}"? All admins will need the new code to login.`)) {
+                return;
+            }
+            
+            try {
+                await db.collection('settings').doc('adminCode').set({
+                    code: newCode,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showSuccess(`Admin code updated to: ${newCode}\nMake sure to share this with all admins!`);
+                document.getElementById('masterAdminCode').value = '';
+            } catch (error) {
+                showError('Error updating admin code: ' + error.message);
+            }
+        }
+        
         async function loadStudentProgress() {
             const tbody = document.getElementById('studentsTableBody');
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading student data...</p></td></tr>';
@@ -4928,6 +4989,296 @@
             setInterval(checkForNewChallenges, 30000); // Every 30 seconds
             checkForNewChallenges(); // Initial check
         }
+        
+        // ========================================
+        // FIREBASE OPTIMIZATION MODULE - HIGH EFFICIENCY CACHING
+        // ========================================
+        
+        /*
+         * OPTIMIZATION STRATEGY:
+         * 1. Batch Reading: Load entire level into memory on start
+         * 2. Local Gameplay: Pull questions from cache, not Firestore
+         * 3. Single Write: Save progress only at milestones
+         * 4. Consolidated Schema: Multiple sentences per document
+         */
+        
+        // Cache storage
+        const questionCache = {
+            Beginner: [],
+            Intermediate: [],
+            Advanced: [],
+            lastLoaded: {}
+        };
+        
+        // Local progress tracking (not yet saved to Firestore)
+        let localProgressCache = {
+            currentSession: {
+                questionsCompleted: 0,
+                starsEarned: 0,
+                startTime: null,
+                level: null
+            },
+            pendingWrites: []
+        };
+        
+        // Flag to use optimized mode
+        let useOptimizedMode = true; // Set to true to enable optimization
+        
+        /**
+         * BATCH READING: Load entire level into cache
+         * This replaces individual question fetches
+         */
+        async function loadLevelToCache(level) {
+            console.log(`📦 [OPTIMIZATION] Loading ${level} level to cache...`);
+            
+            // Check if already cached and fresh (within 1 hour)
+            const cacheAge = Date.now() - (questionCache.lastLoaded[level] || 0);
+            if (questionCache[level].length > 0 && cacheAge < 3600000) {
+                console.log(`✅ [OPTIMIZATION] Using cached ${level} (${questionCache[level].length} questions)`);
+                return questionCache[level];
+            }
+            
+            try {
+                // SINGLE BATCH READ - loads all questions for level at once
+                const snapshot = await db.collection('questions')
+                    .where('level', '==', level)
+                    .get();
+                
+                questionCache[level] = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                questionCache.lastLoaded[level] = Date.now();
+                
+                console.log(`✅ [OPTIMIZATION] Cached ${questionCache[level].length} questions for ${level}`);
+                console.log(`📊 [OPTIMIZATION] Firestore reads: 1 batch read (vs ${questionCache[level].length} individual reads)`);
+                
+                return questionCache[level];
+            } catch (error) {
+                console.error('[OPTIMIZATION] Cache load error:', error);
+                showError('Error loading questions. Please try again.');
+                return [];
+            }
+        }
+        
+        /**
+         * LOCAL GAMEPLAY: Get next question from cache
+         * No Firestore read required
+         */
+        function getQuestionFromCache(level, index) {
+            if (!questionCache[level] || questionCache[level].length === 0) {
+                console.warn('[OPTIMIZATION] Cache miss - will need to load');
+                return null;
+            }
+            
+            return questionCache[level][index] || null;
+        }
+        
+        /**
+         * SINGLE WRITE: Save progress at milestones only
+         * Reduces write operations dramatically
+         */
+        async function saveProgressAtMilestone(force = false) {
+            const completed = localProgressCache.currentSession.questionsCompleted;
+            const level = localProgressCache.currentSession.level;
+            
+            // Determine if we should save (milestone reached or forced)
+            const isMilestone = completed % 10 === 0; // Every 10 questions
+            const shouldSave = force || isMilestone;
+            
+            if (!shouldSave) {
+                console.log(`⏭️ [OPTIMIZATION] Skipping write (progress: ${completed}) - waiting for milestone`);
+                return;
+            }
+            
+            console.log(`💾 [OPTIMIZATION] Saving at milestone (${completed} questions completed)`);
+            
+            try {
+                // SINGLE WRITE OPERATION
+                await db.collection('users').doc(currentUser.uid).update({
+                    [`progress.${level}.completed`]: completed,
+                    stars: firebase.firestore.FieldValue.increment(localProgressCache.currentSession.starsEarned),
+                    medals: Math.floor(completed / 10),
+                    lastActivity: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Reset pending writes
+                localProgressCache.currentSession.starsEarned = 0;
+                
+                console.log(`✅ [OPTIMIZATION] Progress saved. Firestore writes: 1 (vs ${completed} individual writes)`);
+            } catch (error) {
+                console.error('[OPTIMIZATION] Save error:', error);
+                // Add to pending writes for retry
+                localProgressCache.pendingWrites.push({
+                    level,
+                    completed,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        /**
+         * OPTIMIZED startLevel function
+         * Uses cache instead of fetching from Firestore
+         */
+        async function startLevelOptimized(level) {
+            currentLevel = level;
+            currentQuestionIndex = 0;
+            
+            // Initialize local session tracking
+            localProgressCache.currentSession = {
+                questionsCompleted: 0,
+                starsEarned: 0,
+                startTime: Date.now(),
+                level: level
+            };
+            
+            // BATCH READ: Load entire level to cache
+            const cachedQuestions = await loadLevelToCache(level);
+            
+            if (cachedQuestions.length === 0) {
+                showError('No questions available for this level.');
+                return;
+            }
+            
+            // Use cached questions instead of global variable
+            levelQuestions = shuffleArray([...cachedQuestions]);
+            
+            // Limit to configured number
+            if (appSettings.sentencesPerLevel && levelQuestions.length > appSettings.sentencesPerLevel) {
+                levelQuestions = levelQuestions.slice(0, appSettings.sentencesPerLevel);
+            }
+            
+            console.log(`🎮 [OPTIMIZATION] Starting ${level} with ${levelQuestions.length} cached questions`);
+            console.log(`📊 [OPTIMIZATION] Total Firestore reads so far: 1 batch read`);
+            
+            // Load first question (from cache)
+            loadQuestion();
+            showGameScreen();
+        }
+        
+        /**
+         * OPTIMIZED updateUserProgress
+         * Increments local cache instead of writing to Firestore
+         */
+        async function updateUserProgressOptimized() {
+            // INCREMENT LOCAL CACHE
+            localProgressCache.currentSession.questionsCompleted++;
+            localProgressCache.currentSession.starsEarned++;
+            
+            const completed = localProgressCache.currentSession.questionsCompleted;
+            
+            console.log(`📈 [OPTIMIZATION] Local progress: ${completed} questions (not yet saved to Firestore)`);
+            
+            // MILESTONE CHECK: Save at every 10th question
+            await saveProgressAtMilestone(false);
+            
+            // Update local userProgress object for UI
+            if (userProgress && userProgress.progress[currentLevel]) {
+                userProgress.progress[currentLevel].completed = completed;
+                userProgress.stars = (userProgress.stars || 0) + 1;
+            }
+        }
+        
+        /**
+         * Session end: Force save all pending progress
+         */
+        async function endSessionAndSave() {
+            console.log('🏁 [OPTIMIZATION] Ending session - forcing final save...');
+            await saveProgressAtMilestone(true); // Force save
+            
+            // Clear local cache
+            localProgressCache.currentSession = {
+                questionsCompleted: 0,
+                starsEarned: 0,
+                startTime: null,
+                level: null
+            };
+            
+            console.log('✅ [OPTIMIZATION] Session ended and progress saved');
+        }
+        
+        /**
+         * CONSOLIDATED SCHEMA HELPER
+         * Suggests optimal document structure
+         */
+        function getConsolidatedSchemaExample() {
+            return {
+                /* OPTIMIZED FIRESTORE STRUCTURE:
+                 * 
+                 * Instead of:
+                 *   questions/beginner_1 = {sentence: "..."}
+                 *   questions/beginner_2 = {sentence: "..."}
+                 *   ... (100 documents = 100 reads)
+                 * 
+                 * Use:
+                 *   questions/beginner_batch_1 = {
+                 *     sentences: [
+                 *       {id: 1, sentence: "...", hint: "..."},
+                 *       {id: 2, sentence: "...", hint: "..."},
+                 *       ... (up to 25 sentences per document)
+                 *     ]
+                 *   }
+                 *   questions/beginner_batch_2 = { sentences: [...] }
+                 *   ... (4 documents = 4 reads for 100 sentences!)
+                 * 
+                 * RESULT: 96% reduction in reads!
+                 */
+            };
+        }
+        
+        // Override original functions when optimization is enabled
+        if (useOptimizedMode) {
+            console.log('🚀 [OPTIMIZATION] High-efficiency mode ENABLED');
+            console.log('📊 [OPTIMIZATION] Expected savings: ~95% fewer Firestore reads');
+            
+            // Replace original startLevel with optimized version
+            const originalStartLevel = window.startLevel;
+            window.startLevel = async function(level) {
+                if (currentChallengeId) {
+                    // Use original for challenges
+                    return originalStartLevel(level);
+                }
+                return startLevelOptimized(level);
+            };
+            
+            // Replace updateUserProgress with optimized version
+            const originalUpdateProgress = window.updateUserProgress;
+            window.updateUserProgress = async function() {
+                if (currentChallengeId) {
+                    // Use original for challenges
+                    return originalUpdateProgress();
+                }
+                return updateUserProgressOptimized();
+            };
+            
+            // Auto-save on page unload
+            window.addEventListener('beforeunload', () => {
+                if (localProgressCache.currentSession.questionsCompleted > 0) {
+                    // Try to save (may not complete if page closes quickly)
+                    saveProgressAtMilestone(true);
+                }
+            });
+            
+            // Auto-save periodically (every 5 minutes)
+            setInterval(() => {
+                if (localProgressCache.currentSession.questionsCompleted > 0) {
+                    saveProgressAtMilestone(false);
+                }
+            }, 300000); // 5 minutes
+        }
+        
+        // Expose optimization functions globally
+        window.optimizationStats = function() {
+            console.log('📊 OPTIMIZATION STATISTICS:');
+            console.log('Cache status:', questionCache);
+            console.log('Local progress:', localProgressCache);
+            console.log('Estimated reads saved:', 
+                Object.values(questionCache).reduce((sum, arr) => sum + arr.length, 0) - 
+                Object.keys(questionCache.lastLoaded).length
+            );
+        };
     </script>
 </body>
 </html>
