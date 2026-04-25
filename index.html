@@ -1007,6 +1007,61 @@
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
             20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Challenge System Styles */
+        .challenge-badge {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #F59E0B, #F97316);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            z-index: 100;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .timer-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--color-danger);
+            color: white;
+            padding: 15px 25px;
+            border-radius: var(--border-radius-lg);
+            font-size: 1.5rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-lg);
+            z-index: 1001;
+        }
+        
+        .score-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--color-success);
+            color: white;
+            padding: 15px 25px;
+            border-radius: var(--border-radius-lg);
+            font-size: 1.5rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-lg);
+            z-index: 1001;
+        }
     </style>
 </head>
 <body>
@@ -1121,7 +1176,13 @@
                         </div>
                     </div>
                     <button class="btn btn-outline" onclick="logout()">Logout</button>
+                    <button class="btn btn-secondary" onclick="openChallengeModal()" style="margin-left: 10px;">🏆 Challenge Friend</button>
                 </div>
+            </div>
+            
+            <!-- Challenge Notification Badge -->
+            <div id="challengeBadge" class="challenge-badge hidden" onclick="viewChallenges()">
+                🏆 <span id="challengeCount">0</span> New Challenge(s)
             </div>
             
             <div class="levels-grid" id="levelsGrid">
@@ -1235,13 +1296,6 @@
             <p style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 10px;">Keep practicing!</p>
         </div>
     </div>
-    
-    @keyframes bounceIn {
-        0% { transform: scale(0.3); opacity: 0; }
-        50% { transform: scale(1.05); }
-        70% { transform: scale(0.9); }
-        100% { transform: scale(1); opacity: 1; }
-    }
 
     <!-- Success Modal -->
     <div id="successModal" class="modal hidden">
@@ -1293,6 +1347,69 @@
             </button>
         </div>
     </div>
+    
+    <!-- Challenge Creation Modal -->
+    <div id="challengeModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2 style="color: var(--color-primary); margin-bottom: 20px;">🏆 Create Challenge</h2>
+            
+            <div class="input-group">
+                <label>Challenge Friend (Email)</label>
+                <input type="email" id="challengeFriendEmail" placeholder="Enter friend's email">
+            </div>
+            
+            <div class="input-group">
+                <label>Level</label>
+                <select id="challengeLevel">
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label>Number of Sentences</label>
+                <input type="number" id="challengeSentences" min="1" max="20" value="5">
+            </div>
+            
+            <div class="input-group">
+                <label>Challenge Date</label>
+                <input type="date" id="challengeDate" min="">
+            </div>
+            
+            <div class="input-group">
+                <label>Challenge Time</label>
+                <input type="time" id="challengeTime">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="sendChallenge()" style="flex: 1;">Send Challenge</button>
+                <button class="btn btn-outline" onclick="closeChallengeModal()" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- View Challenges Modal -->
+    <div id="viewChallengesModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 700px;">
+            <h2 style="color: var(--color-primary); margin-bottom: 20px;">🏆 My Challenges</h2>
+            
+            <div id="challengesList" style="max-height: 400px; overflow-y: auto;">
+                <!-- Challenges will be loaded here -->
+            </div>
+            
+            <button class="btn btn-outline" onclick="closeViewChallengesModal()" style="width: 100%; margin-top: 20px;">Close</button>
+        </div>
+    </div>
+    
+    <!-- Challenge Game Screen Overlays -->
+    <div id="challengeTimerDisplay" class="timer-display hidden">
+        ⏱️ <span id="timerSeconds">30</span>s
+    </div>
+    
+    <div id="challengeScoreDisplay" class="score-display hidden">
+        🎯 Score: <span id="currentScore">0</span>
+    </div>
 
     <!-- Admin Dashboard -->
     <div id="adminDashboard" class="hidden">
@@ -1315,6 +1432,7 @@
                 <div class="admin-tab" onclick="switchAdminTab('certificate')">Certificate</div>
                 <div class="admin-tab" onclick="switchAdminTab('appearance')">Appearance</div>
                 <div class="admin-tab" onclick="switchAdminTab('printcerts')">Print Certificates</div>
+                <div class="admin-tab" onclick="switchAdminTab('challenges')">Challenges</div>
                 <div class="admin-tab" onclick="switchAdminTab('playground')">Playground</div>
             </div>
             
@@ -1526,6 +1644,44 @@
                 <div style="margin-top: 30px;">
                     <button class="btn btn-primary" onclick="saveCertificateSettings()">Save Certificate Settings</button>
                     <button class="btn btn-outline" onclick="previewCertificate()">Preview Certificate</button>
+                </div>
+            </div>
+            
+            <!-- Challenges Tab -->
+            <div id="challengesTab" class="admin-section hidden">
+                <h3>🏆 Challenge Management</h3>
+                <p style="color: var(--color-text-secondary); margin-bottom: 20px;">
+                    View all student challenges and results
+                </p>
+                
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="loadAllChallenges()">Refresh Challenges</button>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Challenger</th>
+                                <th>Opponent</th>
+                                <th>Level</th>
+                                <th>Sentences</th>
+                                <th>Status</th>
+                                <th>Challenger Score</th>
+                                <th>Opponent Score</th>
+                                <th>Winner</th>
+                            </tr>
+                        </thead>
+                        <tbody id="challengesTableBody">
+                            <tr>
+                                <td colspan="9" style="text-align: center; padding: 40px;">
+                                    <div class="spinner"></div>
+                                    <p>Loading challenges...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
@@ -2519,6 +2675,11 @@
             
             // Load sentence question for all levels
             loadSentenceQuestion();
+            
+            // Start timer if in challenge mode
+            if (currentChallengeId) {
+                startChallengeTimer();
+            }
         }
         
         // BASIC LEVEL REMOVED - Only sentence levels (Beginner, Intermediate, Advanced) are used
@@ -3140,6 +3301,26 @@
         }
         
         function handleCorrectSentenceAnswer() {
+            // If in challenge mode, calculate and add score
+            if (currentChallengeId) {
+                const points = calculateChallengeScore();
+                challengeScore += points;
+                document.getElementById('currentScore').textContent = challengeScore;
+                
+                if (challengeTimer) clearInterval(challengeTimer);
+                
+                // Show brief success message
+                showWellDoneMessage();
+                
+                // Move to next question after delay
+                setTimeout(() => {
+                    nextChallengeQuestion();
+                }, 1000);
+                
+                return; // Exit early for challenge mode
+            }
+            
+            // Normal mode (non-challenge)
             // Increment success count
             successCount++;
             document.getElementById('successCount').textContent = successCount;
@@ -3480,6 +3661,7 @@
             document.getElementById('playgroundTab').classList.add('hidden');
             document.getElementById('appearanceTab')?.classList.add('hidden');
             document.getElementById('printcertsTab')?.classList.add('hidden');
+            document.getElementById('challengesTab')?.classList.add('hidden');
             
             // Show selected section
             document.getElementById(`${tab}Tab`).classList.remove('hidden');
@@ -3488,6 +3670,8 @@
                 loadStudentProgress();
             } else if (tab === 'printcerts') {
                 loadStudentsForCertificates();
+            } else if (tab === 'challenges') {
+                loadAllChallenges();
             }
         }
         
@@ -4029,6 +4213,377 @@
         // Initialize settings on load
         loadAppSettings();
         loadCertificateSettings();
+        
+        // ========================================
+        // CHALLENGE SYSTEM MODULE
+        // ========================================
+        
+        let currentChallengeId = null;
+        let challengeTimer = null;
+        let challengeTimeRemaining = 30;
+        let challengeScore = 0;
+        let challengeQuestionStartTime = null;
+        
+        // Set minimum date to today
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('challengeDate');
+            if (dateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.min = today;
+                dateInput.value = today;
+            }
+        });
+        
+        // Open challenge creation modal
+        function openChallengeModal() {
+            document.getElementById('challengeModal').classList.remove('hidden');
+        }
+        
+        function closeChallengeModal() {
+            document.getElementById('challengeModal').classList.add('hidden');
+        }
+        
+        // Send challenge to friend
+        async function sendChallenge() {
+            const friendEmail = document.getElementById('challengeFriendEmail').value.trim();
+            const level = document.getElementById('challengeLevel').value;
+            const sentences = parseInt(document.getElementById('challengeSentences').value);
+            const date = document.getElementById('challengeDate').value;
+            const time = document.getElementById('challengeTime').value;
+            
+            if (!friendEmail) {
+                showError('Please enter friend\'s email');
+                return;
+            }
+            
+            if (!date || !time) {
+                showError('Please select date and time');
+                return;
+            }
+            
+            // Check if friend exists
+            const friendQuery = await db.collection('users').where('email', '==', friendEmail).get();
+            
+            if (friendQuery.empty) {
+                showError('Friend not found. Make sure they have an account.');
+                return;
+            }
+            
+            const friendData = friendQuery.docs[0];
+            const friendId = friendData.id;
+            
+            if (friendId === currentUser.uid) {
+                showError('You cannot challenge yourself!');
+                return;
+            }
+            
+            try {
+                const challengeData = {
+                    challengerId: currentUser.uid,
+                    challengerName: userProgress.name,
+                    challengerEmail: currentUser.email,
+                    opponentId: friendId,
+                    opponentName: friendData.data().name,
+                    opponentEmail: friendEmail,
+                    level: level,
+                    sentenceCount: sentences,
+                    challengeDate: date,
+                    challengeTime: time,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'pending', // pending, in_progress, completed
+                    challengerScore: 0,
+                    opponentScore: 0,
+                    challengerCompleted: false,
+                    opponentCompleted: false,
+                    winner: null
+                };
+                
+                await db.collection('challenges').add(challengeData);
+                
+                showSuccess(`Challenge sent to ${friendData.data().name}!`);
+                closeChallengeModal();
+                
+                // Clear form
+                document.getElementById('challengeFriendEmail').value = '';
+                document.getElementById('challengeSentences').value = '5';
+            } catch (error) {
+                showError('Error sending challenge: ' + error.message);
+            }
+        }
+        
+        // Load and display challenges for current user
+        async function viewChallenges() {
+            document.getElementById('viewChallengesModal').classList.remove('hidden');
+            await loadMyChallenges();
+        }
+        
+        function closeViewChallengesModal() {
+            document.getElementById('viewChallengesModal').classList.add('hidden');
+        }
+        
+        async function loadMyChallenges() {
+            const challengesList = document.getElementById('challengesList');
+            challengesList.innerHTML = '<div class="spinner"></div><p style="text-align:center;">Loading...</p>';
+            
+            try {
+                // Get challenges where user is challenger or opponent
+                const sentChallenges = await db.collection('challenges')
+                    .where('challengerId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                    
+                const receivedChallenges = await db.collection('challenges')
+                    .where('opponentId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                
+                const allChallenges = [...sentChallenges.docs, ...receivedChallenges.docs];
+                
+                if (allChallenges.length === 0) {
+                    challengesList.innerHTML = '<p style="text-align:center; padding:40px;">No challenges yet. Challenge a friend!</p>';
+                    return;
+                }
+                
+                challengesList.innerHTML = '';
+                
+                allChallenges.forEach(doc => {
+                    const challenge = doc.data();
+                    const isChallenger = challenge.challengerId === currentUser.uid;
+                    const canStart = challenge.status === 'pending' && !isChallenger;
+                    const myScore = isChallenger ? challenge.challengerScore : challenge.opponentScore;
+                    const theirScore = isChallenger ? challenge.opponentScore : challenge.challengerScore;
+                    
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.style.marginBottom = '15px';
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px;">
+                            <div style="flex: 1;">
+                                <h4 style="color: var(--color-primary); margin-bottom: 10px;">
+                                    ${isChallenger ? '🎯 Challenge Sent' : '⚔️ Challenge Received'}
+                                </h4>
+                                <p><strong>${isChallenger ? 'Opponent:' : 'Challenger:'}</strong> ${isChallenger ? challenge.opponentName : challenge.challengerName}</p>
+                                <p><strong>Level:</strong> ${challenge.level} | <strong>Sentences:</strong> ${challenge.sentenceCount}</p>
+                                <p><strong>Date:</strong> ${challenge.challengeDate} at ${challenge.challengeTime}</p>
+                                <p><strong>Status:</strong> <span class="badge ${challenge.status === 'completed' ? 'badge-success' : 'badge-warning'}">${challenge.status}</span></p>
+                                ${challenge.status === 'completed' ? `
+                                    <p style="margin-top: 10px;"><strong>Final Scores:</strong></p>
+                                    <p>You: ${myScore} | ${isChallenger ? challenge.opponentName : challenge.challengerName}: ${theirScore}</p>
+                                    <p><strong>Winner:</strong> ${challenge.winner === currentUser.uid ? '🏆 You!' : challenge.winner === 'tie' ? '🤝 Tie!' : '😢 ' + (isChallenger ? challenge.opponentName : challenge.challengerName)}</p>
+                                ` : ''}
+                            </div>
+                            <div>
+                                ${canStart ? `<button class="btn btn-primary" onclick="startChallenge('${doc.id}')">Accept & Start</button>` : ''}
+                                ${challenge.status === 'pending' && isChallenger && !challenge.challengerCompleted ? `<button class="btn btn-primary" onclick="startChallenge('${doc.id}')">Start Challenge</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    challengesList.appendChild(card);
+                });
+            } catch (error) {
+                challengesList.innerHTML = `<p style="color:var(--color-danger); text-align:center;">Error loading challenges: ${error.message}</p>`;
+            }
+        }
+        
+        // Check for new challenges and update badge
+        async function checkForNewChallenges() {
+            if (!currentUser || isAdmin) return;
+            
+            try {
+                const snapshot = await db.collection('challenges')
+                    .where('opponentId', '==', currentUser.uid)
+                    .where('status', '==', 'pending')
+                    .where('opponentCompleted', '==', false)
+                    .get();
+                
+                const count = snapshot.size;
+                
+                if (count > 0) {
+                    document.getElementById('challengeCount').textContent = count;
+                    document.getElementById('challengeBadge').classList.remove('hidden');
+                } else {
+                    document.getElementById('challengeBadge').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking challenges:', error);
+            }
+        }
+        
+        // Start a challenge
+        async function startChallenge(challengeId) {
+            currentChallengeId = challengeId;
+            challengeScore = 0;
+            
+            // Get challenge data
+            const challengeDoc = await db.collection('challenges').doc(challengeId).get();
+            const challengeData = challengeDoc.data();
+            
+            // Load questions for the challenge
+            const questionsSnapshot = await db.collection('questions')
+                .where('level', '==', challengeData.level)
+                .get();
+            
+            levelQuestions = questionsSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            
+            if (levelQuestions.length === 0) {
+                showError('No questions available for this level.');
+                return;
+            }
+            
+            // Shuffle and limit to challenge sentence count
+            levelQuestions = shuffleArray(levelQuestions).slice(0, challengeData.sentenceCount);
+            
+            currentLevel = challengeData.level;
+            currentQuestionIndex = 0;
+            
+            // Show challenge UI elements
+            document.getElementById('challengeScoreDisplay').classList.remove('hidden');
+            document.getElementById('challengeTimerDisplay').classList.remove('hidden');
+            document.getElementById('currentScore').textContent = '0';
+            
+            closeViewChallengesModal();
+            loadQuestion();
+            showGameScreen();
+        }
+        
+        // Start timer for challenge question
+        function startChallengeTimer() {
+            challengeTimeRemaining = 30;
+            challengeQuestionStartTime = Date.now();
+            document.getElementById('timerSeconds').textContent = challengeTimeRemaining;
+            
+            if (challengeTimer) clearInterval(challengeTimer);
+            
+            challengeTimer = setInterval(() => {
+                challengeTimeRemaining--;
+                document.getElementById('timerSeconds').textContent = challengeTimeRemaining;
+                
+                if (challengeTimeRemaining <= 0) {
+                    clearInterval(challengeTimer);
+                    // Auto-move to next question
+                    showError('Time\'s up! Moving to next question...');
+                    setTimeout(() => {
+                        nextChallengeQuestion();
+                    }, 1500);
+                }
+            }, 1000);
+        }
+        
+        // Calculate score based on time taken
+        function calculateChallengeScore() {
+            const timeTaken = (Date.now() - challengeQuestionStartTime) / 1000; // seconds
+            const maxScore = 10;
+            const maxTime = 30;
+            
+            // Score decreases linearly: 10 points at 0s, 0 points at 30s
+            const score = Math.max(0, Math.round(maxScore * (1 - timeTaken / maxTime)));
+            return score;
+        }
+        
+        function nextChallengeQuestion() {
+            if (challengeTimer) clearInterval(challengeTimer);
+            
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex >= levelQuestions.length) {
+                // Challenge complete
+                completeChallengeForUser();
+            } else {
+                loadQuestion();
+            }
+        }
+        
+        async function completeChallengeForUser() {
+            if (challengeTimer) clearInterval(challengeTimer);
+            
+            // Hide challenge UI
+            document.getElementById('challengeScoreDisplay').classList.add('hidden');
+            document.getElementById('challengeTimerDisplay').classList.add('hidden');
+            
+            const challengeDoc = await db.collection('challenges').doc(currentChallengeId).get();
+            const challengeData = challengeDoc.data();
+            const isChallenger = challengeData.challengerId === currentUser.uid;
+            
+            // Update challenge with user's score
+            const updateData = {
+                [isChallenger ? 'challengerScore' : 'opponentScore']: challengeScore,
+                [isChallenger ? 'challengerCompleted' : 'opponentCompleted']: true
+            };
+            
+            // Check if both completed
+            const bothCompleted = isChallenger ? challengeData.opponentCompleted : challengeData.challengerCompleted;
+            
+            if (bothCompleted) {
+                // Determine winner
+                const challengerScore = isChallenger ? challengeScore : challengeData.challengerScore;
+                const opponentScore = isChallenger ? challengeData.opponentScore : challengeScore;
+                
+                let winner;
+                if (challengerScore > opponentScore) {
+                    winner = challengeData.challengerId;
+                } else if (opponentScore > challengerScore) {
+                    winner = challengeData.opponentId;
+                } else {
+                    winner = 'tie';
+                }
+                
+                updateData.status = 'completed';
+                updateData.winner = winner;
+            }
+            
+            await db.collection('challenges').doc(currentChallengeId).update(updateData);
+            
+            // Show completion message
+            alert(`Challenge Complete! Your Score: ${challengeScore}\n${bothCompleted ? 'Check challenges to see the winner!' : 'Waiting for opponent to complete...'}`);
+            
+            currentChallengeId = null;
+            challengeScore = 0;
+            backToDashboard();
+        }
+        
+        // Load all challenges for admin view
+        async function loadAllChallenges() {
+            const tbody = document.getElementById('challengesTableBody');
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
+            
+            try {
+                const snapshot = await db.collection('challenges').orderBy('createdAt', 'desc').get();
+                tbody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No challenges yet</td></tr>';
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const c = doc.data();
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${c.challengeDate} ${c.challengeTime}</td>
+                        <td>${c.challengerName}</td>
+                        <td>${c.opponentName}</td>
+                        <td>${c.level}</td>
+                        <td>${c.sentenceCount}</td>
+                        <td><span class="badge ${c.status === 'completed' ? 'badge-success' : 'badge-warning'}">${c.status}</span></td>
+                        <td>${c.challengerScore}</td>
+                        <td>${c.opponentScore}</td>
+                        <td>${c.winner ? (c.winner === 'tie' ? 'Tie' : (c.winner === c.challengerId ? c.challengerName : c.opponentName)) : '-'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
+            }
+        }
+        
+        // Check for challenges periodically
+        if (!isAdmin) {
+            setInterval(checkForNewChallenges, 30000); // Every 30 seconds
+            checkForNewChallenges(); // Initial check
+        }
     </script>
 </body>
 </html>
