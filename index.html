@@ -1123,6 +1123,13 @@
                             <input type="email" id="studentSignupEmail" placeholder="student@example.com" required>
                         </div>
                         <div class="input-group">
+                            <label>Teacher Code</label>
+                            <input type="text" id="studentTeacherCode" placeholder="Enter your teacher's code" required maxlength="20" style="text-transform: uppercase;">
+                            <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 5px;">
+                                Ask your teacher for their unique code
+                            </p>
+                        </div>
+                        <div class="input-group">
                             <label>Password</label>
                             <input type="password" id="studentSignupPassword" placeholder="Minimum 6 characters" required>
                         </div>
@@ -1354,15 +1361,18 @@
             <h2 style="color: var(--color-primary); margin-bottom: 20px;">🏆 Create Challenge</h2>
             
             <div class="input-group">
-                <label>Select Friend</label>
+                <label>Select Friend (Your Teacher's Students)</label>
                 <select id="challengeFriendSelect" onchange="updateFriendEmail()">
-                    <option value="">-- Select from list or enter email below --</option>
+                    <option value="">-- Select from your classmates --</option>
                 </select>
             </div>
             
             <div class="input-group">
-                <label>Or Enter Friend's Email</label>
+                <label>Or Enter Email Directly</label>
                 <input type="email" id="challengeFriendEmail" placeholder="friend@example.com">
+                <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 5px;">
+                    You can only challenge students from your teacher
+                </p>
             </div>
             
             <div class="input-group">
@@ -1434,6 +1444,7 @@
             <div class="admin-tabs">
                 <div class="admin-tab active" onclick="switchAdminTab('upload')">Upload Data</div>
                 <div class="admin-tab" onclick="switchAdminTab('settings')">Settings</div>
+                <div class="admin-tab" onclick="switchAdminTab('teachers')">Teachers</div>
                 <div class="admin-tab" onclick="switchAdminTab('students')">Students</div>
                 <div class="admin-tab" onclick="switchAdminTab('theme')">Theme</div>
                 <div class="admin-tab" onclick="switchAdminTab('certificate')">Certificate</div>
@@ -1441,6 +1452,65 @@
                 <div class="admin-tab" onclick="switchAdminTab('printcerts')">Print Certificates</div>
                 <div class="admin-tab" onclick="switchAdminTab('challenges')">Challenges</div>
                 <div class="admin-tab" onclick="switchAdminTab('playground')">Playground</div>
+            </div>
+            
+            <!-- Teachers Tab -->
+            <div id="teachersTab" class="admin-section hidden">
+                <h3>👨‍🏫 Teacher Management</h3>
+                
+                <div style="margin-bottom: 40px;">
+                    <h4 style="margin-bottom: 15px;">Add New Teacher</h4>
+                    <div style="background: var(--color-bg-main); padding: 20px; border-radius: var(--border-radius-md);">
+                        <div class="input-group">
+                            <label>Teacher Name</label>
+                            <input type="text" id="newTeacherName" placeholder="Enter teacher's full name">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Teacher Email</label>
+                            <input type="email" id="newTeacherEmail" placeholder="teacher@example.com">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Teacher Code (Unique)</label>
+                            <input type="text" id="newTeacherCode" placeholder="e.g., TCH2024A" maxlength="20">
+                            <button class="btn btn-outline" onclick="generateTeacherCode()" style="margin-top: 10px;">Generate Random Code</button>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Password (Minimum 6 characters)</label>
+                            <input type="password" id="newTeacherPassword" placeholder="Enter password">
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="addNewTeacher()">Add Teacher</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="margin-bottom: 15px;">Existing Teachers</h4>
+                    <div style="overflow-x: auto;">
+                        <table class="students-table">
+                            <thead>
+                                <tr>
+                                    <th>Teacher Name</th>
+                                    <th>Email</th>
+                                    <th>Teacher Code</th>
+                                    <th>Students Count</th>
+                                    <th>Date Added</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teachersTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 40px;">
+                                        <div class="spinner"></div>
+                                        <p>Loading teachers...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
             
             <!-- Upload Data Tab -->
@@ -1890,6 +1960,7 @@
             e.preventDefault();
             const name = document.getElementById('studentSignupName').value;
             const email = document.getElementById('studentSignupEmail').value;
+            const teacherCode = document.getElementById('studentTeacherCode').value.trim().toUpperCase();
             const password = document.getElementById('studentSignupPassword').value;
             
             if (password.length < 6) {
@@ -1897,26 +1968,47 @@
                 return;
             }
             
+            if (!teacherCode) {
+                showError('Please enter your teacher code');
+                return;
+            }
+            
             try {
+                // Verify teacher code exists
+                const teacherQuery = await db.collection('teachers')
+                    .where('teacherCode', '==', teacherCode)
+                    .get();
+                
+                if (teacherQuery.empty) {
+                    showError('Invalid teacher code. Please check with your teacher.');
+                    return;
+                }
+                
+                const teacherDoc = teacherQuery.docs[0];
+                const teacherData = teacherDoc.data();
+                
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
                 
                 // Update profile with name
                 await user.updateProfile({ displayName: name });
                 
-                // Create user document in Firestore
+                // Create user document in Firestore with teacher reference
                 await db.collection('users').doc(user.uid).set({
-                        name: name,
-                        email: email,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        progress: {
-                            Beginner: { completed: 0, total: 100 },
-                            Intermediate: { completed: 0, total: 100 },
-                            Advanced: { completed: 0, total: 100 }
-                        },
-                        stars: 0,
-                        medals: 0
-                    });
+                    name: name,
+                    email: email,
+                    teacherCode: teacherCode,
+                    teacherId: teacherDoc.id,
+                    teacherName: teacherData.name,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    progress: {
+                        Beginner: { completed: 0, total: 100 },
+                        Intermediate: { completed: 0, total: 100 },
+                        Advanced: { completed: 0, total: 100 }
+                    },
+                    stars: 0,
+                    medals: 0
+                });
                 
                 hideError();
                 showSuccess('Account created successfully! Welcome to JumbleJump!');
@@ -3695,6 +3787,7 @@
             document.getElementById('appearanceTab')?.classList.add('hidden');
             document.getElementById('printcertsTab')?.classList.add('hidden');
             document.getElementById('challengesTab')?.classList.add('hidden');
+            document.getElementById('teachersTab')?.classList.add('hidden');
             
             // Show selected section
             document.getElementById(`${tab}Tab`).classList.remove('hidden');
@@ -3705,7 +3798,160 @@
                 loadStudentsForCertificates();
             } else if (tab === 'challenges') {
                 loadAllChallenges();
+            } else if (tab === 'teachers') {
+                loadTeachersList();
             }
+        }
+        
+        // ========================================
+        // TEACHER MANAGEMENT MODULE
+        // ========================================
+        
+        // Generate random teacher code
+        function generateTeacherCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let code = 'TCH';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('newTeacherCode').value = code;
+        }
+        
+        // Add new teacher
+        async function addNewTeacher() {
+            const name = document.getElementById('newTeacherName').value.trim();
+            const email = document.getElementById('newTeacherEmail').value.trim();
+            const teacherCode = document.getElementById('newTeacherCode').value.trim().toUpperCase();
+            const password = document.getElementById('newTeacherPassword').value;
+            
+            if (!name || !email || !teacherCode || !password) {
+                showError('Please fill all fields');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showError('Password must be at least 6 characters');
+                return;
+            }
+            
+            if (teacherCode.length < 5) {
+                showError('Teacher code must be at least 5 characters');
+                return;
+            }
+            
+            try {
+                // Check if teacher code already exists
+                const codeCheck = await db.collection('teachers')
+                    .where('teacherCode', '==', teacherCode)
+                    .get();
+                
+                if (!codeCheck.empty) {
+                    showError('This teacher code already exists. Please use a different code.');
+                    return;
+                }
+                
+                // Create Firebase Auth account
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Update profile
+                await user.updateProfile({ displayName: name });
+                
+                // Add to teachers collection
+                await db.collection('teachers').doc(user.uid).set({
+                    name: name,
+                    email: email,
+                    teacherCode: teacherCode,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    studentCount: 0
+                });
+                
+                // Add to admins collection (teachers have admin access)
+                await db.collection('admins').doc(email).set({
+                    email: email,
+                    role: 'teacher',
+                    teacherCode: teacherCode,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showSuccess(`Teacher ${name} added successfully! Code: ${teacherCode}`);
+                
+                // Clear form
+                document.getElementById('newTeacherName').value = '';
+                document.getElementById('newTeacherEmail').value = '';
+                document.getElementById('newTeacherCode').value = '';
+                document.getElementById('newTeacherPassword').value = '';
+                
+                // Reload teachers list
+                loadTeachersList();
+                
+                // Sign out the newly created user and sign back in as admin
+                await auth.signOut();
+                // This will trigger the auth state change and redirect appropriately
+                
+            } catch (error) {
+                showError('Error adding teacher: ' + error.message);
+            }
+        }
+        
+        // Load teachers list
+        async function loadTeachersList() {
+            const tbody = document.getElementById('teachersTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
+            
+            try {
+                const snapshot = await db.collection('teachers').orderBy('createdAt', 'desc').get();
+                tbody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">No teachers added yet</td></tr>';
+                    return;
+                }
+                
+                // Count students for each teacher
+                const studentCounts = {};
+                const usersSnapshot = await db.collection('users').get();
+                usersSnapshot.forEach(doc => {
+                    const teacherCode = doc.data().teacherCode;
+                    if (teacherCode) {
+                        studentCounts[teacherCode] = (studentCounts[teacherCode] || 0) + 1;
+                    }
+                });
+                
+                snapshot.forEach(doc => {
+                    const teacher = doc.data();
+                    const studentCount = studentCounts[teacher.teacherCode] || 0;
+                    const row = document.createElement('tr');
+                    
+                    const createdDate = teacher.createdAt ? 
+                        teacher.createdAt.toDate().toLocaleDateString() : 'N/A';
+                    
+                    row.innerHTML = `
+                        <td>${teacher.name}</td>
+                        <td>${teacher.email}</td>
+                        <td><strong style="color: var(--color-primary);">${teacher.teacherCode}</strong></td>
+                        <td>${studentCount}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <button class="btn btn-outline" onclick="copyTeacherCode('${teacher.teacherCode}')" style="font-size: 0.85rem; padding: 6px 12px;">
+                                Copy Code
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
+            }
+        }
+        
+        // Copy teacher code to clipboard
+        function copyTeacherCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                showSuccess(`Teacher code "${code}" copied to clipboard!`);
+            }).catch(() => {
+                prompt('Copy this teacher code:', code);
+            });
         }
         
         // Appearance customization handlers
@@ -4273,26 +4519,47 @@
             await loadFriendsList();
         }
         
-        // Load all students as potential friends
+        // Load students from same teacher as potential friends
         async function loadFriendsList() {
             const select = document.getElementById('challengeFriendSelect');
-            select.innerHTML = '<option value="">-- Select from list or enter email below --</option>';
+            select.innerHTML = '<option value="">-- Select from your classmates --</option>';
             
             try {
-                const usersSnapshot = await db.collection('users').get();
+                // Get current user's teacher code
+                const currentUserDoc = await db.collection('users').doc(currentUser.uid).get();
+                const currentUserData = currentUserDoc.data();
+                const myTeacherCode = currentUserData.teacherCode;
                 
+                if (!myTeacherCode) {
+                    select.innerHTML = '<option value="">-- No teacher assigned --</option>';
+                    return;
+                }
+                
+                // Get all students with the same teacher code
+                const usersSnapshot = await db.collection('users')
+                    .where('teacherCode', '==', myTeacherCode)
+                    .get();
+                
+                let count = 0;
                 usersSnapshot.forEach(doc => {
                     const user = doc.data();
                     // Don't show current user
                     if (doc.id !== currentUser.uid) {
                         const option = document.createElement('option');
                         option.value = user.email;
-                        option.textContent = `${user.name} (${user.email})`;
+                        option.textContent = user.name; // Show only name in dropdown
+                        option.dataset.email = user.email; // Store email
                         select.appendChild(option);
+                        count++;
                     }
                 });
+                
+                if (count === 0) {
+                    select.innerHTML = '<option value="">-- No classmates found --</option>';
+                }
             } catch (error) {
                 console.error('Error loading friends:', error);
+                select.innerHTML = '<option value="">-- Error loading classmates --</option>';
             }
         }
         
@@ -4341,6 +4608,16 @@
             
             if (friendId === currentUser.uid) {
                 showError('You cannot challenge yourself!');
+                return;
+            }
+            
+            // Verify both students have the same teacher
+            const currentUserDoc = await db.collection('users').doc(currentUser.uid).get();
+            const myTeacherCode = currentUserDoc.data().teacherCode;
+            const friendTeacherCode = friendData.data().teacherCode;
+            
+            if (myTeacherCode !== friendTeacherCode) {
+                showError('You can only challenge students from your teacher!');
                 return;
             }
             
