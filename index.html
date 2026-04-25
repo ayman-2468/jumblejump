@@ -1354,8 +1354,15 @@
             <h2 style="color: var(--color-primary); margin-bottom: 20px;">🏆 Create Challenge</h2>
             
             <div class="input-group">
-                <label>Challenge Friend (Email)</label>
-                <input type="email" id="challengeFriendEmail" placeholder="Enter friend's email">
+                <label>Select Friend</label>
+                <select id="challengeFriendSelect" onchange="updateFriendEmail()">
+                    <option value="">-- Select from list or enter email below --</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label>Or Enter Friend's Email</label>
+                <input type="email" id="challengeFriendEmail" placeholder="friend@example.com">
             </div>
             
             <div class="input-group">
@@ -1983,16 +1990,24 @@
             }
         }
         
-        // Logout
-        async function logout() {
-            try {
-                await auth.signOut();
+        // Logout - Optimized for quick response
+        function logout() {
+            // Immediate UI feedback
+            const confirmation = confirm('Are you sure you want to logout?');
+            if (!confirmation) return;
+            
+            // Show immediate feedback
+            document.body.style.opacity = '0.5';
+            
+            auth.signOut().then(() => {
                 currentUser = null;
                 isAdmin = false;
+                document.body.style.opacity = '1';
                 showAuthScreen();
-            } catch (error) {
+            }).catch(error => {
+                document.body.style.opacity = '1';
                 showError(error.message);
-            }
+            });
         }
         
         // Show/Hide screens
@@ -3184,15 +3199,12 @@
                     wordEl.style.backgroundColor = '#FEE2E2';
                 });
                 
-                showError('❌ The sentence order is incorrect. Check the hint below for guidance!');
+                showError('❌ The sentence order is incorrect. Check the hint and try again!');
                 
-                // Remove error styling after 2 seconds
+                // AUTOMATICALLY RESCRAMBLE after 2 seconds
                 setTimeout(() => {
-                    Array.from(dropZone.children).forEach(wordEl => {
-                        wordEl.style.border = '2px solid transparent';
-                        wordEl.style.animation = '';
-                        wordEl.style.backgroundColor = '';
-                    });
+                    console.log('🔄 Auto-rescrambling words...');
+                    returnWordsToScrambledSentence();
                 }, 2000);
             }
         }
@@ -3330,16 +3342,17 @@
             
             // Check if required rounds completed
             if (successCount >= requiredSuccessCount) {
-                // All rounds completed - activate Next Question button
-                document.getElementById('checkBtn').style.display = 'none';
-                document.getElementById('submitBtn').style.display = 'inline-block';
-                document.getElementById('submitBtn').disabled = false;
-                document.getElementById('submitBtn').textContent = 'Next Question';
-                
-                // Trigger high-quality celebration after brief delay
+                // All rounds completed - show celebration
                 setTimeout(() => {
                     showFullScreenCelebration();
                 }, 1000);
+                
+                // AUTOMATICALLY move to next question after celebration (3 seconds)
+                setTimeout(() => {
+                    console.log('✅ Trials completed - Auto-advancing to next question');
+                    document.getElementById('successModal').classList.add('hidden');
+                    nextQuestion();
+                }, 3500); // 3.5 seconds to enjoy celebration
             } else {
                 // Need more rounds - return words to scrambled area in NEW random order
                 setTimeout(() => {
@@ -3476,12 +3489,24 @@
         }
         
         function exitGame() {
-            if (confirm('Are you sure you want to exit? Your progress has been saved.')) {
-                if (isAdmin) {
-                    showAdminDashboard();
-                } else {
-                    loadStudentDashboard();
+            // Quick exit without confirmation if in challenge mode
+            if (currentChallengeId) {
+                if (!confirm('Exit challenge? Your progress will be lost!')) {
+                    return;
                 }
+                // Clean up challenge mode
+                if (challengeTimer) clearInterval(challengeTimer);
+                document.getElementById('challengeScoreDisplay').classList.add('hidden');
+                document.getElementById('challengeTimerDisplay').classList.add('hidden');
+                currentChallengeId = null;
+                challengeScore = 0;
+            }
+            
+            // Immediate transition
+            if (isAdmin) {
+                showAdminDashboard();
+            } else {
+                loadStudentDashboard();
             }
         }
         
@@ -3513,8 +3538,16 @@
         }
         
         function backToDashboard() {
+            // Immediate UI response
             document.getElementById('levelCompleteModal').classList.add('hidden');
-            loadStudentDashboard();
+            document.getElementById('successModal').classList.add('hidden');
+            
+            // Quick transition
+            if (isAdmin) {
+                showAdminDashboard();
+            } else {
+                loadStudentDashboard();
+            }
         }
         
         // ========================================
@@ -4235,8 +4268,42 @@
         });
         
         // Open challenge creation modal
-        function openChallengeModal() {
+        async function openChallengeModal() {
             document.getElementById('challengeModal').classList.remove('hidden');
+            await loadFriendsList();
+        }
+        
+        // Load all students as potential friends
+        async function loadFriendsList() {
+            const select = document.getElementById('challengeFriendSelect');
+            select.innerHTML = '<option value="">-- Select from list or enter email below --</option>';
+            
+            try {
+                const usersSnapshot = await db.collection('users').get();
+                
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    // Don't show current user
+                    if (doc.id !== currentUser.uid) {
+                        const option = document.createElement('option');
+                        option.value = user.email;
+                        option.textContent = `${user.name} (${user.email})`;
+                        select.appendChild(option);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading friends:', error);
+            }
+        }
+        
+        // Update email field when friend is selected from dropdown
+        function updateFriendEmail() {
+            const select = document.getElementById('challengeFriendSelect');
+            const emailInput = document.getElementById('challengeFriendEmail');
+            
+            if (select.value) {
+                emailInput.value = select.value;
+            }
         }
         
         function closeChallengeModal() {
