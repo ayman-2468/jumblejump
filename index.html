@@ -1575,6 +1575,28 @@
                     <input type="number" id="trialsPerSentence" value="3" min="1" max="10">
                 </div>
                 
+                <div style="margin-top: 40px; padding: 20px; background: #D1FAE5; border-radius: var(--border-radius-md);">
+                    <h4 style="margin-bottom: 15px; color: var(--color-success);">🎓 Master Student Code</h4>
+                    <p style="font-size: 0.9rem; margin-bottom: 15px; color: var(--color-text-secondary);">
+                        Students can use this universal code to signup (alternative to individual teacher codes)
+                    </p>
+                    <div class="input-group">
+                        <label>Current Master Code</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="currentMasterCode" value="TCH2026" readonly style="background: #F0FDF4; font-weight: 700; font-size: 1.3rem; color: var(--color-success);">
+                            <button class="btn btn-outline" onclick="copyMasterCode()" style="white-space: nowrap;">📋 Copy</button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>New Master Code</label>
+                        <input type="text" id="newMasterCode" placeholder="e.g., TCH2026, SCHOOL2026" maxlength="20" style="text-transform: uppercase;">
+                        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 5px;">
+                            This code works for ALL students. Share it publicly or keep it for general access.
+                        </p>
+                    </div>
+                    <button class="btn btn-success" onclick="updateMasterCode()">Update Master Code</button>
+                </div>
+                
                 <button class="btn btn-primary" onclick="saveSettings()" style="margin-top: 20px;">Save Settings</button>
             </div>
             
@@ -1974,18 +1996,30 @@
             }
             
             try {
-                // Verify teacher code exists
-                const teacherQuery = await db.collection('teachers')
-                    .where('teacherCode', '==', teacherCode)
-                    .get();
+                // Check if it's the master code
+                const masterCodeDoc = await db.collection('settings').doc('masterStudentCode').get();
+                const masterCode = masterCodeDoc.exists ? masterCodeDoc.data().code : 'TCH2026';
                 
-                if (teacherQuery.empty) {
-                    showError('Invalid teacher code. Please check with your teacher.');
-                    return;
+                let teacherDoc = null;
+                let teacherData = null;
+                
+                if (teacherCode === masterCode) {
+                    // Using master code - no specific teacher assignment
+                    console.log('Student using master code:', masterCode);
+                } else {
+                    // Verify specific teacher code exists
+                    const teacherQuery = await db.collection('teachers')
+                        .where('teacherCode', '==', teacherCode)
+                        .get();
+                    
+                    if (teacherQuery.empty) {
+                        showError('Invalid teacher code. Please check with your teacher or use the master code.');
+                        return;
+                    }
+                    
+                    teacherDoc = teacherQuery.docs[0];
+                    teacherData = teacherQuery.docs[0].data();
                 }
-                
-                const teacherDoc = teacherQuery.docs[0];
-                const teacherData = teacherQuery.docs[0].data();
                 
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
@@ -1993,13 +2027,11 @@
                 // Update profile with name
                 await user.updateProfile({ displayName: name });
                 
-                // Create user document in Firestore with teacher reference
-                await db.collection('users').doc(user.uid).set({
+                // Create user document in Firestore
+                const userData = {
                     name: name,
                     email: email,
                     teacherCode: teacherCode,
-                    teacherId: teacherDoc.id,
-                    teacherName: teacherData.name,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     progress: {
                         Beginner: { completed: 0, total: 100 },
@@ -2008,7 +2040,15 @@
                     },
                     stars: 0,
                     medals: 0
-                });
+                };
+                
+                // Add teacher info if using specific teacher code (not master code)
+                if (teacherDoc && teacherData) {
+                    userData.teacherId = teacherDoc.id;
+                    userData.teacherName = teacherData.name;
+                }
+                
+                await db.collection('users').doc(user.uid).set(userData);
                 
                 hideError();
                 showSuccess('Account created successfully! Welcome to JumbleJump!');
@@ -3807,7 +3847,7 @@
             } else if (tab === 'teachers') {
                 loadTeachersList();
             } else if (tab === 'settings') {
-                loadStudentAccessCode();
+                loadMasterCode();
             }
         }
         
@@ -3959,6 +3999,66 @@
                 showSuccess(`Teacher code "${code}" copied to clipboard!`);
             }).catch(() => {
                 prompt('Copy this teacher code:', code);
+            });
+        }
+        
+        // ========================================
+        // MASTER STUDENT CODE MANAGEMENT
+        // ========================================
+        
+        // Load current master code
+        async function loadMasterCode() {
+            try {
+                const doc = await db.collection('settings').doc('masterStudentCode').get();
+                const currentCode = doc.exists ? doc.data().code : 'TCH2026';
+                document.getElementById('currentMasterCode').value = currentCode;
+            } catch (error) {
+                console.error('Error loading master code:', error);
+            }
+        }
+        
+        // Update master student code
+        async function updateMasterCode() {
+            const newCode = document.getElementById('newMasterCode').value.trim().toUpperCase();
+            
+            if (!newCode) {
+                showError('Please enter a new master code');
+                return;
+            }
+            
+            if (newCode.length < 6) {
+                showError('Master code must be at least 6 characters');
+                return;
+            }
+            
+            if (!confirm(`Change master student code to "${newCode}"?\n\nAll students can use this code to signup.`)) {
+                return;
+            }
+            
+            try {
+                await db.collection('settings').doc('masterStudentCode').set({
+                    code: newCode,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: currentUser.email
+                });
+                
+                // Update display
+                document.getElementById('currentMasterCode').value = newCode;
+                document.getElementById('newMasterCode').value = '';
+                
+                showSuccess(`Master student code updated to: ${newCode}\n\nShare this code with all students for general access!`);
+            } catch (error) {
+                showError('Error updating master code: ' + error.message);
+            }
+        }
+        
+        // Copy master code to clipboard
+        function copyMasterCode() {
+            const code = document.getElementById('currentMasterCode').value;
+            navigator.clipboard.writeText(code).then(() => {
+                showSuccess(`Master code "${code}" copied!\n\nStudents can use this code to signup without a specific teacher.`);
+            }).catch(() => {
+                prompt('Copy this master student code:', code);
             });
         }
         
