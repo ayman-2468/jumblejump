@@ -4695,9 +4695,13 @@
                 const myTeacherCode = currentUserData.teacherCode;
                 
                 if (!myTeacherCode) {
-                    select.innerHTML = '<option value="">-- No teacher assigned --</option>';
+                    select.innerHTML = '<option value="">-- No teacher code set --</option>';
                     return;
                 }
+                
+                // Get master code
+                const masterCodeDoc = await db.collection('settings').doc('masterStudentCode').get();
+                const masterCode = masterCodeDoc.exists ? masterCodeDoc.data().code : 'TCH2026';
                 
                 // Get all students with the same teacher code
                 const usersSnapshot = await db.collection('users')
@@ -4719,7 +4723,11 @@
                 });
                 
                 if (count === 0) {
-                    select.innerHTML = '<option value="">-- No classmates found --</option>';
+                    if (myTeacherCode === masterCode) {
+                        select.innerHTML = '<option value="">-- No other students with master code yet --</option>';
+                    } else {
+                        select.innerHTML = '<option value="">-- No classmates found --</option>';
+                    }
                 }
             } catch (error) {
                 console.error('Error loading friends:', error);
@@ -4775,13 +4783,24 @@
                 return;
             }
             
-            // Verify both students have the same teacher
+            // Verify both students have the same teacher code (allow master code students to challenge each other)
             const currentUserDoc = await db.collection('users').doc(currentUser.uid).get();
             const myTeacherCode = currentUserDoc.data().teacherCode;
             const friendTeacherCode = friendData.data().teacherCode;
             
-            if (myTeacherCode !== friendTeacherCode) {
-                showError('You can only challenge students from your teacher!');
+            // Get master code to check if either is using it
+            const masterCodeDoc = await db.collection('settings').doc('masterStudentCode').get();
+            const masterCode = masterCodeDoc.exists ? masterCodeDoc.data().code : 'TCH2026';
+            
+            // Allow challenge if:
+            // 1. Both have same teacher code
+            // 2. Both using master code
+            // 3. Either one is using master code (optional - remove this condition if you want strict matching)
+            const bothUseMasterCode = (myTeacherCode === masterCode && friendTeacherCode === masterCode);
+            const sameTeacherCode = (myTeacherCode === friendTeacherCode);
+            
+            if (!sameTeacherCode && !bothUseMasterCode) {
+                showError('You can only challenge students with the same teacher code!');
                 return;
             }
             
