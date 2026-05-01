@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com 'unsafe-inline' 'unsafe-eval';">
     <title>JumbleJump - Master English Sentence Structure</title>
     
     <!-- External Libraries -->
@@ -1198,7 +1197,7 @@
                         </div>
                     </div>
                     <button class="btn btn-outline" onclick="logout()">Logout</button>
-<button class="btn btn-warning" onclick="openChallengeModal()" style="margin-left: 10px; font-weight: bold;">🏆 Challenge Friend</button>              </div>
+<button class="btn btn-secondary" onclick="openChallengeModal()" style="margin-left: 10px;" disabled>🏆 Challenge Friend (Coming Soon)</button>                </div>
             </div>
             
             <!-- Challenge Notification Badge -->
@@ -1900,12 +1899,7 @@
         // ========================================
         // SECTION 3: FIREBASE CONFIGURATION
         // ========================================
-        // إخبار Firebase بعدم استخدام التتبع المتقدم الذي يحظره المتصفح
-firebase.firestore().settings({
-    experimentalForceLongPolling: true, // إجبار الاتصال التقليدي المستقر
-    useFetchStreams: false
-});
-       
+        
         const firebaseConfig = {
             apiKey: "AIzaSyC_AZYYrRo4Du87ohOhjK8Ke_UM8nq5Mdk",
             authDomain: "jumblejump-prod.firebaseapp.com",
@@ -1917,14 +1911,11 @@ firebase.firestore().settings({
         };
         
         // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
         const db = firebase.firestore();
-const auth = firebase.auth();
-
-// إعدادات إضافية لحل مشاكل الشبكة التي ظهرت سابقاً
-db.settings({
-    experimentalForceLongPolling: true
-});
-                // ========================================
+        
+        // ========================================
         // SECTION 4: AUTHENTICATION MODULE
         // ========================================
         
@@ -5423,41 +5414,6 @@ db.settings({
                 Object.keys(questionCache.lastLoaded).length
             );
         };
-     async function sendChallenge() {
-    // تنبيه للتأكد من أن الزر استجاب للنقرة
-    console.log("Button clicked!"); 
-
-    try {
-        // جمع البيانات باستخدام querySelector لضمان الوصول للعناصر حتى لو تغيرت الـ IDs
-        const emailInput = document.querySelector('input[type="email"]');
-        const levelSelect = document.querySelector('select[class*="form-control"]'); // أو السلكت المناسب
-        const sentencesInput = document.querySelector('input[type="number"]');
-
-        if (!emailInput.value) {
-            alert("Please enter an email!");
-            return;
-        }
-
-        // إرسال البيانات إلى Firestore
-        await db.collection('challenges').add({
-            challengerEmail: auth.currentUser.email,
-            opponentEmail: emailInput.value,
-            level: levelSelect ? levelSelect.value : 'Beginner',
-            sentencesCount: sentencesInput ? parseInt(sentencesInput.value) : 5,
-            status: 'pending',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert("✅ Challenge Sent Successfully!");
-        if (typeof closeChallengeModal === "function") {
-            closeChallengeModal();
-        }
-
-    } catch (error) {
-        console.error("Submission error:", error);
-        alert("❌ Error: " + error.message);
-    }
-}
     </script>
 </body>
 </html>
