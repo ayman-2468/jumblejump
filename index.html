@@ -5085,73 +5085,39 @@
         }
         
         // Load all challenges for admin view
-       /**
- * إدارة التحديات - Admin Screen
- * ملاحظة: تأكد من حذف أي نسخة قديمة من دالة loadAllChallenges لتجنب خطأ SyntaxError
- */
-
-// 1. دالة عرض التحديات مع إضافة زر الحذف لكل سطر
-async function loadAllChallenges() {
-    const tableBody = document.getElementById('challengesTableBody');
-    if (!tableBody) return; // التأكد من وجود الجدول في الصفحة الحالية
-
-    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Loading...</td></tr>';
-
-    try {
-        // جلب البيانات من Firestore مرتبة حسب وقت الإنشاء
-        const snapshot = await db.collection('challenges').orderBy('createdAt', 'desc').get();
-        tableBody.innerHTML = '';
-
-        if (snapshot.empty) {
-            tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No challenges found.</td></tr>';
-            return;
-        }
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const date = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'N/A';
+        async function loadAllChallenges() {
+            const tbody = document.getElementById('challengesTableBody');
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
             
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${date}</td>
-                <td>${data.challengerName || 'Unknown'}</td>
-                <td>${data.opponentName || 'Unknown'}</td>
-                <td>${data.level || 'N/A'}</td>
-                <td>${data.sentencesCount || 0}</td>
-                <td><span class="badge ${data.status === 'completed' ? 'badge-success' : 'badge-info'}">${data.status}</span></td>
-                <td>${data.winnerName || 'Pending'}</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="deleteChallenge('${doc.id}')">
-                        Delete
-                    </button>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-    } catch (error) {
-        console.error("Error loading challenges:", error);
-        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Error: ' + error.message + '</td></tr>';
-    }
-}
-
-// 2. دالة الحذف النهائي من قاعدة البيانات
-async function deleteChallenge(challengeId) {
-    if (!confirm('هل أنت متأكد من حذف هذا التحدي نهائياً؟')) {
-        return;
-    }
-
-    try {
-        // الحذف من مجموعة challenges في Firestore
-        await db.collection('challenges').doc(challengeId).delete();
-        alert('تم حذف التحدي بنجاح');
-        
-        // إعادة تحديث الجدول فوراً ليعكس التغيير
-        loadAllChallenges(); 
-    } catch (error) {
-        console.error("Error deleting challenge:", error);
-        alert('حدث خطأ أثناء الحذف: ' + error.message);
-    }
-}
+            try {
+                const snapshot = await db.collection('challenges').orderBy('createdAt', 'desc').get();
+                tbody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No challenges yet</td></tr>';
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const c = doc.data();
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${c.challengeDate} ${c.challengeTime}</td>
+                        <td>${c.challengerName}</td>
+                        <td>${c.opponentName}</td>
+                        <td>${c.level}</td>
+                        <td>${c.sentenceCount}</td>
+                        <td><span class="badge ${c.status === 'completed' ? 'badge-success' : 'badge-warning'}">${c.status}</span></td>
+                        <td>${c.challengerScore}</td>
+                        <td>${c.opponentScore}</td>
+                        <td>${c.winner ? (c.winner === 'tie' ? 'Tie' : (c.winner === c.challengerId ? c.challengerName : c.opponentName)) : '-'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
+            }
+        }
         
         // Check for challenges periodically
         if (!isAdmin) {
