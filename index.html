@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://apis.google.com 'unsafe-inline' 'unsafe-eval';">
     <title>JumbleJump - Master English Sentence Structure</title>
     
     <!-- External Libraries -->
@@ -1919,8 +1920,12 @@ firebase.firestore().settings({
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        
-        // ========================================
+        //  استخدم هذا الإعداد تحديداً لحل مشاكل الاتصال (Status 400)
+db.settings({
+    experimentalForceLongPolling: true, // يحل مشاكل الـ Proxy وجدران الحماية في الشبكات المدرسية
+    merge: true
+});
+                // ========================================
         // SECTION 4: AUTHENTICATION MODULE
         // ========================================
         
