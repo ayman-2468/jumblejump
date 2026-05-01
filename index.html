@@ -1917,13 +1917,12 @@ firebase.firestore().settings({
         };
         
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
         const db = firebase.firestore();
-        //  استخدم هذا الإعداد تحديداً لحل مشاكل الاتصال (Status 400)
+const auth = firebase.auth();
+
+// إعدادات إضافية لحل مشاكل الشبكة التي ظهرت سابقاً
 db.settings({
-    experimentalForceLongPolling: true, // يحل مشاكل الـ Proxy وجدران الحماية في الشبكات المدرسية
-    merge: true
+    experimentalForceLongPolling: true
 });
                 // ========================================
         // SECTION 4: AUTHENTICATION MODULE
