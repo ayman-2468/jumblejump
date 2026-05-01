@@ -5414,59 +5414,39 @@
                 Object.keys(questionCache.lastLoaded).length
             );
         };
-        async function sendChallenge() {
-    // 1. استخراج القيم من العناصر (تأكد أن هذه الـ IDs متطابقة مع ملف HTML لديك)
-    const friendSelect = document.getElementById('friendSelect'); // قائمة الزملاء
-    const directEmailInput = document.getElementById('directEmailInput'); // إدخال الإيميل يدوياً
-    const levelSelect = document.getElementById('challengeLevel'); // مستوى التحدي
-    const sentencesInput = document.getElementById('challengeSentences'); // عدد الجمل
-    const challengeDate = document.getElementById('challengeDate'); // التاريخ
-    const challengeTime = document.getElementById('challengeTime'); // الوقت
-
-    // 2. تحديد البريد الإلكتروني للمنافس (إما من القائمة أو الإدخال المباشر)
-    const opponentEmail = directEmailInput.value.trim() || friendSelect.value;
-
-    // 3. التحقق من إدخال البيانات الأساسية
-    if (!opponentEmail || opponentEmail === '-- Select from your classmates --') {
-        alert("Please select a friend or enter an email address.");
-        return;
-    }
-
-    if (!sentencesInput.value || sentencesInput.value <= 0) {
-        alert("Please enter a valid number of sentences.");
-        return;
-    }
-
-    // إظهار مؤشر تحميل بسيط على الزر
-    const sendBtn = document.querySelector('button[onclick="sendChallenge()"]');
-    const originalText = sendBtn.innerText;
-    sendBtn.innerText = "Sending...";
-    sendBtn.disabled = true;
+     async function sendChallenge() {
+    // تنبيه للتأكد من أن الزر استجاب للنقرة
+    console.log("Button clicked!"); 
 
     try {
-        // 4. حفظ بيانات التحدي في Firebase Firestore
+        // جمع البيانات باستخدام querySelector لضمان الوصول للعناصر حتى لو تغيرت الـ IDs
+        const emailInput = document.querySelector('input[type="email"]');
+        const levelSelect = document.querySelector('select[class*="form-control"]'); // أو السلكت المناسب
+        const sentencesInput = document.querySelector('input[type="number"]');
+
+        if (!emailInput.value) {
+            alert("Please enter an email!");
+            return;
+        }
+
+        // إرسال البيانات إلى Firestore
         await db.collection('challenges').add({
-            challengerEmail: auth.currentUser.email, // بريد الطالب الحالي
-            challengerName: auth.currentUser.displayName || "Student",
-            opponentEmail: opponentEmail,
-            level: levelSelect.value,
-            sentencesCount: parseInt(sentencesInput.value),
-            challengeDate: challengeDate.value,
-            challengeTime: challengeTime.value,
-            status: 'pending', // حالة التحدي الافتراضية
-            createdAt: firebase.firestore.FieldValue.serverTimestamp() // وقت الإرسال السيرفر
+            challengerEmail: auth.currentUser.email,
+            opponentEmail: emailInput.value,
+            level: levelSelect ? levelSelect.value : 'Beginner',
+            sentencesCount: sentencesInput ? parseInt(sentencesInput.value) : 5,
+            status: 'pending',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert('✅ Challenge Sent Successfully!');
-        closeChallengeModal(); // إغلاق النافذة بعد النجاح
-        
+        alert("✅ Challenge Sent Successfully!");
+        if (typeof closeChallengeModal === "function") {
+            closeChallengeModal();
+        }
+
     } catch (error) {
-        console.error("Error saving challenge:", error);
-        alert('❌ Error sending challenge: ' + error.message);
-    } finally {
-        // إعادة الزر لحالته الطبيعية
-        sendBtn.innerText = originalText;
-        sendBtn.disabled = false;
+        console.error("Submission error:", error);
+        alert("❌ Error: " + error.message);
     }
 }
     </script>
