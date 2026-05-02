@@ -2898,6 +2898,7 @@
             
             successCount = 0;
             requiredSuccessCount = appSettings.trialsPerSentence || 3;
+            isAdvancingToNextQuestion = false;
             
             // Update header
             document.getElementById('currentLevelName').textContent = currentLevel;
@@ -3631,17 +3632,14 @@
             
             // Check if required rounds completed
             if (successCount >= requiredSuccessCount) {
-                // All rounds completed - show celebration
+                // Move directly to next question once admin-defined trial count is reached
+                if (isAdvancingToNextQuestion) return;
+                isAdvancingToNextQuestion = true;
+                document.getElementById('successModal').classList.add('hidden');
                 setTimeout(() => {
-                    showFullScreenCelebration();
-                }, 1000);
-                
-                // AUTOMATICALLY move to next question after celebration (3 seconds)
-                setTimeout(() => {
-                    console.log('✅ Trials completed - Auto-advancing to next question');
-                    document.getElementById('successModal').classList.add('hidden');
+                    console.log('✅ Required trials reached - moving directly to next question');
                     nextQuestion();
-                }, 3500); // 3.5 seconds to enjoy celebration
+                }, 400);
             } else {
                 // Need more rounds - return words to scrambled area in NEW random order
                 setTimeout(() => {
@@ -3879,6 +3877,7 @@
         let certExamInProgress = false;
         let certExamSubmitting = false;
         let certBypassGateOnce = false;
+        let isAdvancingToNextQuestion = false;
         
         function containsArabic(textValue) {
             return /[\u0600-\u06FF]/.test(textValue || '');
@@ -4065,6 +4064,13 @@
         }
         
         async function downloadCertificateForLevel(level) {
+            const requiredTotal = appSettings.sentencesPerLevel || 100;
+            const completed = userProgress?.progress?.[level]?.completed || 0;
+            if (completed < requiredTotal) {
+                showError(`Complete ${requiredTotal} questions in ${level} before downloading the certificate.`);
+                return;
+            }
+            
             if (!certBypassGateOnce) {
                 const certificationPassed = await ensureCertificationPassed(level);
                 if (!certificationPassed) return;
@@ -4694,6 +4700,12 @@
         
         async function printCertificate(level, userData = null) {
             const studentData = userData || userProgress;
+            const requiredTotal = appSettings.sentencesPerLevel || 100;
+            const completed = studentData?.progress?.[level]?.completed || 0;
+            if (completed < requiredTotal) {
+                showError(`Certificate cannot be printed until ${requiredTotal} questions are completed for ${level}.`);
+                return;
+            }
             
             await loadCertificateSettings();
             
@@ -5732,6 +5744,21 @@
                 showSuccess('Challenge removed.');
                 await loadAllChallenges();
             } catch (error) {
+                if (error?.code === 'permission-denied') {
+                    try {
+                        await db.collection('challenges').doc(challengeId).set({
+                            status: 'cancelled',
+                            cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            cancelledBy: currentUser?.email || 'admin'
+                        }, { merge: true });
+                        showSuccess('Delete permission denied. Challenge marked as cancelled instead.');
+                        await loadAllChallenges();
+                        return;
+                    } catch (fallbackError) {
+                        showError('Delete and cancel fallback failed: ' + (fallbackError?.message || fallbackError));
+                        return;
+                    }
+                }
                 showError('Error deleting challenge: ' + error.message);
             }
         }
