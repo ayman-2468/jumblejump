@@ -1197,17 +1197,12 @@
                         </div>
                     </div>
                     <button class="btn btn-outline" onclick="logout()">Logout</button>
-<button class="btn btn-secondary" id="challengeFriendBtn" onclick="openChallengeModal()" style="margin-left: 10px;">🏆 Challenge Friend</button>                </div>
+<button class="btn btn-secondary" onclick="openChallengeModal()" style="margin-left: 10px;" disabled>🏆 Challenge Friend (Coming Soon)</button>                </div>
             </div>
             
             <!-- Challenge Notification Badge -->
             <div id="challengeBadge" class="challenge-badge hidden" onclick="viewChallenges()">
                 🏆 <span id="challengeCount">0</span> New Challenge(s)
-            </div>
-            
-            <div id="challengeStateCard" class="card" style="margin-top: 15px; margin-bottom: 15px;">
-                <h3 style="margin-bottom: 8px; color: var(--color-primary);">Challenge Status</h3>
-                <p id="challengeStateText" style="margin:0; color: var(--color-text-secondary);">No active challenges.</p>
             </div>
             
             <div class="levels-grid" id="levelsGrid">
@@ -1339,7 +1334,7 @@
                 <p style="color: var(--color-text-secondary); margin-top: 10px;">You earned a star!</p>
             </div>
             
-            <button class="btn btn-primary" onclick="submitAndNext()">Continue →</button>
+            <button class="btn btn-primary" onclick="nextQuestion()">Continue →</button>
         </div>
     </div>
 
@@ -1364,10 +1359,10 @@
                 </div>
             </div>
             
-            <button class="btn btn-primary" onclick="downloadCertificate()" style="margin-bottom: 10px; width: 100%;" id="levelCompletePrimaryBtn">
+            <button class="btn btn-primary" onclick="downloadCertificate()" style="margin-bottom: 10px; width: 100%;">
                 📄 Download Certificate
             </button>
-            <button class="btn btn-outline" onclick="backToDashboard()" style="width: 100%;" id="levelCompleteSecondaryBtn">
+            <button class="btn btn-outline" onclick="backToDashboard()" style="width: 100%;">
                 Back to Dashboard
             </button>
         </div>
@@ -1444,46 +1439,6 @@
     
     <div id="challengeScoreDisplay" class="score-display hidden">
         🎯 Score: <span id="currentScore">0</span>
-    </div>
-    
-    <div id="challengeMonitorPanel" class="card hidden" style="position: fixed; right: 20px; top: 100px; width: 320px; z-index: 1000; box-shadow: var(--shadow-lg);">
-        <h3 style="margin-bottom: 8px; color: var(--color-primary);">🏆 Challenge Monitor</h3>
-        <p style="margin: 0 0 10px 0; color: var(--color-text-secondary); font-size: 0.9rem;">
-            Sentence <span id="challengeMonitorSentenceNum">1</span>/<span id="challengeMonitorSentenceTotal">0</span>
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: var(--color-bg-main); padding: 10px; border-radius: var(--border-radius-md);">
-                <div style="font-weight: 700; margin-bottom: 4px;" id="challengeMonitorMeName">You</div>
-                <div style="font-size: 0.9rem;">Last: <span id="challengeMonitorMeLast">-</span></div>
-                <div style="font-size: 0.9rem;">Total: <span id="challengeMonitorMeTotal">0</span></div>
-            </div>
-            <div style="background: var(--color-bg-main); padding: 10px; border-radius: var(--border-radius-md);">
-                <div style="font-weight: 700; margin-bottom: 4px;" id="challengeMonitorFriendName">Friend</div>
-                <div style="font-size: 0.9rem;">Last: <span id="challengeMonitorFriendLast">-</span></div>
-                <div style="font-size: 0.9rem;">Total: <span id="challengeMonitorFriendTotal">0</span></div>
-            </div>
-        </div>
-        <div id="challengeWinnerBanner" class="hidden" style="margin-top: 12px; padding: 10px; border-radius: var(--border-radius-md); background: #DCFCE7; color: #166534; font-weight: 800; text-align: center;">
-            🎉 <span id="challengeWinnerText">Winner</span> finished first! Congratulations!
-        </div>
-    </div>
-
-    <!-- Certification Exam Modal -->
-    <div id="certExamModal" class="modal hidden">
-        <div class="modal-content" style="max-width: 760px;">
-            <h2 style="color: var(--color-primary); margin-bottom: 10px;">Certification Block</h2>
-            <p style="margin-bottom: 12px; color: var(--color-text-secondary);">Complete 10 scrambled sentence questions in sequence. One attempt per question.</p>
-            <p id="certExamProgress" style="font-weight: 700; margin-bottom: 10px;">Question 1/10</p>
-            <p id="certExamPrompt" style="margin-bottom: 12px;"></p>
-            <div class="sentence-builder">
-                <div class="drop-zone empty" id="certExamDropZone"></div>
-                <div class="scrambled-words" id="certExamScrambled"></div>
-            </div>
-            <div style="display:flex; gap:10px; margin-top: 16px;">
-                <button class="btn btn-primary" onclick="submitCertificationQuestion()" style="flex:1;">Submit This Question</button>
-                <button class="btn btn-outline" onclick="closeCertificationExamModal()" style="flex:1;">Cancel</button>
-            </div>
-        </div>
     </div>
 
     <!-- Admin Dashboard -->
@@ -1802,39 +1757,6 @@
                     <button class="btn btn-primary" onclick="saveCertificateSettings()">Save Certificate Settings</button>
                     <button class="btn btn-outline" onclick="previewCertificate()">Preview Certificate</button>
                 </div>
-                
-                <div class="card" style="margin-top: 25px;">
-                    <h3 style="color: var(--color-primary); margin-bottom: 10px;">🧩 Certification Exam (Pick 10 Questions)</h3>
-                    <p style="margin-top: 0; color: var(--color-text-secondary);">
-                        Select exactly 10 questions per level to be used in the Certification Exam. This is saved in Firestore `settings/certificationExam`.
-                    </p>
-                    
-                    <div style="display:flex; gap: 10px; flex-wrap: wrap; align-items: end;">
-                        <div class="input-group" style="margin:0; flex: 1; min-width: 220px;">
-                            <label>Level</label>
-                            <select id="certExamLevelSelect" onchange="loadCertificationExamPicker()">
-                                <option value="Beginner">Beginner</option>
-                                <option value="Intermediate">Intermediate</option>
-                                <option value="Advanced">Advanced</option>
-                            </select>
-                        </div>
-                        <div class="input-group" style="margin:0; flex: 2; min-width: 280px;">
-                            <label>Search (by sentence text)</label>
-                            <input type="text" id="certExamSearch" placeholder="Type to filter..." oninput="filterCertificationExamQuestions()">
-                        </div>
-                        <button class="btn btn-primary" onclick="loadCertificationExamPicker()">Refresh List</button>
-                        <button class="btn btn-success" onclick="saveCertificationExamSelection()">Save Selected 10</button>
-                    </div>
-                    
-                    <p style="margin: 10px 0; font-weight: 700;">
-                        Selected: <span id="certExamSelectedCount">0</span>/10
-                        <span id="certExamSaveStatus" style="margin-left: 10px; font-weight: 600; color: var(--color-text-secondary);"></span>
-                    </p>
-                    
-                    <div id="certExamQuestionsList" style="max-height: 360px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: var(--border-radius-md); padding: 10px;">
-                        <p style="color: var(--color-text-secondary); margin: 0;">Load a level to pick questions.</p>
-                    </div>
-                </div>
             </div>
             
             <!-- Challenges Tab -->
@@ -1846,7 +1768,6 @@
                 
                 <div style="margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="loadAllChallenges()">Refresh Challenges</button>
-                    <button class="btn btn-danger" onclick="removePendingChallenges()" style="margin-left: 10px;">Remove Pending Challenges</button>
                 </div>
                 
                 <div style="overflow-x: auto;">
@@ -1862,12 +1783,11 @@
                                 <th>Challenger Score</th>
                                 <th>Opponent Score</th>
                                 <th>Winner</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="challengesTableBody">
                             <tr>
-                                <td colspan="10" style="text-align: center; padding: 40px;">
+                                <td colspan="9" style="text-align: center; padding: 40px;">
                                     <div class="spinner"></div>
                                     <p>Loading challenges...</p>
                                 </td>
@@ -2328,8 +2248,6 @@
                 
                 // Generate level cards
                 generateLevelCards();
-                await updateChallengeEligibilityUI();
-                await updateChallengeStateIndicator();
             }
             
             showStudentDashboard();
@@ -2343,14 +2261,9 @@
             levelsGrid.innerHTML = '';
             
             levels.forEach((level, index) => {
-                const fallbackTotal = appSettings.sentencesPerLevel || 100;
-                const progress = userProgress.progress[level] || { completed: 0, total: fallbackTotal };
-                const requiredTotal = Math.max(1, progress.total || fallbackTotal);
-                const completed = progress.completed || 0;
-                const percentage = Math.min(100, Math.round((completed / requiredTotal) * 100));
-                const prev = index > 0 ? (userProgress.progress[levels[index - 1]] || { completed: 0, total: fallbackTotal }) : null;
-                const prevRequired = prev ? Math.max(1, prev.total || fallbackTotal) : 0;
-                const isLocked = index > 0 && (prev.completed || 0) < prevRequired;
+                const progress = userProgress.progress[level] || { completed: 0, total: appSettings.sentencesPerLevel };
+                const percentage = Math.round((progress.completed / progress.total) * 100);
+                const isLocked = index > 0 && (userProgress.progress[levels[index - 1]]?.completed || 0) < appSettings.sentencesPerLevel;
                 
                 const card = document.createElement('div');
                 card.className = `level-card ${isLocked ? 'locked' : ''}`;
@@ -2363,7 +2276,7 @@
                         <div class="progress-bar" style="width: ${percentage}%"></div>
                     </div>
                     <div class="level-stats">
-                        <span>${completed}/${requiredTotal} completed</span>
+                        <span>${progress.completed}/${progress.total} completed</span>
                         <span>${percentage}%</span>
                     </div>
                 `;
@@ -2387,11 +2300,8 @@
             certificatesGrid.innerHTML = '';
             
             levels.forEach(level => {
-                const fallbackTotal = appSettings.sentencesPerLevel || 100;
-                const progress = userProgress.progress[level] || { completed: 0, total: fallbackTotal };
-                const requiredTotal = Math.max(1, progress.total || fallbackTotal);
-                const completed = progress.completed || 0;
-                const isCompleted = completed >= requiredTotal;
+                const progress = userProgress.progress[level] || { completed: 0, total: appSettings.sentencesPerLevel };
+                const isCompleted = progress.completed >= progress.total;
                 
                 const card = document.createElement('div');
                 card.className = `level-card ${!isCompleted ? 'locked' : ''}`;
@@ -2902,8 +2812,6 @@
             
             successCount = 0;
             requiredSuccessCount = appSettings.trialsPerSentence || 3;
-            isAdvancingToNextQuestion = false;
-            lastAdvancedQuestionIndex = -1;
             
             // Update header
             document.getElementById('currentLevelName').textContent = currentLevel;
@@ -2933,12 +2841,6 @@
             
             // Load sentence question for all levels
             loadSentenceQuestion();
-            
-            // Update challenge monitor sentence position
-            if (currentChallengeId) {
-                const el = document.getElementById('challengeMonitorSentenceNum');
-                if (el) el.textContent = String(currentQuestionIndex + 1);
-            }
             
             // Start timer if in challenge mode
             if (currentChallengeId) {
@@ -3211,7 +3113,7 @@
             
             const instructionEl = document.getElementById('instructionText');
             if (instructionEl) {
-                instructionEl.textContent = 'Tap words to move them to the sentence area, then tap again to remove';
+                instructionEl.textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
             }
             
             // Get scrambled words - clean any commas
@@ -3279,31 +3181,6 @@
             console.log('  - Drop Zone:', dropZone ? 'Found' : 'NOT FOUND');
             console.log('  - Current Question:', currentQuestion);
             console.log('  - Correct Sentence:', currentQuestion?.correctSentence);
-            
-            attachTapToSelectHandlers();
-        }
-
-        function attachTapToSelectHandlers() {
-            const dropZone = document.getElementById('dropZone');
-            const scrambledContainer = document.getElementById('scrambledWords');
-            
-            const applyHandler = (el) => {
-                el.onclick = () => {
-                    const parentId = el.parentElement?.id;
-                    if (parentId === 'scrambledWords') {
-                        dropZone.appendChild(el);
-                        dropZone.classList.remove('empty');
-                    } else {
-                        scrambledContainer.appendChild(el);
-                        if (dropZone.children.length === 0) {
-                            dropZone.classList.add('empty');
-                        }
-                    }
-                };
-            };
-            
-            Array.from(scrambledContainer.children).forEach(applyHandler);
-            Array.from(dropZone.children).forEach(applyHandler);
         }
         
         function checkAnswer() {
@@ -3415,7 +3292,7 @@
             
             // CRITICAL: Check if drop zone has any words
             if (dropZone.children.length === 0) {
-                showError('Please tap words to build your sentence first!');
+                showError('Please drag words to build your sentence first!');
                 return;
             }
             
@@ -3475,11 +3352,11 @@
                 
                 showError('❌ The sentence order is incorrect. Check the hint and try again!');
                 
-                // Keep hint visible longer before auto-rescramble
+                // AUTOMATICALLY RESCRAMBLE after 2 seconds
                 setTimeout(() => {
                     console.log('🔄 Auto-rescrambling words...');
                     returnWordsToScrambledSentence();
-                }, 5000);
+                }, 2000);
             }
         }
         
@@ -3595,27 +3472,6 @@
                 
                 if (challengeTimer) clearInterval(challengeTimer);
                 
-                // Persist per-sentence grade + running totals so both students can see updates
-                try {
-                    db.collection('challenges').doc(currentChallengeId).get().then(docSnap => {
-                        if (!docSnap.exists) return;
-                        const c = docSnap.data();
-                        const isChallenger = c.challengerId === currentUser.uid;
-                        const sentenceField = isChallenger ? 'challengerSentenceScores' : 'opponentSentenceScores';
-                        const totalField = isChallenger ? 'challengerScore' : 'opponentScore';
-                        
-                        const existing = Array.isArray(c[sentenceField]) ? c[sentenceField] : [];
-                        const updated = [...existing, points];
-                        
-                        return db.collection('challenges').doc(currentChallengeId).set({
-                            [sentenceField]: updated,
-                            [totalField]: challengeScore
-                        }, { merge: true });
-                    }).catch(() => {});
-                } catch (e) {
-                    // best-effort; gameplay must continue even if write fails
-                }
-                
                 // Show brief success message
                 showWellDoneMessage();
                 
@@ -3637,14 +3493,17 @@
             
             // Check if required rounds completed
             if (successCount >= requiredSuccessCount) {
-                // Move directly to next question once admin-defined trial count is reached
-                if (isAdvancingToNextQuestion) return;
-                isAdvancingToNextQuestion = true;
-                document.getElementById('successModal').classList.add('hidden');
+                // All rounds completed - show celebration
                 setTimeout(() => {
-                    console.log('✅ Required trials reached - moving directly to next question');
+                    showFullScreenCelebration();
+                }, 1000);
+                
+                // AUTOMATICALLY move to next question after celebration (3 seconds)
+                setTimeout(() => {
+                    console.log('✅ Trials completed - Auto-advancing to next question');
+                    document.getElementById('successModal').classList.add('hidden');
                     nextQuestion();
-                }, 400);
+                }, 3500); // 3.5 seconds to enjoy celebration
             } else {
                 // Need more rounds - return words to scrambled area in NEW random order
                 setTimeout(() => {
@@ -3714,8 +3573,6 @@
         }
         
         function submitAndNext() {
-            if (isAdvancingToNextQuestion) return;
-            isAdvancingToNextQuestion = true;
             // Close success modal
             document.getElementById('successModal').classList.add('hidden');
             
@@ -3724,22 +3581,16 @@
         }
         
         async function nextQuestion() {
-            if (questionTransitionLocked) return;
-            // Prevent double-advance from the same question (button + timer races)
-            if (lastAdvancedQuestionIndex === currentQuestionIndex) return;
-            lastAdvancedQuestionIndex = currentQuestionIndex;
-            questionTransitionLocked = true;
             document.getElementById('successModal').classList.add('hidden');
             
-            // Strict linear progression: one step only
-            currentQuestionIndex = currentQuestionIndex + 1;
+            // Update progress
+            currentQuestionIndex++;
             
             // Save progress to Firestore
             await updateUserProgress();
             
             // Load next question
             loadQuestion();
-            questionTransitionLocked = false;
         }
         
         async function updateUserProgress() {
@@ -3798,11 +3649,6 @@
                 if (challengeTimer) clearInterval(challengeTimer);
                 document.getElementById('challengeScoreDisplay').classList.add('hidden');
                 document.getElementById('challengeTimerDisplay').classList.add('hidden');
-                document.getElementById('challengeMonitorPanel')?.classList.add('hidden');
-                if (challengeUnsubscribe) {
-                    try { challengeUnsubscribe(); } catch {}
-                    challengeUnsubscribe = null;
-                }
                 currentChallengeId = null;
                 challengeScore = 0;
             }
@@ -3839,27 +3685,6 @@
             }, 250);
             
             // Show level complete modal
-            const levels = ['Beginner', 'Intermediate', 'Advanced'];
-            const idx = levels.indexOf(currentLevel);
-            const nextLevel = idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : null;
-            const primaryBtn = document.getElementById('levelCompletePrimaryBtn');
-            const secondaryBtn = document.getElementById('levelCompleteSecondaryBtn');
-            
-            if (nextLevel) {
-                primaryBtn.textContent = `▶ Start ${nextLevel} Level`;
-                primaryBtn.onclick = () => {
-                    document.getElementById('levelCompleteModal').classList.add('hidden');
-                    startLevel(nextLevel);
-                };
-                secondaryBtn.textContent = '📄 Download Certificate';
-                secondaryBtn.onclick = () => downloadCertificate();
-            } else {
-                primaryBtn.textContent = '📄 Download Certificate';
-                primaryBtn.onclick = () => downloadCertificate();
-                secondaryBtn.textContent = 'Back to Dashboard';
-                secondaryBtn.onclick = () => backToDashboard();
-            }
-            
             document.getElementById('levelCompleteModal').classList.remove('hidden');
         }
         
@@ -3904,208 +3729,7 @@
             await downloadCertificateForLevel(currentLevel);
         }
         
-        let certExamStarting = false;
-        let certExamInProgress = false;
-        let certExamSubmitting = false;
-        let certBypassGateOnce = false;
-        let isAdvancingToNextQuestion = false;
-        let lastAdvancedQuestionIndex = -1;
-        
-        function containsArabic(textValue) {
-            return /[\u0600-\u06FF]/.test(textValue || '');
-        }
-        
-        function openHtmlCertificate(level, studentData, autoPrint = false) {
-            const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-            const win = window.open('', '_blank');
-            if (!win) return;
-            
-            const html = `<!doctype html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Certificate</title>
-    <style>
-        body { font-family: Tahoma, Arial, sans-serif; padding: 24px; background: #ffffff; }
-        .cert { border: 6px solid #14B8A6; padding: 24px; text-align: center; max-width: 1000px; margin: 0 auto; }
-        .name { font-size: 42px; color: #0f766e; margin: 20px 0; }
-        .line { margin: 10px 0; }
-    </style>
-</head>
-<body>
-    <div class="cert">
-        <h1>${certificateSettings.title}</h1>
-        <h3>${certificateSettings.subtitle}</h3>
-        <p class="line">This is to certify that</p>
-        <div class="name">${studentData.name || 'Student'}</div>
-        <p class="line">has successfully completed</p>
-        <h2>${level} Level</h2>
-        <p class="line">Date: ${today}</p>
-    </div>
-    ${autoPrint ? '<script>window.print()</scr' + 'ipt>' : ''}
-</body>
-</html>`;
-            
-            win.document.open();
-            win.document.write(html);
-            win.document.close();
-        }
-        
-        async function ensureCertificationPassed(level) {
-            const alreadyPassed = userProgress?.certificationExamPassed?.[level] === true;
-            if (alreadyPassed) return true;
-            if (certExamInProgress && certificationExamState?.level === level) return false;
-            await startCertificationExam(level);
-            return false;
-        }
-        
-        async function startCertificationExam(level) {
-            if (certExamStarting) return;
-            const modal = document.getElementById('certExamModal');
-            if (modal && !modal.classList.contains('hidden')) return;
-            if (certExamInProgress && certificationExamState?.level === level) return;
-            
-            certExamStarting = true;
-            
-            const snapshot = await db.collection('questions')
-                .where('level', '==', level)
-                .get();
-            
-            // Prefer a fixed, teacher-defined exam list if provided in settings/certificationExam
-            let selected = [];
-            try {
-                const examDoc = await db.collection('settings').doc('certificationExam').get();
-                const ids = examDoc.exists ? (examDoc.data()?.[level] || []) : [];
-                if (Array.isArray(ids) && ids.length === 10) {
-                    const docs = await Promise.all(ids.map(id => db.collection('questions').doc(id).get()));
-                    selected = docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
-                }
-            } catch (e) {
-                // Fall back to deterministic selection below
-            }
-            
-            if (selected.length !== 10) {
-                // Deterministic fallback: sort by doc id, take first 10
-                const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-                    .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
-                selected = all.slice(0, 10);
-            }
-            if (selected.length < 10) {
-                showError('Certification block requires at least 10 questions in this level.');
-                certExamStarting = false;
-                return;
-            }
-            
-            certificationExamState = {
-                level,
-                questions: selected,
-                index: 0,
-                passed: false
-            };
-            certExamInProgress = true;
-            
-            document.getElementById('certExamModal').classList.remove('hidden');
-            renderCertificationQuestion();
-            certExamStarting = false;
-        }
-        
-        function renderCertificationQuestion() {
-            const question = certificationExamState.questions[certificationExamState.index];
-            document.getElementById('certExamProgress').textContent = `Question ${certificationExamState.index + 1}/10`;
-            document.getElementById('certExamPrompt').textContent = question.hint || 'Arrange the sentence correctly.';
-            
-            const dropZone = document.getElementById('certExamDropZone');
-            const scrambled = document.getElementById('certExamScrambled');
-            dropZone.innerHTML = '';
-            scrambled.innerHTML = '';
-            dropZone.classList.add('empty');
-            
-            const words = shuffleArray((question.scrambledWords || question.correctSentence || '')
-                .split(' ')
-                .map(w => w.trim().replace(/,+/g, ''))
-                .filter(Boolean));
-            
-            words.forEach(word => {
-                const el = document.createElement('div');
-                el.className = 'word-item';
-                el.textContent = word;
-                el.dataset.word = word;
-                el.onclick = () => {
-                    if (el.parentElement?.id === 'certExamScrambled') {
-                        dropZone.appendChild(el);
-                        dropZone.classList.remove('empty');
-                    } else {
-                        scrambled.appendChild(el);
-                        if (dropZone.children.length === 0) dropZone.classList.add('empty');
-                    }
-                };
-                scrambled.appendChild(el);
-            });
-        }
-        
-        async function submitCertificationQuestion() {
-            if (certExamSubmitting) return;
-            certExamSubmitting = true;
-            const question = certificationExamState.questions[certificationExamState.index];
-            const builtSentence = Array.from(document.getElementById('certExamDropZone').children)
-                .map(el => el.dataset.word)
-                .join(' ')
-                .trim();
-            const correctSentence = (question.correctSentence || '').trim().replace(/,+/g, '').replace(/\s+/g, ' ');
-            
-            if (!builtSentence || builtSentence.toLowerCase() !== correctSentence.toLowerCase()) {
-                showError('Incorrect answer. Certification block failed (one attempt per question). Please restart.');
-                closeCertificationExamModal();
-                certExamInProgress = false;
-                certExamSubmitting = false;
-                return;
-            }
-            
-            certificationExamState.index += 1;
-            if (certificationExamState.index >= 10) {
-                certificationExamState.passed = true;
-                
-                // Update local state first to prevent any gating loops
-                userProgress = userProgress || {};
-                userProgress.certificationExamPassed = userProgress.certificationExamPassed || {};
-                userProgress.certificationExamPassed[certificationExamState.level] = true;
-                
-                await db.collection('users').doc(currentUser.uid).set({
-                    certificationExamPassed: {
-                        [certificationExamState.level]: true
-                    }
-                }, { merge: true });
-                
-                showSuccess('Certification block completed. Certificate printing is now unlocked.');
-                const unlockedLevel = certificationExamState.level;
-                certExamInProgress = false;
-                certBypassGateOnce = true;
-                closeCertificationExamModal();
-                await downloadCertificateForLevel(unlockedLevel);
-                certExamSubmitting = false;
-                return;
-            }
-            
-            renderCertificationQuestion();
-            certExamSubmitting = false;
-        }
-        
-        function closeCertificationExamModal() {
-            document.getElementById('certExamModal').classList.add('hidden');
-            certExamInProgress = false;
-            certExamSubmitting = false;
-        }
-        
         async function downloadCertificateForLevel(level) {
-            const fallbackTotal = appSettings.sentencesPerLevel || 100;
-            const levelProgress = userProgress?.progress?.[level] || { completed: 0, total: fallbackTotal };
-            const requiredTotal = Math.max(1, levelProgress.total || fallbackTotal);
-            const completed = levelProgress.completed || 0;
-            if (completed < requiredTotal) {
-                showError(`Complete ${requiredTotal} questions in ${level} before downloading the certificate.`);
-                return;
-            }
-            
             await loadCertificateSettings();
             
             const { jsPDF } = window.jspdf;
@@ -4170,13 +3794,7 @@
             doc.setFontSize(28);
             doc.setTextColor(certificateSettings.borderColor);
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
-            const studentName = userProgress?.name || 'Student';
-            if (containsArabic(studentName)) {
-                openHtmlCertificate(level, userProgress || {}, false);
-                showSuccess('Opened UTF-8 certificate view. Use Print -> Save as PDF for Arabic support.');
-                return;
-            }
-            doc.text(studentName, 148.5, 100, { align: 'center' });
+            doc.text(userProgress?.name || 'Student', 148.5, 100, { align: 'center' });
             
             // Add achievement text
             doc.setFontSize(14);
@@ -4188,6 +3806,12 @@
             doc.setTextColor(certificateSettings.titleColor);
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
             doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
+            
+            // Add stars and medals
+            doc.setFontSize(14);
+            doc.setTextColor('#0F172A');
+            const progress = userProgress?.progress[level] || {};
+            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
@@ -4237,9 +3861,6 @@
                 loadTeachersList();
             } else if (tab === 'settings') {
                 loadMasterCode();
-            } else if (tab === 'certificate') {
-                // Load picker data when certificate tab is opened
-                loadCertificationExamPicker();
             }
         }
         
@@ -4707,10 +4328,8 @@
             
             const levels = ['Beginner', 'Intermediate', 'Advanced'];
             levels.forEach(level => {
-                const fallbackTotal = appSettings.sentencesPerLevel || 100;
-                const progress = userData.progress[level] || { completed: 0, total: fallbackTotal };
-                const requiredTotal = Math.max(1, progress.total || fallbackTotal);
-                const isCompleted = (progress.completed || 0) >= requiredTotal;
+                const progress = userData.progress[level] || { completed: 0, total: 100 };
+                const isCompleted = progress.completed >= progress.total;
                 
                 const statusEl = document.getElementById(`cert${level}Status`);
                 const btnEl = document.getElementById(`cert${level}Btn`);
@@ -4730,14 +4349,6 @@
         
         async function printCertificate(level, userData = null) {
             const studentData = userData || userProgress;
-            const fallbackTotal = appSettings.sentencesPerLevel || 100;
-            const levelProgress = studentData?.progress?.[level] || { completed: 0, total: fallbackTotal };
-            const requiredTotal = Math.max(1, levelProgress.total || fallbackTotal);
-            const completed = levelProgress.completed || 0;
-            if (completed < requiredTotal) {
-                showError(`Certificate cannot be printed until ${requiredTotal} questions are completed for ${level}.`);
-                return;
-            }
             
             await loadCertificateSettings();
             
@@ -4787,10 +4398,6 @@
             doc.setFontSize(28);
             doc.setTextColor(certificateSettings.borderColor);
             doc.setFont('helvetica', 'bold');
-            if (containsArabic(studentData.name)) {
-                openHtmlCertificate(level, studentData, true);
-                return;
-            }
             doc.text(studentData.name, 148.5, 100, { align: 'center' });
             
             // Add achievement text
@@ -4803,6 +4410,12 @@
             doc.setTextColor(certificateSettings.titleColor);
             doc.setFont('helvetica', 'bold');
             doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
+            
+            // Add stars and medals
+            doc.setFontSize(14);
+            doc.setTextColor('#0F172A');
+            const progress = studentData.progress[level] || {};
+            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
@@ -5004,169 +4617,6 @@
         function previewCertificate() {
             alert('Certificate preview will be shown when you complete a level!');
         }
-
-        // ========================================
-        // CERTIFICATION EXAM PICKER (ADMIN UI)
-        // ========================================
-        
-        let certExamAllQuestions = [];
-        let certExamFilteredQuestions = [];
-        let certExamSelectedIds = new Set();
-        let certExamSavedByLevel = { Beginner: [], Intermediate: [], Advanced: [] };
-        
-        async function loadCertificationExamSettings() {
-            try {
-                const doc = await db.collection('settings').doc('certificationExam').get();
-                if (doc.exists) {
-                    const data = doc.data() || {};
-                    certExamSavedByLevel = {
-                        Beginner: Array.isArray(data.Beginner) ? data.Beginner : [],
-                        Intermediate: Array.isArray(data.Intermediate) ? data.Intermediate : [],
-                        Advanced: Array.isArray(data.Advanced) ? data.Advanced : []
-                    };
-                }
-            } catch (e) {
-                console.error('Error loading certification exam settings:', e);
-            }
-        }
-        
-        async function loadCertificationExamPicker() {
-            await loadCertificationExamSettings();
-            
-            const level = document.getElementById('certExamLevelSelect')?.value || 'Beginner';
-            const listEl = document.getElementById('certExamQuestionsList');
-            const statusEl = document.getElementById('certExamSaveStatus');
-            if (!listEl) return;
-            
-            listEl.innerHTML = '<div class="spinner"></div><p style="text-align:center; color: var(--color-text-secondary);">Loading questions...</p>';
-            statusEl.textContent = '';
-            
-            try {
-                const snapshot = await db.collection('questions')
-                    .where('level', '==', level)
-                    .get();
-                
-                certExamAllQuestions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                // Stable sort so list is consistent
-                certExamAllQuestions.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
-                certExamFilteredQuestions = [...certExamAllQuestions];
-                
-                const saved = certExamSavedByLevel[level] || [];
-                certExamSelectedIds = new Set(saved);
-                
-                // If saved ids exist but are missing in current query (data moved), keep them selected
-                updateCertExamSelectedCount();
-                renderCertificationExamQuestions();
-                filterCertificationExamQuestions();
-            } catch (e) {
-                console.error('Error loading exam picker questions:', e);
-                listEl.innerHTML = `<p style="color: var(--color-danger); margin: 0;">Error loading questions: ${e.message}</p>`;
-            }
-        }
-        
-        function updateCertExamSelectedCount() {
-            const countEl = document.getElementById('certExamSelectedCount');
-            if (countEl) countEl.textContent = String(certExamSelectedIds.size);
-        }
-        
-        function getQuestionLabel(q) {
-            const sentence = (q.correctSentence || '').trim();
-            const hint = (q.hint || '').trim();
-            if (sentence) return sentence;
-            if (hint) return hint;
-            return q.id;
-        }
-        
-        function renderCertificationExamQuestions() {
-            const listEl = document.getElementById('certExamQuestionsList');
-            if (!listEl) return;
-            
-            if (!certExamFilteredQuestions.length) {
-                listEl.innerHTML = '<p style="color: var(--color-text-secondary); margin: 0;">No questions found for this level.</p>';
-                return;
-            }
-            
-            listEl.innerHTML = '';
-            
-            certExamFilteredQuestions.forEach((q) => {
-                const row = document.createElement('div');
-                row.style.display = 'flex';
-                row.style.alignItems = 'flex-start';
-                row.style.gap = '10px';
-                row.style.padding = '8px 6px';
-                row.style.borderBottom = '1px solid #E2E8F0';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = certExamSelectedIds.has(q.id);
-                checkbox.style.marginTop = '3px';
-                
-                checkbox.onchange = () => {
-                    if (checkbox.checked) {
-                        if (certExamSelectedIds.size >= 10) {
-                            checkbox.checked = false;
-                            showError('You can only select exactly 10 questions.');
-                            return;
-                        }
-                        certExamSelectedIds.add(q.id);
-                    } else {
-                        certExamSelectedIds.delete(q.id);
-                    }
-                    updateCertExamSelectedCount();
-                };
-                
-                const text = document.createElement('div');
-                text.style.flex = '1';
-                text.innerHTML = `
-                    <div style="font-weight: 700; color: var(--color-text-primary);">${getQuestionLabel(q)}</div>
-                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">ID: ${q.id}</div>
-                `;
-                
-                row.appendChild(checkbox);
-                row.appendChild(text);
-                listEl.appendChild(row);
-            });
-        }
-        
-        function filterCertificationExamQuestions() {
-            const search = (document.getElementById('certExamSearch')?.value || '').trim().toLowerCase();
-            if (!search) {
-                certExamFilteredQuestions = [...certExamAllQuestions];
-            } else {
-                certExamFilteredQuestions = certExamAllQuestions.filter(q => {
-                    const sentence = (q.correctSentence || '').toLowerCase();
-                    const hint = (q.hint || '').toLowerCase();
-                    return sentence.includes(search) || hint.includes(search) || (q.id || '').toLowerCase().includes(search);
-                });
-            }
-            renderCertificationExamQuestions();
-        }
-        
-        async function saveCertificationExamSelection() {
-            const level = document.getElementById('certExamLevelSelect')?.value || 'Beginner';
-            const statusEl = document.getElementById('certExamSaveStatus');
-            
-            if (certExamSelectedIds.size !== 10) {
-                showError(`Please select exactly 10 questions (currently ${certExamSelectedIds.size}).`);
-                return;
-            }
-            
-            const ids = Array.from(certExamSelectedIds);
-            try {
-                await db.collection('settings').doc('certificationExam').set({
-                    [level]: ids,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedBy: currentUser?.email || 'unknown'
-                }, { merge: true });
-                
-                certExamSavedByLevel[level] = ids;
-                if (statusEl) statusEl.textContent = 'Saved.';
-                showSuccess(`Certification exam saved for ${level} (10 questions).`);
-            } catch (e) {
-                console.error('Error saving certification exam selection:', e);
-                showError('Error saving exam selection: ' + e.message);
-            }
-        }
         
         // Teacher playground
         async function startPlayground() {
@@ -5229,10 +4679,6 @@
         let challengeTimeRemaining = 30;
         let challengeScore = 0;
         let challengeQuestionStartTime = null;
-        let questionTransitionLocked = false;
-        let certificationExamState = { level: null, questions: [], index: 0, passed: false };
-        let challengeUnsubscribe = null;
-        let challengeLiveState = { mySentenceScores: [], friendSentenceScores: [], myTotal: 0, friendTotal: 0 };
         
         // Set minimum date to today
         document.addEventListener('DOMContentLoaded', () => {
@@ -5423,18 +4869,15 @@
                 // Get challenges where user is challenger or opponent
                 const sentChallenges = await db.collection('challenges')
                     .where('challengerId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
                     .get();
                     
                 const receivedChallenges = await db.collection('challenges')
                     .where('opponentId', '==', currentUser.uid)
+                    .orderBy('createdAt', 'desc')
                     .get();
                 
-                const allChallenges = [...sentChallenges.docs, ...receivedChallenges.docs]
-                    .sort((a, b) => {
-                        const aTs = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : 0;
-                        const bTs = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : 0;
-                        return bTs - aTs;
-                    });
+                const allChallenges = [...sentChallenges.docs, ...receivedChallenges.docs];
                 
                 if (allChallenges.length === 0) {
                     challengesList.innerHTML = '<p style="text-align:center; padding:40px;">No challenges yet. Challenge a friend!</p>';
@@ -5477,7 +4920,6 @@
                     `;
                     challengesList.appendChild(card);
                 });
-                await updateChallengeStateIndicator();
             } catch (error) {
                 challengesList.innerHTML = `<p style="color:var(--color-danger); text-align:center;">Error loading challenges: ${error.message}</p>`;
             }
@@ -5491,9 +4933,10 @@
                 const snapshot = await db.collection('challenges')
                     .where('opponentId', '==', currentUser.uid)
                     .where('status', '==', 'pending')
+                    .where('opponentCompleted', '==', false)
                     .get();
                 
-                const count = snapshot.docs.filter(doc => doc.data().opponentCompleted === false).length;
+                const count = snapshot.size;
                 
                 if (count > 0) {
                     document.getElementById('challengeCount').textContent = count;
@@ -5510,7 +4953,6 @@
         async function startChallenge(challengeId) {
             currentChallengeId = challengeId;
             challengeScore = 0;
-            challengeLiveState = { mySentenceScores: [], friendSentenceScores: [], myTotal: 0, friendTotal: 0 };
             
             // Get challenge data
             const challengeDoc = await db.collection('challenges').doc(challengeId).get();
@@ -5541,102 +4983,10 @@
             document.getElementById('challengeScoreDisplay').classList.remove('hidden');
             document.getElementById('challengeTimerDisplay').classList.remove('hidden');
             document.getElementById('currentScore').textContent = '0';
-            document.getElementById('challengeMonitorPanel').classList.remove('hidden');
-            document.getElementById('challengeWinnerBanner').classList.add('hidden');
-            document.getElementById('challengeMonitorSentenceTotal').textContent = String(challengeData.sentenceCount || levelQuestions.length);
-            const isChallenger = challengeData.challengerId === currentUser.uid;
-            document.getElementById('challengeMonitorMeName').textContent = userProgress?.name || 'You';
-            document.getElementById('challengeMonitorFriendName').textContent = isChallenger ? (challengeData.opponentName || 'Friend') : (challengeData.challengerName || 'Friend');
-            
-            await db.collection('challenges').doc(challengeId).set({
-                status: 'in_progress'
-            }, { merge: true });
-            
-            startChallengeLiveMonitor(challengeId);
             
             closeViewChallengesModal();
             loadQuestion();
             showGameScreen();
-        }
-
-        function startChallengeLiveMonitor(challengeId) {
-            if (challengeUnsubscribe) {
-                try { challengeUnsubscribe(); } catch {}
-                challengeUnsubscribe = null;
-            }
-            
-            challengeUnsubscribe = db.collection('challenges').doc(challengeId).onSnapshot((snap) => {
-                if (!snap.exists) return;
-                const c = snap.data();
-                const isChallenger = c.challengerId === currentUser.uid;
-                
-                const myScores = isChallenger ? (c.challengerSentenceScores || []) : (c.opponentSentenceScores || []);
-                const friendScores = isChallenger ? (c.opponentSentenceScores || []) : (c.challengerSentenceScores || []);
-                const myTotal = isChallenger ? (c.challengerScore || 0) : (c.opponentScore || 0);
-                const friendTotal = isChallenger ? (c.opponentScore || 0) : (c.challengerScore || 0);
-                
-                challengeLiveState.mySentenceScores = myScores;
-                challengeLiveState.friendSentenceScores = friendScores;
-                challengeLiveState.myTotal = myTotal;
-                challengeLiveState.friendTotal = friendTotal;
-                
-                document.getElementById('challengeMonitorMeTotal').textContent = String(myTotal);
-                document.getElementById('challengeMonitorFriendTotal').textContent = String(friendTotal);
-                document.getElementById('challengeMonitorMeLast').textContent = myScores.length ? String(myScores[myScores.length - 1]) : '-';
-                document.getElementById('challengeMonitorFriendLast').textContent = friendScores.length ? String(friendScores[friendScores.length - 1]) : '-';
-                
-                // If someone finished first, end the round on BOTH screens
-                const challengerFinishedAt = c.challengerFinishedAt?.toMillis ? c.challengerFinishedAt.toMillis() : null;
-                const opponentFinishedAt = c.opponentFinishedAt?.toMillis ? c.opponentFinishedAt.toMillis() : null;
-                let winnerName = null;
-                let winnerId = null;
-                
-                if (challengerFinishedAt && opponentFinishedAt) {
-                    winnerId = challengerFinishedAt <= opponentFinishedAt ? c.challengerId : c.opponentId;
-                } else if (challengerFinishedAt) {
-                    winnerId = c.challengerId;
-                } else if (opponentFinishedAt) {
-                    winnerId = c.opponentId;
-                }
-                
-                if (winnerId) {
-                    winnerName = winnerId === c.challengerId ? (c.challengerName || 'Winner') : (c.opponentName || 'Winner');
-                    showChallengeWinnerAndEnd(winnerName);
-                }
-            }, (err) => {
-                console.error('Challenge live monitor error:', err);
-            });
-        }
-
-        function showChallengeWinnerAndEnd(winnerName) {
-            const banner = document.getElementById('challengeWinnerBanner');
-            const text = document.getElementById('challengeWinnerText');
-            if (text) text.textContent = winnerName;
-            if (banner) banner.classList.remove('hidden');
-            
-            // Stop timers / gameplay immediately
-            if (challengeTimer) clearInterval(challengeTimer);
-            document.getElementById('challengeScoreDisplay').classList.add('hidden');
-            document.getElementById('challengeTimerDisplay').classList.add('hidden');
-            
-            // Prevent repeated exits
-            if (currentChallengeId) {
-                const endedChallengeId = currentChallengeId;
-                currentChallengeId = null;
-                challengeScore = 0;
-                
-                setTimeout(() => {
-                    alert(`🎉 ${winnerName} finished first! Congratulations!\\n\\nThis challenge round has ended.`);
-                    // Clean up listener
-                    if (challengeUnsubscribe) {
-                        try { challengeUnsubscribe(); } catch {}
-                        challengeUnsubscribe = null;
-                    }
-                    document.getElementById('challengeMonitorPanel').classList.add('hidden');
-                    updateChallengeStateIndicator();
-                    backToDashboard();
-                }, 800);
-            }
         }
         
         // Start timer for challenge question
@@ -5674,11 +5024,9 @@
         }
         
         function nextChallengeQuestion() {
-            if (questionTransitionLocked) return;
-            questionTransitionLocked = true;
             if (challengeTimer) clearInterval(challengeTimer);
             
-            currentQuestionIndex = currentQuestionIndex + 1;
+            currentQuestionIndex++;
             
             if (currentQuestionIndex >= levelQuestions.length) {
                 // Challenge complete
@@ -5686,7 +5034,6 @@
             } else {
                 loadQuestion();
             }
-            questionTransitionLocked = false;
         }
         
         async function completeChallengeForUser() {
@@ -5703,171 +5050,51 @@
             // Update challenge with user's score
             const updateData = {
                 [isChallenger ? 'challengerScore' : 'opponentScore']: challengeScore,
-                [isChallenger ? 'challengerCompleted' : 'opponentCompleted']: true,
-                [isChallenger ? 'challengerFinishedAt' : 'opponentFinishedAt']: firebase.firestore.FieldValue.serverTimestamp()
+                [isChallenger ? 'challengerCompleted' : 'opponentCompleted']: true
             };
             
-            // Round ends as soon as ANYONE finishes first
-            updateData.status = 'completed';
-            updateData.winner = currentUser.uid;
+            // Check if both completed
+            const bothCompleted = isChallenger ? challengeData.opponentCompleted : challengeData.challengerCompleted;
+            
+            if (bothCompleted) {
+                // Determine winner
+                const challengerScore = isChallenger ? challengeScore : challengeData.challengerScore;
+                const opponentScore = isChallenger ? challengeData.opponentScore : challengeScore;
+                
+                let winner;
+                if (challengerScore > opponentScore) {
+                    winner = challengeData.challengerId;
+                } else if (opponentScore > challengerScore) {
+                    winner = challengeData.opponentId;
+                } else {
+                    winner = 'tie';
+                }
+                
+                updateData.status = 'completed';
+                updateData.winner = winner;
+            }
             
             await db.collection('challenges').doc(currentChallengeId).update(updateData);
             
             // Show completion message
-            alert(`Challenge Complete! Your Score: ${challengeScore}\nWaiting for the live result...`);
+            alert(`Challenge Complete! Your Score: ${challengeScore}\n${bothCompleted ? 'Check challenges to see the winner!' : 'Waiting for opponent to complete...'}`);
             
             currentChallengeId = null;
             challengeScore = 0;
-            await updateChallengeStateIndicator();
             backToDashboard();
         }
         
         // Load all challenges for admin view
-        function getFullyCompletedLevelCount(progressData) {
-            const levels = ['Beginner', 'Intermediate', 'Advanced'];
-            return levels.filter(level => {
-                const levelProgress = progressData?.progress?.[level] || { completed: 0, total: appSettings.sentencesPerLevel };
-                return (levelProgress.completed || 0) >= (levelProgress.total || appSettings.sentencesPerLevel);
-            }).length;
-        }
-        
-        async function updateChallengeEligibilityUI() {
-            const challengeBtn = document.getElementById('challengeFriendBtn');
-            if (!challengeBtn) return;
-            challengeBtn.disabled = false;
-            challengeBtn.textContent = '🏆 Challenge Friend';
-        }
-        
-        async function updateChallengeStateIndicator() {
-            if (!currentUser || isAdmin) return;
-            const indicator = document.getElementById('challengeStateText');
-            if (!indicator) return;
-            
-            try {
-                const sentSnapshot = await db.collection('challenges').where('challengerId', '==', currentUser.uid).get();
-                const receivedSnapshot = await db.collection('challenges').where('opponentId', '==', currentUser.uid).get();
-                const allChallenges = [...sentSnapshot.docs, ...receivedSnapshot.docs].map(doc => doc.data());
-                
-                const pending = allChallenges.filter(c => c.status === 'pending').length;
-                const active = allChallenges.filter(c => c.status === 'in_progress').length;
-                const completed = allChallenges.filter(c => c.status === 'completed').length;
-                const cancelled = allChallenges.filter(c => c.status === 'cancelled').length;
-                indicator.textContent = `Pending: ${pending} | Active: ${active} | Completed: ${completed} | Cancelled: ${cancelled}`;
-            } catch (error) {
-                indicator.textContent = 'Could not load challenge state.';
-            }
-        }
-        
-        async function deleteChallenge(challengeId) {
-            if (!confirm('Delete this challenge request?')) return;
-            
-            try {
-                await db.collection('challenges').doc(challengeId).delete();
-                showSuccess('Challenge removed.');
-                await loadAllChallenges();
-            } catch (error) {
-                if (error?.code === 'permission-denied') {
-                    try {
-                        await db.collection('challenges').doc(challengeId).set({
-                            status: 'cancelled',
-                            cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            cancelledBy: currentUser?.email || 'admin'
-                        }, { merge: true });
-                        showSuccess('Delete permission denied. Challenge marked as cancelled instead.');
-                        await loadAllChallenges();
-                        return;
-                    } catch (fallbackError) {
-                        showError('Delete and cancel fallback failed: ' + (fallbackError?.message || fallbackError));
-                        return;
-                    }
-                }
-                showError('Error deleting challenge: ' + error.message);
-            }
-        }
-        
-        async function removePendingChallenges() {
-            if (!confirm('Remove all pending challenges?')) return;
-            
-            try {
-                let totalDeleted = 0;
-                // Delete in chunks to avoid batch limits and to provide clearer failure points
-                // (Firestore batch limit is 500 ops).
-                while (true) {
-                    const pendingSnapshot = await db.collection('challenges')
-                        .where('status', '==', 'pending')
-                        .limit(450)
-                        .get();
-                    
-                    if (pendingSnapshot.empty) break;
-                    
-                    const batch = db.batch();
-                    pendingSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
-                    
-                    totalDeleted += pendingSnapshot.size;
-                }
-                
-                if (totalDeleted === 0) {
-                    showSuccess('No pending challenges to remove.');
-                } else {
-                    showSuccess(`Removed ${totalDeleted} pending challenge(s).`);
-                }
-                
-                await loadAllChallenges();
-            } catch (error) {
-                console.error('removePendingChallenges failed:', error);
-                const code = error?.code || '';
-                const msg = error?.message || String(error);
-                
-                // Fallback for permission-denied: archive pending challenges instead of deleting.
-                if (code === 'permission-denied') {
-                    try {
-                        let archived = 0;
-                        while (true) {
-                            const pendingSnapshot = await db.collection('challenges')
-                                .where('status', '==', 'pending')
-                                .limit(450)
-                                .get();
-                            if (pendingSnapshot.empty) break;
-                            
-                            const batch = db.batch();
-                            pendingSnapshot.docs.forEach(doc => {
-                                batch.set(doc.ref, {
-                                    status: 'cancelled',
-                                    cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                    cancelledBy: currentUser?.email || 'admin'
-                                }, { merge: true });
-                            });
-                            await batch.commit();
-                            archived += pendingSnapshot.size;
-                        }
-                        
-                        showSuccess(`Delete permission denied. Marked ${archived} pending challenge(s) as cancelled instead.`);
-                        await loadAllChallenges();
-                        return;
-                    } catch (fallbackError) {
-                        const fbMsg = fallbackError?.message || String(fallbackError);
-                        showError('Delete and fallback archive both failed: ' + fbMsg);
-                        alert('Permission issue:\n\nCannot delete pending challenges, and archive fallback also failed.\nPlease update Firestore rules for admin write access on challenges.');
-                        return;
-                    }
-                }
-                
-                showError('Error removing pending challenges: ' + msg);
-                alert('Remove Pending Challenges failed:\n\n' + msg);
-            }
-        }
-        
         async function loadAllChallenges() {
             const tbody = document.getElementById('challengesTableBody');
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
             
             try {
                 const snapshot = await db.collection('challenges').orderBy('createdAt', 'desc').get();
                 tbody.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No challenges yet</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No challenges yet</td></tr>';
                     return;
                 }
                 
@@ -5884,12 +5111,11 @@
                         <td>${c.challengerScore}</td>
                         <td>${c.opponentScore}</td>
                         <td>${c.winner ? (c.winner === 'tie' ? 'Tie' : (c.winner === c.challengerId ? c.challengerName : c.opponentName)) : '-'}</td>
-                        <td><button class="btn btn-danger" onclick="deleteChallenge('${doc.id}')" style="font-size: 0.8rem; padding: 6px 10px;">Delete</button></td>
                     `;
                     tbody.appendChild(row);
                 });
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
             }
         }
         
