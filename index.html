@@ -3876,6 +3876,9 @@
         }
         
         let certExamStarting = false;
+        let certExamInProgress = false;
+        let certExamSubmitting = false;
+        let certBypassGateOnce = false;
         
         function containsArabic(textValue) {
             return /[\u0600-\u06FF]/.test(textValue || '');
@@ -3920,6 +3923,7 @@
         async function ensureCertificationPassed(level) {
             const alreadyPassed = userProgress?.certificationExamPassed?.[level] === true;
             if (alreadyPassed) return true;
+            if (certExamInProgress && certificationExamState?.level === level) return false;
             await startCertificationExam(level);
             return false;
         }
@@ -3928,6 +3932,7 @@
             if (certExamStarting) return;
             const modal = document.getElementById('certExamModal');
             if (modal && !modal.classList.contains('hidden')) return;
+            if (certExamInProgress && certificationExamState?.level === level) return;
             
             certExamStarting = true;
             
@@ -3966,6 +3971,7 @@
                 index: 0,
                 passed: false
             };
+            certExamInProgress = true;
             
             document.getElementById('certExamModal').classList.remove('hidden');
             renderCertificationQuestion();
@@ -4007,6 +4013,8 @@
         }
         
         async function submitCertificationQuestion() {
+            if (certExamSubmitting) return;
+            certExamSubmitting = true;
             const question = certificationExamState.questions[certificationExamState.index];
             const builtSentence = Array.from(document.getElementById('certExamDropZone').children)
                 .map(el => el.dataset.word)
@@ -4017,6 +4025,8 @@
             if (!builtSentence || builtSentence.toLowerCase() !== correctSentence.toLowerCase()) {
                 showError('Incorrect answer. Certification block failed (one attempt per question). Please restart.');
                 closeCertificationExamModal();
+                certExamInProgress = false;
+                certExamSubmitting = false;
                 return;
             }
             
@@ -4036,21 +4046,31 @@
                 }, { merge: true });
                 
                 showSuccess('Certification block completed. Certificate printing is now unlocked.');
+                certExamInProgress = false;
                 closeCertificationExamModal();
+                certBypassGateOnce = true;
                 await downloadCertificateForLevel(certificationExamState.level);
+                certExamSubmitting = false;
                 return;
             }
             
             renderCertificationQuestion();
+            certExamSubmitting = false;
         }
         
         function closeCertificationExamModal() {
             document.getElementById('certExamModal').classList.add('hidden');
+            certExamInProgress = false;
+            certExamSubmitting = false;
         }
         
         async function downloadCertificateForLevel(level) {
-            const certificationPassed = await ensureCertificationPassed(level);
-            if (!certificationPassed) return;
+            if (!certBypassGateOnce) {
+                const certificationPassed = await ensureCertificationPassed(level);
+                if (!certificationPassed) return;
+            } else {
+                certBypassGateOnce = false;
+            }
             
             await loadCertificateSettings();
             
@@ -5697,7 +5717,8 @@
                 const pending = allChallenges.filter(c => c.status === 'pending').length;
                 const active = allChallenges.filter(c => c.status === 'in_progress').length;
                 const completed = allChallenges.filter(c => c.status === 'completed').length;
-                indicator.textContent = `Pending: ${pending} | Active: ${active} | Completed: ${completed}`;
+                const cancelled = allChallenges.filter(c => c.status === 'cancelled').length;
+                indicator.textContent = `Pending: ${pending} | Active: ${active} | Completed: ${completed} | Cancelled: ${cancelled}`;
             } catch (error) {
                 indicator.textContent = 'Could not load challenge state.';
             }
@@ -5746,9 +5767,45 @@
                 await loadAllChallenges();
             } catch (error) {
                 console.error('removePendingChallenges failed:', error);
+                const code = error?.code || '';
                 const msg = error?.message || String(error);
+                
+                // Fallback for permission-denied: archive pending challenges instead of deleting.
+                if (code === 'permission-denied') {
+                    try {
+                        let archived = 0;
+                        while (true) {
+                            const pendingSnapshot = await db.collection('challenges')
+                                .where('status', '==', 'pending')
+                                .limit(450)
+                                .get();
+                            if (pendingSnapshot.empty) break;
+                            
+                            const batch = db.batch();
+                            pendingSnapshot.docs.forEach(doc => {
+                                batch.set(doc.ref, {
+                                    status: 'cancelled',
+                                    cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    cancelledBy: currentUser?.email || 'admin'
+                                }, { merge: true });
+                            });
+                            await batch.commit();
+                            archived += pendingSnapshot.size;
+                        }
+                        
+                        showSuccess(`Delete permission denied. Marked ${archived} pending challenge(s) as cancelled instead.`);
+                        await loadAllChallenges();
+                        return;
+                    } catch (fallbackError) {
+                        const fbMsg = fallbackError?.message || String(fallbackError);
+                        showError('Delete and fallback archive both failed: ' + fbMsg);
+                        alert('Permission issue:\n\nCannot delete pending challenges, and archive fallback also failed.\nPlease update Firestore rules for admin write access on challenges.');
+                        return;
+                    }
+                }
+                
                 showError('Error removing pending challenges: ' + msg);
-                alert('Remove Pending Challenges failed:\n\n' + msg + '\n\nMost common cause: Firestore security rules do not allow deleting challenge documents for this account.');
+                alert('Remove Pending Challenges failed:\n\n' + msg);
             }
         }
         
