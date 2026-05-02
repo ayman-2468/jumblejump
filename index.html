@@ -1802,6 +1802,39 @@
                     <button class="btn btn-primary" onclick="saveCertificateSettings()">Save Certificate Settings</button>
                     <button class="btn btn-outline" onclick="previewCertificate()">Preview Certificate</button>
                 </div>
+                
+                <div class="card" style="margin-top: 25px;">
+                    <h3 style="color: var(--color-primary); margin-bottom: 10px;">🧩 Certification Exam (Pick 10 Questions)</h3>
+                    <p style="margin-top: 0; color: var(--color-text-secondary);">
+                        Select exactly 10 questions per level to be used in the Certification Exam. This is saved in Firestore `settings/certificationExam`.
+                    </p>
+                    
+                    <div style="display:flex; gap: 10px; flex-wrap: wrap; align-items: end;">
+                        <div class="input-group" style="margin:0; flex: 1; min-width: 220px;">
+                            <label>Level</label>
+                            <select id="certExamLevelSelect" onchange="loadCertificationExamPicker()">
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin:0; flex: 2; min-width: 280px;">
+                            <label>Search (by sentence text)</label>
+                            <input type="text" id="certExamSearch" placeholder="Type to filter..." oninput="filterCertificationExamQuestions()">
+                        </div>
+                        <button class="btn btn-primary" onclick="loadCertificationExamPicker()">Refresh List</button>
+                        <button class="btn btn-success" onclick="saveCertificationExamSelection()">Save Selected 10</button>
+                    </div>
+                    
+                    <p style="margin: 10px 0; font-weight: 700;">
+                        Selected: <span id="certExamSelectedCount">0</span>/10
+                        <span id="certExamSaveStatus" style="margin-left: 10px; font-weight: 600; color: var(--color-text-secondary);"></span>
+                    </p>
+                    
+                    <div id="certExamQuestionsList" style="max-height: 360px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: var(--border-radius-md); padding: 10px;">
+                        <p style="color: var(--color-text-secondary); margin: 0;">Load a level to pick questions.</p>
+                    </div>
+                </div>
             </div>
             
             <!-- Challenges Tab -->
@@ -4150,6 +4183,9 @@
                 loadTeachersList();
             } else if (tab === 'settings') {
                 loadMasterCode();
+            } else if (tab === 'certificate') {
+                // Load picker data when certificate tab is opened
+                loadCertificationExamPicker();
             }
         }
         
@@ -4903,6 +4939,169 @@
         
         function previewCertificate() {
             alert('Certificate preview will be shown when you complete a level!');
+        }
+
+        // ========================================
+        // CERTIFICATION EXAM PICKER (ADMIN UI)
+        // ========================================
+        
+        let certExamAllQuestions = [];
+        let certExamFilteredQuestions = [];
+        let certExamSelectedIds = new Set();
+        let certExamSavedByLevel = { Beginner: [], Intermediate: [], Advanced: [] };
+        
+        async function loadCertificationExamSettings() {
+            try {
+                const doc = await db.collection('settings').doc('certificationExam').get();
+                if (doc.exists) {
+                    const data = doc.data() || {};
+                    certExamSavedByLevel = {
+                        Beginner: Array.isArray(data.Beginner) ? data.Beginner : [],
+                        Intermediate: Array.isArray(data.Intermediate) ? data.Intermediate : [],
+                        Advanced: Array.isArray(data.Advanced) ? data.Advanced : []
+                    };
+                }
+            } catch (e) {
+                console.error('Error loading certification exam settings:', e);
+            }
+        }
+        
+        async function loadCertificationExamPicker() {
+            await loadCertificationExamSettings();
+            
+            const level = document.getElementById('certExamLevelSelect')?.value || 'Beginner';
+            const listEl = document.getElementById('certExamQuestionsList');
+            const statusEl = document.getElementById('certExamSaveStatus');
+            if (!listEl) return;
+            
+            listEl.innerHTML = '<div class="spinner"></div><p style="text-align:center; color: var(--color-text-secondary);">Loading questions...</p>';
+            statusEl.textContent = '';
+            
+            try {
+                const snapshot = await db.collection('questions')
+                    .where('level', '==', level)
+                    .get();
+                
+                certExamAllQuestions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Stable sort so list is consistent
+                certExamAllQuestions.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+                certExamFilteredQuestions = [...certExamAllQuestions];
+                
+                const saved = certExamSavedByLevel[level] || [];
+                certExamSelectedIds = new Set(saved);
+                
+                // If saved ids exist but are missing in current query (data moved), keep them selected
+                updateCertExamSelectedCount();
+                renderCertificationExamQuestions();
+                filterCertificationExamQuestions();
+            } catch (e) {
+                console.error('Error loading exam picker questions:', e);
+                listEl.innerHTML = `<p style="color: var(--color-danger); margin: 0;">Error loading questions: ${e.message}</p>`;
+            }
+        }
+        
+        function updateCertExamSelectedCount() {
+            const countEl = document.getElementById('certExamSelectedCount');
+            if (countEl) countEl.textContent = String(certExamSelectedIds.size);
+        }
+        
+        function getQuestionLabel(q) {
+            const sentence = (q.correctSentence || '').trim();
+            const hint = (q.hint || '').trim();
+            if (sentence) return sentence;
+            if (hint) return hint;
+            return q.id;
+        }
+        
+        function renderCertificationExamQuestions() {
+            const listEl = document.getElementById('certExamQuestionsList');
+            if (!listEl) return;
+            
+            if (!certExamFilteredQuestions.length) {
+                listEl.innerHTML = '<p style="color: var(--color-text-secondary); margin: 0;">No questions found for this level.</p>';
+                return;
+            }
+            
+            listEl.innerHTML = '';
+            
+            certExamFilteredQuestions.forEach((q) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'flex-start';
+                row.style.gap = '10px';
+                row.style.padding = '8px 6px';
+                row.style.borderBottom = '1px solid #E2E8F0';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = certExamSelectedIds.has(q.id);
+                checkbox.style.marginTop = '3px';
+                
+                checkbox.onchange = () => {
+                    if (checkbox.checked) {
+                        if (certExamSelectedIds.size >= 10) {
+                            checkbox.checked = false;
+                            showError('You can only select exactly 10 questions.');
+                            return;
+                        }
+                        certExamSelectedIds.add(q.id);
+                    } else {
+                        certExamSelectedIds.delete(q.id);
+                    }
+                    updateCertExamSelectedCount();
+                };
+                
+                const text = document.createElement('div');
+                text.style.flex = '1';
+                text.innerHTML = `
+                    <div style="font-weight: 700; color: var(--color-text-primary);">${getQuestionLabel(q)}</div>
+                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">ID: ${q.id}</div>
+                `;
+                
+                row.appendChild(checkbox);
+                row.appendChild(text);
+                listEl.appendChild(row);
+            });
+        }
+        
+        function filterCertificationExamQuestions() {
+            const search = (document.getElementById('certExamSearch')?.value || '').trim().toLowerCase();
+            if (!search) {
+                certExamFilteredQuestions = [...certExamAllQuestions];
+            } else {
+                certExamFilteredQuestions = certExamAllQuestions.filter(q => {
+                    const sentence = (q.correctSentence || '').toLowerCase();
+                    const hint = (q.hint || '').toLowerCase();
+                    return sentence.includes(search) || hint.includes(search) || (q.id || '').toLowerCase().includes(search);
+                });
+            }
+            renderCertificationExamQuestions();
+        }
+        
+        async function saveCertificationExamSelection() {
+            const level = document.getElementById('certExamLevelSelect')?.value || 'Beginner';
+            const statusEl = document.getElementById('certExamSaveStatus');
+            
+            if (certExamSelectedIds.size !== 10) {
+                showError(`Please select exactly 10 questions (currently ${certExamSelectedIds.size}).`);
+                return;
+            }
+            
+            const ids = Array.from(certExamSelectedIds);
+            try {
+                await db.collection('settings').doc('certificationExam').set({
+                    [level]: ids,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: currentUser?.email || 'unknown'
+                }, { merge: true });
+                
+                certExamSavedByLevel[level] = ids;
+                if (statusEl) statusEl.textContent = 'Saved.';
+                showSuccess(`Certification exam saved for ${level} (10 questions).`);
+            } catch (e) {
+                console.error('Error saving certification exam selection:', e);
+                showError('Error saving exam selection: ' + e.message);
+            }
         }
         
         // Teacher playground
