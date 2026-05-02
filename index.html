@@ -5719,22 +5719,36 @@
             if (!confirm('Remove all pending challenges?')) return;
             
             try {
-                const pendingSnapshot = await db.collection('challenges')
-                    .where('status', '==', 'pending')
-                    .get();
-                
-                if (pendingSnapshot.empty) {
-                    showSuccess('No pending challenges to remove.');
-                    return;
+                let totalDeleted = 0;
+                // Delete in chunks to avoid batch limits and to provide clearer failure points
+                // (Firestore batch limit is 500 ops).
+                while (true) {
+                    const pendingSnapshot = await db.collection('challenges')
+                        .where('status', '==', 'pending')
+                        .limit(450)
+                        .get();
+                    
+                    if (pendingSnapshot.empty) break;
+                    
+                    const batch = db.batch();
+                    pendingSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    
+                    totalDeleted += pendingSnapshot.size;
                 }
                 
-                const batch = db.batch();
-                pendingSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                showSuccess(`Removed ${pendingSnapshot.size} pending challenge(s).`);
+                if (totalDeleted === 0) {
+                    showSuccess('No pending challenges to remove.');
+                } else {
+                    showSuccess(`Removed ${totalDeleted} pending challenge(s).`);
+                }
+                
                 await loadAllChallenges();
             } catch (error) {
-                showError('Error removing pending challenges: ' + error.message);
+                console.error('removePendingChallenges failed:', error);
+                const msg = error?.message || String(error);
+                showError('Error removing pending challenges: ' + msg);
+                alert('Remove Pending Challenges failed:\n\n' + msg + '\n\nMost common cause: Firestore security rules do not allow deleting challenge documents for this account.');
             }
         }
         
