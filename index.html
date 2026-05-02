@@ -2343,11 +2343,14 @@
             levelsGrid.innerHTML = '';
             
             levels.forEach((level, index) => {
-                const requiredTotal = appSettings.sentencesPerLevel || 100;
-                const progress = userProgress.progress[level] || { completed: 0, total: requiredTotal };
+                const fallbackTotal = appSettings.sentencesPerLevel || 100;
+                const progress = userProgress.progress[level] || { completed: 0, total: fallbackTotal };
+                const requiredTotal = Math.max(1, progress.total || fallbackTotal);
                 const completed = progress.completed || 0;
                 const percentage = Math.min(100, Math.round((completed / requiredTotal) * 100));
-                const isLocked = index > 0 && (userProgress.progress[levels[index - 1]]?.completed || 0) < appSettings.sentencesPerLevel;
+                const prev = index > 0 ? (userProgress.progress[levels[index - 1]] || { completed: 0, total: fallbackTotal }) : null;
+                const prevRequired = prev ? Math.max(1, prev.total || fallbackTotal) : 0;
+                const isLocked = index > 0 && (prev.completed || 0) < prevRequired;
                 
                 const card = document.createElement('div');
                 card.className = `level-card ${isLocked ? 'locked' : ''}`;
@@ -2384,8 +2387,9 @@
             certificatesGrid.innerHTML = '';
             
             levels.forEach(level => {
-                const requiredTotal = appSettings.sentencesPerLevel || 100;
-                const progress = userProgress.progress[level] || { completed: 0, total: requiredTotal };
+                const fallbackTotal = appSettings.sentencesPerLevel || 100;
+                const progress = userProgress.progress[level] || { completed: 0, total: fallbackTotal };
+                const requiredTotal = Math.max(1, progress.total || fallbackTotal);
                 const completed = progress.completed || 0;
                 const isCompleted = completed >= requiredTotal;
                 
@@ -4045,10 +4049,11 @@
                 }, { merge: true });
                 
                 showSuccess('Certification block completed. Certificate printing is now unlocked.');
+                const unlockedLevel = certificationExamState.level;
                 certExamInProgress = false;
-                closeCertificationExamModal();
                 certBypassGateOnce = true;
-                await downloadCertificateForLevel(certificationExamState.level);
+                closeCertificationExamModal();
+                await downloadCertificateForLevel(unlockedLevel);
                 certExamSubmitting = false;
                 return;
             }
@@ -4064,8 +4069,10 @@
         }
         
         async function downloadCertificateForLevel(level) {
-            const requiredTotal = appSettings.sentencesPerLevel || 100;
-            const completed = userProgress?.progress?.[level]?.completed || 0;
+            const fallbackTotal = appSettings.sentencesPerLevel || 100;
+            const levelProgress = userProgress?.progress?.[level] || { completed: 0, total: fallbackTotal };
+            const requiredTotal = Math.max(1, levelProgress.total || fallbackTotal);
+            const completed = levelProgress.completed || 0;
             if (completed < requiredTotal) {
                 showError(`Complete ${requiredTotal} questions in ${level} before downloading the certificate.`);
                 return;
@@ -4679,8 +4686,10 @@
             
             const levels = ['Beginner', 'Intermediate', 'Advanced'];
             levels.forEach(level => {
-                const progress = userData.progress[level] || { completed: 0, total: 100 };
-                const isCompleted = progress.completed >= progress.total;
+                const fallbackTotal = appSettings.sentencesPerLevel || 100;
+                const progress = userData.progress[level] || { completed: 0, total: fallbackTotal };
+                const requiredTotal = Math.max(1, progress.total || fallbackTotal);
+                const isCompleted = (progress.completed || 0) >= requiredTotal;
                 
                 const statusEl = document.getElementById(`cert${level}Status`);
                 const btnEl = document.getElementById(`cert${level}Btn`);
@@ -4700,8 +4709,10 @@
         
         async function printCertificate(level, userData = null) {
             const studentData = userData || userProgress;
-            const requiredTotal = appSettings.sentencesPerLevel || 100;
-            const completed = studentData?.progress?.[level]?.completed || 0;
+            const fallbackTotal = appSettings.sentencesPerLevel || 100;
+            const levelProgress = studentData?.progress?.[level] || { completed: 0, total: fallbackTotal };
+            const requiredTotal = Math.max(1, levelProgress.total || fallbackTotal);
+            const completed = levelProgress.completed || 0;
             if (completed < requiredTotal) {
                 showError(`Certificate cannot be printed until ${requiredTotal} questions are completed for ${level}.`);
                 return;
