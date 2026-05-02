@@ -1197,12 +1197,17 @@
                         </div>
                     </div>
                     <button class="btn btn-outline" onclick="logout()">Logout</button>
-<button class="btn btn-secondary" onclick="openChallengeModal()" style="margin-left: 10px;" disabled>🏆 Challenge Friend (Coming Soon)</button>                </div>
+<button class="btn btn-secondary" id="challengeFriendBtn" onclick="openChallengeModal()" style="margin-left: 10px;">🏆 Challenge Friend</button>                </div>
             </div>
             
             <!-- Challenge Notification Badge -->
             <div id="challengeBadge" class="challenge-badge hidden" onclick="viewChallenges()">
                 🏆 <span id="challengeCount">0</span> New Challenge(s)
+            </div>
+            
+            <div id="challengeStateCard" class="card" style="margin-top: 15px; margin-bottom: 15px;">
+                <h3 style="margin-bottom: 8px; color: var(--color-primary);">Challenge Status</h3>
+                <p id="challengeStateText" style="margin:0; color: var(--color-text-secondary);">No active challenges.</p>
             </div>
             
             <div class="levels-grid" id="levelsGrid">
@@ -1439,6 +1444,46 @@
     
     <div id="challengeScoreDisplay" class="score-display hidden">
         🎯 Score: <span id="currentScore">0</span>
+    </div>
+    
+    <div id="challengeMonitorPanel" class="card hidden" style="position: fixed; right: 20px; top: 100px; width: 320px; z-index: 1000; box-shadow: var(--shadow-lg);">
+        <h3 style="margin-bottom: 8px; color: var(--color-primary);">🏆 Challenge Monitor</h3>
+        <p style="margin: 0 0 10px 0; color: var(--color-text-secondary); font-size: 0.9rem;">
+            Sentence <span id="challengeMonitorSentenceNum">1</span>/<span id="challengeMonitorSentenceTotal">0</span>
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: var(--color-bg-main); padding: 10px; border-radius: var(--border-radius-md);">
+                <div style="font-weight: 700; margin-bottom: 4px;" id="challengeMonitorMeName">You</div>
+                <div style="font-size: 0.9rem;">Last: <span id="challengeMonitorMeLast">-</span></div>
+                <div style="font-size: 0.9rem;">Total: <span id="challengeMonitorMeTotal">0</span></div>
+            </div>
+            <div style="background: var(--color-bg-main); padding: 10px; border-radius: var(--border-radius-md);">
+                <div style="font-weight: 700; margin-bottom: 4px;" id="challengeMonitorFriendName">Friend</div>
+                <div style="font-size: 0.9rem;">Last: <span id="challengeMonitorFriendLast">-</span></div>
+                <div style="font-size: 0.9rem;">Total: <span id="challengeMonitorFriendTotal">0</span></div>
+            </div>
+        </div>
+        <div id="challengeWinnerBanner" class="hidden" style="margin-top: 12px; padding: 10px; border-radius: var(--border-radius-md); background: #DCFCE7; color: #166534; font-weight: 800; text-align: center;">
+            🎉 <span id="challengeWinnerText">Winner</span> finished first! Congratulations!
+        </div>
+    </div>
+
+    <!-- Certification Exam Modal -->
+    <div id="certExamModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 760px;">
+            <h2 style="color: var(--color-primary); margin-bottom: 10px;">Certification Block</h2>
+            <p style="margin-bottom: 12px; color: var(--color-text-secondary);">Complete 10 scrambled sentence questions in sequence. One attempt per question.</p>
+            <p id="certExamProgress" style="font-weight: 700; margin-bottom: 10px;">Question 1/10</p>
+            <p id="certExamPrompt" style="margin-bottom: 12px;"></p>
+            <div class="sentence-builder">
+                <div class="drop-zone empty" id="certExamDropZone"></div>
+                <div class="scrambled-words" id="certExamScrambled"></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top: 16px;">
+                <button class="btn btn-primary" onclick="submitCertificationQuestion()" style="flex:1;">Submit This Question</button>
+                <button class="btn btn-outline" onclick="closeCertificationExamModal()" style="flex:1;">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <!-- Admin Dashboard -->
@@ -1768,6 +1813,7 @@
                 
                 <div style="margin-bottom: 20px;">
                     <button class="btn btn-primary" onclick="loadAllChallenges()">Refresh Challenges</button>
+                    <button class="btn btn-danger" onclick="removePendingChallenges()" style="margin-left: 10px;">Remove Pending Challenges</button>
                 </div>
                 
                 <div style="overflow-x: auto;">
@@ -1783,11 +1829,12 @@
                                 <th>Challenger Score</th>
                                 <th>Opponent Score</th>
                                 <th>Winner</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="challengesTableBody">
                             <tr>
-                                <td colspan="9" style="text-align: center; padding: 40px;">
+                                <td colspan="10" style="text-align: center; padding: 40px;">
                                     <div class="spinner"></div>
                                     <p>Loading challenges...</p>
                                 </td>
@@ -2248,6 +2295,8 @@
                 
                 // Generate level cards
                 generateLevelCards();
+                await updateChallengeEligibilityUI();
+                await updateChallengeStateIndicator();
             }
             
             showStudentDashboard();
@@ -2842,6 +2891,12 @@
             // Load sentence question for all levels
             loadSentenceQuestion();
             
+            // Update challenge monitor sentence position
+            if (currentChallengeId) {
+                const el = document.getElementById('challengeMonitorSentenceNum');
+                if (el) el.textContent = String(currentQuestionIndex + 1);
+            }
+            
             // Start timer if in challenge mode
             if (currentChallengeId) {
                 startChallengeTimer();
@@ -3113,7 +3168,7 @@
             
             const instructionEl = document.getElementById('instructionText');
             if (instructionEl) {
-                instructionEl.textContent = 'Drag the words to arrange them in the correct order to form a proper sentence';
+                instructionEl.textContent = 'Tap words to move them to the sentence area, then tap again to remove';
             }
             
             // Get scrambled words - clean any commas
@@ -3181,6 +3236,31 @@
             console.log('  - Drop Zone:', dropZone ? 'Found' : 'NOT FOUND');
             console.log('  - Current Question:', currentQuestion);
             console.log('  - Correct Sentence:', currentQuestion?.correctSentence);
+            
+            attachTapToSelectHandlers();
+        }
+
+        function attachTapToSelectHandlers() {
+            const dropZone = document.getElementById('dropZone');
+            const scrambledContainer = document.getElementById('scrambledWords');
+            
+            const applyHandler = (el) => {
+                el.onclick = () => {
+                    const parentId = el.parentElement?.id;
+                    if (parentId === 'scrambledWords') {
+                        dropZone.appendChild(el);
+                        dropZone.classList.remove('empty');
+                    } else {
+                        scrambledContainer.appendChild(el);
+                        if (dropZone.children.length === 0) {
+                            dropZone.classList.add('empty');
+                        }
+                    }
+                };
+            };
+            
+            Array.from(scrambledContainer.children).forEach(applyHandler);
+            Array.from(dropZone.children).forEach(applyHandler);
         }
         
         function checkAnswer() {
@@ -3292,7 +3372,7 @@
             
             // CRITICAL: Check if drop zone has any words
             if (dropZone.children.length === 0) {
-                showError('Please drag words to build your sentence first!');
+                showError('Please tap words to build your sentence first!');
                 return;
             }
             
@@ -3352,11 +3432,11 @@
                 
                 showError('❌ The sentence order is incorrect. Check the hint and try again!');
                 
-                // AUTOMATICALLY RESCRAMBLE after 2 seconds
+                // Keep hint visible longer before auto-rescramble
                 setTimeout(() => {
                     console.log('🔄 Auto-rescrambling words...');
                     returnWordsToScrambledSentence();
-                }, 2000);
+                }, 5000);
             }
         }
         
@@ -3472,6 +3552,27 @@
                 
                 if (challengeTimer) clearInterval(challengeTimer);
                 
+                // Persist per-sentence grade + running totals so both students can see updates
+                try {
+                    db.collection('challenges').doc(currentChallengeId).get().then(docSnap => {
+                        if (!docSnap.exists) return;
+                        const c = docSnap.data();
+                        const isChallenger = c.challengerId === currentUser.uid;
+                        const sentenceField = isChallenger ? 'challengerSentenceScores' : 'opponentSentenceScores';
+                        const totalField = isChallenger ? 'challengerScore' : 'opponentScore';
+                        
+                        const existing = Array.isArray(c[sentenceField]) ? c[sentenceField] : [];
+                        const updated = [...existing, points];
+                        
+                        return db.collection('challenges').doc(currentChallengeId).set({
+                            [sentenceField]: updated,
+                            [totalField]: challengeScore
+                        }, { merge: true });
+                    }).catch(() => {});
+                } catch (e) {
+                    // best-effort; gameplay must continue even if write fails
+                }
+                
                 // Show brief success message
                 showWellDoneMessage();
                 
@@ -3581,16 +3682,19 @@
         }
         
         async function nextQuestion() {
+            if (questionTransitionLocked) return;
+            questionTransitionLocked = true;
             document.getElementById('successModal').classList.add('hidden');
             
-            // Update progress
-            currentQuestionIndex++;
+            // Strict linear progression: one step only
+            currentQuestionIndex = currentQuestionIndex + 1;
             
             // Save progress to Firestore
             await updateUserProgress();
             
             // Load next question
             loadQuestion();
+            questionTransitionLocked = false;
         }
         
         async function updateUserProgress() {
@@ -3649,6 +3753,11 @@
                 if (challengeTimer) clearInterval(challengeTimer);
                 document.getElementById('challengeScoreDisplay').classList.add('hidden');
                 document.getElementById('challengeTimerDisplay').classList.add('hidden');
+                document.getElementById('challengeMonitorPanel')?.classList.add('hidden');
+                if (challengeUnsubscribe) {
+                    try { challengeUnsubscribe(); } catch {}
+                    challengeUnsubscribe = null;
+                }
                 currentChallengeId = null;
                 challengeScore = 0;
             }
@@ -3729,7 +3838,156 @@
             await downloadCertificateForLevel(currentLevel);
         }
         
+        function containsArabic(textValue) {
+            return /[\u0600-\u06FF]/.test(textValue || '');
+        }
+        
+        function openHtmlCertificate(level, studentData, autoPrint = false) {
+            const progress = studentData.progress[level] || {};
+            const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            const win = window.open('', '_blank');
+            if (!win) return;
+            
+            const html = `<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate</title>
+    <style>
+        body { font-family: Tahoma, Arial, sans-serif; padding: 24px; background: #ffffff; }
+        .cert { border: 6px solid #14B8A6; padding: 24px; text-align: center; max-width: 1000px; margin: 0 auto; }
+        .name { font-size: 42px; color: #0f766e; margin: 20px 0; }
+        .line { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="cert">
+        <h1>${certificateSettings.title}</h1>
+        <h3>${certificateSettings.subtitle}</h3>
+        <p class="line">This is to certify that</p>
+        <div class="name">${studentData.name || 'Student'}</div>
+        <p class="line">has successfully completed</p>
+        <h2>${level} Level</h2>
+        <p class="line">⭐ ${progress.completed || 0} Stars</p>
+        <p class="line">Date: ${today}</p>
+    </div>
+    ${autoPrint ? '<script>window.print()</scr' + 'ipt>' : ''}
+</body>
+</html>`;
+            
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+        }
+        
+        async function ensureCertificationPassed(level) {
+            const alreadyPassed = userProgress?.certificationExamPassed?.[level] === true;
+            if (alreadyPassed) return true;
+            await startCertificationExam(level);
+            return false;
+        }
+        
+        async function startCertificationExam(level) {
+            const snapshot = await db.collection('questions')
+                .where('level', '==', level)
+                .get();
+            
+            const selected = shuffleArray(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))).slice(0, 10);
+            if (selected.length < 10) {
+                showError('Certification block requires at least 10 questions in this level.');
+                return;
+            }
+            
+            certificationExamState = {
+                level,
+                questions: selected,
+                index: 0,
+                passed: false
+            };
+            
+            document.getElementById('certExamModal').classList.remove('hidden');
+            renderCertificationQuestion();
+        }
+        
+        function renderCertificationQuestion() {
+            const question = certificationExamState.questions[certificationExamState.index];
+            document.getElementById('certExamProgress').textContent = `Question ${certificationExamState.index + 1}/10`;
+            document.getElementById('certExamPrompt').textContent = question.hint || 'Arrange the sentence correctly.';
+            
+            const dropZone = document.getElementById('certExamDropZone');
+            const scrambled = document.getElementById('certExamScrambled');
+            dropZone.innerHTML = '';
+            scrambled.innerHTML = '';
+            dropZone.classList.add('empty');
+            
+            const words = shuffleArray((question.scrambledWords || question.correctSentence || '')
+                .split(' ')
+                .map(w => w.trim().replace(/,+/g, ''))
+                .filter(Boolean));
+            
+            words.forEach(word => {
+                const el = document.createElement('div');
+                el.className = 'word-item';
+                el.textContent = word;
+                el.dataset.word = word;
+                el.onclick = () => {
+                    if (el.parentElement?.id === 'certExamScrambled') {
+                        dropZone.appendChild(el);
+                        dropZone.classList.remove('empty');
+                    } else {
+                        scrambled.appendChild(el);
+                        if (dropZone.children.length === 0) dropZone.classList.add('empty');
+                    }
+                };
+                scrambled.appendChild(el);
+            });
+        }
+        
+        async function submitCertificationQuestion() {
+            const question = certificationExamState.questions[certificationExamState.index];
+            const builtSentence = Array.from(document.getElementById('certExamDropZone').children)
+                .map(el => el.dataset.word)
+                .join(' ')
+                .trim();
+            const correctSentence = (question.correctSentence || '').trim().replace(/,+/g, '').replace(/\s+/g, ' ');
+            
+            if (!builtSentence || builtSentence.toLowerCase() !== correctSentence.toLowerCase()) {
+                showError('Incorrect answer. Certification block failed (one attempt per question). Please restart.');
+                closeCertificationExamModal();
+                return;
+            }
+            
+            certificationExamState.index += 1;
+            if (certificationExamState.index >= 10) {
+                certificationExamState.passed = true;
+                
+                await db.collection('users').doc(currentUser.uid).set({
+                    certificationExamPassed: {
+                        [certificationExamState.level]: true
+                    }
+                }, { merge: true });
+                
+                userProgress = userProgress || {};
+                userProgress.certificationExamPassed = userProgress.certificationExamPassed || {};
+                userProgress.certificationExamPassed[certificationExamState.level] = true;
+                
+                showSuccess('Certification block completed. Certificate printing is now unlocked.');
+                closeCertificationExamModal();
+                await downloadCertificateForLevel(certificationExamState.level);
+                return;
+            }
+            
+            renderCertificationQuestion();
+        }
+        
+        function closeCertificationExamModal() {
+            document.getElementById('certExamModal').classList.add('hidden');
+        }
+        
         async function downloadCertificateForLevel(level) {
+            const certificationPassed = await ensureCertificationPassed(level);
+            if (!certificationPassed) return;
+            
             await loadCertificateSettings();
             
             const { jsPDF } = window.jspdf;
@@ -3794,7 +4052,13 @@
             doc.setFontSize(28);
             doc.setTextColor(certificateSettings.borderColor);
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
-            doc.text(userProgress?.name || 'Student', 148.5, 100, { align: 'center' });
+            const studentName = userProgress?.name || 'Student';
+            if (containsArabic(studentName)) {
+                openHtmlCertificate(level, userProgress || {}, false);
+                showSuccess('Opened UTF-8 certificate view. Use Print -> Save as PDF for Arabic support.');
+                return;
+            }
+            doc.text(studentName, 148.5, 100, { align: 'center' });
             
             // Add achievement text
             doc.setFontSize(14);
@@ -3807,11 +4071,11 @@
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
             doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
             
-            // Add stars and medals
+            // Add stars only
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
             const progress = userProgress?.progress[level] || {};
-            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, 145, { align: 'center' });
+            doc.text(`⭐ ${progress.completed || 0} Stars`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
@@ -4398,6 +4662,10 @@
             doc.setFontSize(28);
             doc.setTextColor(certificateSettings.borderColor);
             doc.setFont('helvetica', 'bold');
+            if (containsArabic(studentData.name)) {
+                openHtmlCertificate(level, studentData, true);
+                return;
+            }
             doc.text(studentData.name, 148.5, 100, { align: 'center' });
             
             // Add achievement text
@@ -4411,11 +4679,11 @@
             doc.setFont('helvetica', 'bold');
             doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
             
-            // Add stars and medals
+            // Add stars only
             doc.setFontSize(14);
             doc.setTextColor('#0F172A');
             const progress = studentData.progress[level] || {};
-            doc.text(`⭐ ${progress.completed || 0} Stars   🏅 ${Math.floor((progress.completed || 0) / 10)} Medals`, 148.5, 145, { align: 'center' });
+            doc.text(`⭐ ${progress.completed || 0} Stars`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
@@ -4679,6 +4947,10 @@
         let challengeTimeRemaining = 30;
         let challengeScore = 0;
         let challengeQuestionStartTime = null;
+        let questionTransitionLocked = false;
+        let certificationExamState = { level: null, questions: [], index: 0, passed: false };
+        let challengeUnsubscribe = null;
+        let challengeLiveState = { mySentenceScores: [], friendSentenceScores: [], myTotal: 0, friendTotal: 0 };
         
         // Set minimum date to today
         document.addEventListener('DOMContentLoaded', () => {
@@ -4817,6 +5089,12 @@
                 return;
             }
             
+            const fullLevelsCompleted = getFullyCompletedLevelCount(currentUserDoc.data());
+            if (fullLevelsCompleted < 2) {
+                showError('You must complete at least 2 full levels before using challenges.');
+                return;
+            }
+            
             try {
                 const challengeData = {
                     challengerId: currentUser.uid,
@@ -4869,15 +5147,18 @@
                 // Get challenges where user is challenger or opponent
                 const sentChallenges = await db.collection('challenges')
                     .where('challengerId', '==', currentUser.uid)
-                    .orderBy('createdAt', 'desc')
                     .get();
                     
                 const receivedChallenges = await db.collection('challenges')
                     .where('opponentId', '==', currentUser.uid)
-                    .orderBy('createdAt', 'desc')
                     .get();
                 
-                const allChallenges = [...sentChallenges.docs, ...receivedChallenges.docs];
+                const allChallenges = [...sentChallenges.docs, ...receivedChallenges.docs]
+                    .sort((a, b) => {
+                        const aTs = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : 0;
+                        const bTs = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : 0;
+                        return bTs - aTs;
+                    });
                 
                 if (allChallenges.length === 0) {
                     challengesList.innerHTML = '<p style="text-align:center; padding:40px;">No challenges yet. Challenge a friend!</p>';
@@ -4920,6 +5201,7 @@
                     `;
                     challengesList.appendChild(card);
                 });
+                await updateChallengeStateIndicator();
             } catch (error) {
                 challengesList.innerHTML = `<p style="color:var(--color-danger); text-align:center;">Error loading challenges: ${error.message}</p>`;
             }
@@ -4933,10 +5215,9 @@
                 const snapshot = await db.collection('challenges')
                     .where('opponentId', '==', currentUser.uid)
                     .where('status', '==', 'pending')
-                    .where('opponentCompleted', '==', false)
                     .get();
                 
-                const count = snapshot.size;
+                const count = snapshot.docs.filter(doc => doc.data().opponentCompleted === false).length;
                 
                 if (count > 0) {
                     document.getElementById('challengeCount').textContent = count;
@@ -4953,6 +5234,7 @@
         async function startChallenge(challengeId) {
             currentChallengeId = challengeId;
             challengeScore = 0;
+            challengeLiveState = { mySentenceScores: [], friendSentenceScores: [], myTotal: 0, friendTotal: 0 };
             
             // Get challenge data
             const challengeDoc = await db.collection('challenges').doc(challengeId).get();
@@ -4983,10 +5265,102 @@
             document.getElementById('challengeScoreDisplay').classList.remove('hidden');
             document.getElementById('challengeTimerDisplay').classList.remove('hidden');
             document.getElementById('currentScore').textContent = '0';
+            document.getElementById('challengeMonitorPanel').classList.remove('hidden');
+            document.getElementById('challengeWinnerBanner').classList.add('hidden');
+            document.getElementById('challengeMonitorSentenceTotal').textContent = String(challengeData.sentenceCount || levelQuestions.length);
+            const isChallenger = challengeData.challengerId === currentUser.uid;
+            document.getElementById('challengeMonitorMeName').textContent = userProgress?.name || 'You';
+            document.getElementById('challengeMonitorFriendName').textContent = isChallenger ? (challengeData.opponentName || 'Friend') : (challengeData.challengerName || 'Friend');
+            
+            await db.collection('challenges').doc(challengeId).set({
+                status: 'in_progress'
+            }, { merge: true });
+            
+            startChallengeLiveMonitor(challengeId);
             
             closeViewChallengesModal();
             loadQuestion();
             showGameScreen();
+        }
+
+        function startChallengeLiveMonitor(challengeId) {
+            if (challengeUnsubscribe) {
+                try { challengeUnsubscribe(); } catch {}
+                challengeUnsubscribe = null;
+            }
+            
+            challengeUnsubscribe = db.collection('challenges').doc(challengeId).onSnapshot((snap) => {
+                if (!snap.exists) return;
+                const c = snap.data();
+                const isChallenger = c.challengerId === currentUser.uid;
+                
+                const myScores = isChallenger ? (c.challengerSentenceScores || []) : (c.opponentSentenceScores || []);
+                const friendScores = isChallenger ? (c.opponentSentenceScores || []) : (c.challengerSentenceScores || []);
+                const myTotal = isChallenger ? (c.challengerScore || 0) : (c.opponentScore || 0);
+                const friendTotal = isChallenger ? (c.opponentScore || 0) : (c.challengerScore || 0);
+                
+                challengeLiveState.mySentenceScores = myScores;
+                challengeLiveState.friendSentenceScores = friendScores;
+                challengeLiveState.myTotal = myTotal;
+                challengeLiveState.friendTotal = friendTotal;
+                
+                document.getElementById('challengeMonitorMeTotal').textContent = String(myTotal);
+                document.getElementById('challengeMonitorFriendTotal').textContent = String(friendTotal);
+                document.getElementById('challengeMonitorMeLast').textContent = myScores.length ? String(myScores[myScores.length - 1]) : '-';
+                document.getElementById('challengeMonitorFriendLast').textContent = friendScores.length ? String(friendScores[friendScores.length - 1]) : '-';
+                
+                // If someone finished first, end the round on BOTH screens
+                const challengerFinishedAt = c.challengerFinishedAt?.toMillis ? c.challengerFinishedAt.toMillis() : null;
+                const opponentFinishedAt = c.opponentFinishedAt?.toMillis ? c.opponentFinishedAt.toMillis() : null;
+                let winnerName = null;
+                let winnerId = null;
+                
+                if (challengerFinishedAt && opponentFinishedAt) {
+                    winnerId = challengerFinishedAt <= opponentFinishedAt ? c.challengerId : c.opponentId;
+                } else if (challengerFinishedAt) {
+                    winnerId = c.challengerId;
+                } else if (opponentFinishedAt) {
+                    winnerId = c.opponentId;
+                }
+                
+                if (winnerId) {
+                    winnerName = winnerId === c.challengerId ? (c.challengerName || 'Winner') : (c.opponentName || 'Winner');
+                    showChallengeWinnerAndEnd(winnerName);
+                }
+            }, (err) => {
+                console.error('Challenge live monitor error:', err);
+            });
+        }
+
+        function showChallengeWinnerAndEnd(winnerName) {
+            const banner = document.getElementById('challengeWinnerBanner');
+            const text = document.getElementById('challengeWinnerText');
+            if (text) text.textContent = winnerName;
+            if (banner) banner.classList.remove('hidden');
+            
+            // Stop timers / gameplay immediately
+            if (challengeTimer) clearInterval(challengeTimer);
+            document.getElementById('challengeScoreDisplay').classList.add('hidden');
+            document.getElementById('challengeTimerDisplay').classList.add('hidden');
+            
+            // Prevent repeated exits
+            if (currentChallengeId) {
+                const endedChallengeId = currentChallengeId;
+                currentChallengeId = null;
+                challengeScore = 0;
+                
+                setTimeout(() => {
+                    alert(`🎉 ${winnerName} finished first! Congratulations!\\n\\nThis challenge round has ended.`);
+                    // Clean up listener
+                    if (challengeUnsubscribe) {
+                        try { challengeUnsubscribe(); } catch {}
+                        challengeUnsubscribe = null;
+                    }
+                    document.getElementById('challengeMonitorPanel').classList.add('hidden');
+                    updateChallengeStateIndicator();
+                    backToDashboard();
+                }, 800);
+            }
         }
         
         // Start timer for challenge question
@@ -5024,9 +5398,11 @@
         }
         
         function nextChallengeQuestion() {
+            if (questionTransitionLocked) return;
+            questionTransitionLocked = true;
             if (challengeTimer) clearInterval(challengeTimer);
             
-            currentQuestionIndex++;
+            currentQuestionIndex = currentQuestionIndex + 1;
             
             if (currentQuestionIndex >= levelQuestions.length) {
                 // Challenge complete
@@ -5034,6 +5410,7 @@
             } else {
                 loadQuestion();
             }
+            questionTransitionLocked = false;
         }
         
         async function completeChallengeForUser() {
@@ -5050,51 +5427,109 @@
             // Update challenge with user's score
             const updateData = {
                 [isChallenger ? 'challengerScore' : 'opponentScore']: challengeScore,
-                [isChallenger ? 'challengerCompleted' : 'opponentCompleted']: true
+                [isChallenger ? 'challengerCompleted' : 'opponentCompleted']: true,
+                [isChallenger ? 'challengerFinishedAt' : 'opponentFinishedAt']: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Check if both completed
-            const bothCompleted = isChallenger ? challengeData.opponentCompleted : challengeData.challengerCompleted;
-            
-            if (bothCompleted) {
-                // Determine winner
-                const challengerScore = isChallenger ? challengeScore : challengeData.challengerScore;
-                const opponentScore = isChallenger ? challengeData.opponentScore : challengeScore;
-                
-                let winner;
-                if (challengerScore > opponentScore) {
-                    winner = challengeData.challengerId;
-                } else if (opponentScore > challengerScore) {
-                    winner = challengeData.opponentId;
-                } else {
-                    winner = 'tie';
-                }
-                
-                updateData.status = 'completed';
-                updateData.winner = winner;
-            }
+            // Round ends as soon as ANYONE finishes first
+            updateData.status = 'completed';
+            updateData.winner = currentUser.uid;
             
             await db.collection('challenges').doc(currentChallengeId).update(updateData);
             
             // Show completion message
-            alert(`Challenge Complete! Your Score: ${challengeScore}\n${bothCompleted ? 'Check challenges to see the winner!' : 'Waiting for opponent to complete...'}`);
+            alert(`Challenge Complete! Your Score: ${challengeScore}\nWaiting for the live result...`);
             
             currentChallengeId = null;
             challengeScore = 0;
+            await updateChallengeStateIndicator();
             backToDashboard();
         }
         
         // Load all challenges for admin view
+        function getFullyCompletedLevelCount(progressData) {
+            const levels = ['Beginner', 'Intermediate', 'Advanced'];
+            return levels.filter(level => {
+                const levelProgress = progressData?.progress?.[level] || { completed: 0, total: appSettings.sentencesPerLevel };
+                return (levelProgress.completed || 0) >= (levelProgress.total || appSettings.sentencesPerLevel);
+            }).length;
+        }
+        
+        async function updateChallengeEligibilityUI() {
+            const challengeBtn = document.getElementById('challengeFriendBtn');
+            if (!challengeBtn || !userProgress) return;
+            
+            const completed = getFullyCompletedLevelCount(userProgress);
+            challengeBtn.disabled = completed < 2;
+            challengeBtn.textContent = completed < 2
+                ? '🏆 Challenge Friend (Unlock after 2 levels)'
+                : '🏆 Challenge Friend';
+        }
+        
+        async function updateChallengeStateIndicator() {
+            if (!currentUser || isAdmin) return;
+            const indicator = document.getElementById('challengeStateText');
+            if (!indicator) return;
+            
+            try {
+                const sentSnapshot = await db.collection('challenges').where('challengerId', '==', currentUser.uid).get();
+                const receivedSnapshot = await db.collection('challenges').where('opponentId', '==', currentUser.uid).get();
+                const allChallenges = [...sentSnapshot.docs, ...receivedSnapshot.docs].map(doc => doc.data());
+                
+                const pending = allChallenges.filter(c => c.status === 'pending').length;
+                const active = allChallenges.filter(c => c.status === 'in_progress').length;
+                const completed = allChallenges.filter(c => c.status === 'completed').length;
+                indicator.textContent = `Pending: ${pending} | Active: ${active} | Completed: ${completed}`;
+            } catch (error) {
+                indicator.textContent = 'Could not load challenge state.';
+            }
+        }
+        
+        async function deleteChallenge(challengeId) {
+            if (!confirm('Delete this challenge request?')) return;
+            
+            try {
+                await db.collection('challenges').doc(challengeId).delete();
+                showSuccess('Challenge removed.');
+                await loadAllChallenges();
+            } catch (error) {
+                showError('Error deleting challenge: ' + error.message);
+            }
+        }
+        
+        async function removePendingChallenges() {
+            if (!confirm('Remove all pending challenges?')) return;
+            
+            try {
+                const pendingSnapshot = await db.collection('challenges')
+                    .where('status', '==', 'pending')
+                    .get();
+                
+                if (pendingSnapshot.empty) {
+                    showSuccess('No pending challenges to remove.');
+                    return;
+                }
+                
+                const batch = db.batch();
+                pendingSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                showSuccess(`Removed ${pendingSnapshot.size} pending challenge(s).`);
+                await loadAllChallenges();
+            } catch (error) {
+                showError('Error removing pending challenges: ' + error.message);
+            }
+        }
+        
         async function loadAllChallenges() {
             const tbody = document.getElementById('challengesTableBody');
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;"><div class="spinner"></div><p>Loading...</p></td></tr>';
             
             try {
                 const snapshot = await db.collection('challenges').orderBy('createdAt', 'desc').get();
                 tbody.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No challenges yet</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No challenges yet</td></tr>';
                     return;
                 }
                 
@@ -5111,11 +5546,12 @@
                         <td>${c.challengerScore}</td>
                         <td>${c.opponentScore}</td>
                         <td>${c.winner ? (c.winner === 'tie' ? 'Tie' : (c.winner === c.challengerId ? c.challengerName : c.opponentName)) : '-'}</td>
+                        <td><button class="btn btn-danger" onclick="deleteChallenge('${doc.id}')" style="font-size: 0.8rem; padding: 6px 10px;">Delete</button></td>
                     `;
                     tbody.appendChild(row);
                 });
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--color-danger);">Error: ${error.message}</td></tr>`;
             }
         }
         
