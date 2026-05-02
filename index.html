@@ -2310,8 +2310,10 @@
             levelsGrid.innerHTML = '';
             
             levels.forEach((level, index) => {
-                const progress = userProgress.progress[level] || { completed: 0, total: appSettings.sentencesPerLevel };
-                const percentage = Math.round((progress.completed / progress.total) * 100);
+                const requiredTotal = appSettings.sentencesPerLevel || 100;
+                const progress = userProgress.progress[level] || { completed: 0, total: requiredTotal };
+                const completed = progress.completed || 0;
+                const percentage = Math.min(100, Math.round((completed / requiredTotal) * 100));
                 const isLocked = index > 0 && (userProgress.progress[levels[index - 1]]?.completed || 0) < appSettings.sentencesPerLevel;
                 
                 const card = document.createElement('div');
@@ -2325,7 +2327,7 @@
                         <div class="progress-bar" style="width: ${percentage}%"></div>
                     </div>
                     <div class="level-stats">
-                        <span>${progress.completed}/${progress.total} completed</span>
+                        <span>${completed}/${requiredTotal} completed</span>
                         <span>${percentage}%</span>
                     </div>
                 `;
@@ -2349,8 +2351,10 @@
             certificatesGrid.innerHTML = '';
             
             levels.forEach(level => {
-                const progress = userProgress.progress[level] || { completed: 0, total: appSettings.sentencesPerLevel };
-                const isCompleted = progress.completed >= progress.total;
+                const requiredTotal = appSettings.sentencesPerLevel || 100;
+                const progress = userProgress.progress[level] || { completed: 0, total: requiredTotal };
+                const completed = progress.completed || 0;
+                const isCompleted = completed >= requiredTotal;
                 
                 const card = document.createElement('div');
                 card.className = `level-card ${!isCompleted ? 'locked' : ''}`;
@@ -3838,12 +3842,13 @@
             await downloadCertificateForLevel(currentLevel);
         }
         
+        let certExamStarting = false;
+        
         function containsArabic(textValue) {
             return /[\u0600-\u06FF]/.test(textValue || '');
         }
         
         function openHtmlCertificate(level, studentData, autoPrint = false) {
-            const progress = studentData.progress[level] || {};
             const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
             const win = window.open('', '_blank');
             if (!win) return;
@@ -3868,7 +3873,6 @@
         <div class="name">${studentData.name || 'Student'}</div>
         <p class="line">has successfully completed</p>
         <h2>${level} Level</h2>
-        <p class="line">⭐ ${progress.completed || 0} Stars</p>
         <p class="line">Date: ${today}</p>
     </div>
     ${autoPrint ? '<script>window.print()</scr' + 'ipt>' : ''}
@@ -3888,13 +3892,38 @@
         }
         
         async function startCertificationExam(level) {
+            if (certExamStarting) return;
+            const modal = document.getElementById('certExamModal');
+            if (modal && !modal.classList.contains('hidden')) return;
+            
+            certExamStarting = true;
+            
             const snapshot = await db.collection('questions')
                 .where('level', '==', level)
                 .get();
             
-            const selected = shuffleArray(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))).slice(0, 10);
+            // Prefer a fixed, teacher-defined exam list if provided in settings/certificationExam
+            let selected = [];
+            try {
+                const examDoc = await db.collection('settings').doc('certificationExam').get();
+                const ids = examDoc.exists ? (examDoc.data()?.[level] || []) : [];
+                if (Array.isArray(ids) && ids.length === 10) {
+                    const docs = await Promise.all(ids.map(id => db.collection('questions').doc(id).get()));
+                    selected = docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
+                }
+            } catch (e) {
+                // Fall back to deterministic selection below
+            }
+            
+            if (selected.length !== 10) {
+                // Deterministic fallback: sort by doc id, take first 10
+                const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+                selected = all.slice(0, 10);
+            }
             if (selected.length < 10) {
                 showError('Certification block requires at least 10 questions in this level.');
+                certExamStarting = false;
                 return;
             }
             
@@ -3907,6 +3936,7 @@
             
             document.getElementById('certExamModal').classList.remove('hidden');
             renderCertificationQuestion();
+            certExamStarting = false;
         }
         
         function renderCertificationQuestion() {
@@ -3961,15 +3991,16 @@
             if (certificationExamState.index >= 10) {
                 certificationExamState.passed = true;
                 
+                // Update local state first to prevent any gating loops
+                userProgress = userProgress || {};
+                userProgress.certificationExamPassed = userProgress.certificationExamPassed || {};
+                userProgress.certificationExamPassed[certificationExamState.level] = true;
+                
                 await db.collection('users').doc(currentUser.uid).set({
                     certificationExamPassed: {
                         [certificationExamState.level]: true
                     }
                 }, { merge: true });
-                
-                userProgress = userProgress || {};
-                userProgress.certificationExamPassed = userProgress.certificationExamPassed || {};
-                userProgress.certificationExamPassed[certificationExamState.level] = true;
                 
                 showSuccess('Certification block completed. Certificate printing is now unlocked.');
                 closeCertificationExamModal();
@@ -4070,12 +4101,6 @@
             doc.setTextColor(certificateSettings.titleColor);
             doc.setFont(certificateSettings.fontFamily || 'helvetica', 'bold');
             doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
-            
-            // Add stars only
-            doc.setFontSize(14);
-            doc.setTextColor('#0F172A');
-            const progress = userProgress?.progress[level] || {};
-            doc.text(`⭐ ${progress.completed || 0} Stars`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
@@ -4678,12 +4703,6 @@
             doc.setTextColor(certificateSettings.titleColor);
             doc.setFont('helvetica', 'bold');
             doc.text(`${level} Level`, 148.5, 130, { align: 'center' });
-            
-            // Add stars only
-            doc.setFontSize(14);
-            doc.setTextColor('#0F172A');
-            const progress = studentData.progress[level] || {};
-            doc.text(`⭐ ${progress.completed || 0} Stars`, 148.5, 145, { align: 'center' });
             
             // Add date
             doc.setFontSize(12);
