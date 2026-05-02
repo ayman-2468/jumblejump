@@ -1339,7 +1339,7 @@
                 <p style="color: var(--color-text-secondary); margin-top: 10px;">You earned a star!</p>
             </div>
             
-            <button class="btn btn-primary" onclick="nextQuestion()">Continue →</button>
+            <button class="btn btn-primary" onclick="submitAndNext()">Continue →</button>
         </div>
     </div>
 
@@ -1364,10 +1364,10 @@
                 </div>
             </div>
             
-            <button class="btn btn-primary" onclick="downloadCertificate()" style="margin-bottom: 10px; width: 100%;">
+            <button class="btn btn-primary" onclick="downloadCertificate()" style="margin-bottom: 10px; width: 100%;" id="levelCompletePrimaryBtn">
                 📄 Download Certificate
             </button>
-            <button class="btn btn-outline" onclick="backToDashboard()" style="width: 100%;">
+            <button class="btn btn-outline" onclick="backToDashboard()" style="width: 100%;" id="levelCompleteSecondaryBtn">
                 Back to Dashboard
             </button>
         </div>
@@ -2903,6 +2903,7 @@
             successCount = 0;
             requiredSuccessCount = appSettings.trialsPerSentence || 3;
             isAdvancingToNextQuestion = false;
+            lastAdvancedQuestionIndex = -1;
             
             // Update header
             document.getElementById('currentLevelName').textContent = currentLevel;
@@ -3713,6 +3714,8 @@
         }
         
         function submitAndNext() {
+            if (isAdvancingToNextQuestion) return;
+            isAdvancingToNextQuestion = true;
             // Close success modal
             document.getElementById('successModal').classList.add('hidden');
             
@@ -3722,6 +3725,9 @@
         
         async function nextQuestion() {
             if (questionTransitionLocked) return;
+            // Prevent double-advance from the same question (button + timer races)
+            if (lastAdvancedQuestionIndex === currentQuestionIndex) return;
+            lastAdvancedQuestionIndex = currentQuestionIndex;
             questionTransitionLocked = true;
             document.getElementById('successModal').classList.add('hidden');
             
@@ -3833,6 +3839,27 @@
             }, 250);
             
             // Show level complete modal
+            const levels = ['Beginner', 'Intermediate', 'Advanced'];
+            const idx = levels.indexOf(currentLevel);
+            const nextLevel = idx >= 0 && idx < levels.length - 1 ? levels[idx + 1] : null;
+            const primaryBtn = document.getElementById('levelCompletePrimaryBtn');
+            const secondaryBtn = document.getElementById('levelCompleteSecondaryBtn');
+            
+            if (nextLevel) {
+                primaryBtn.textContent = `▶ Start ${nextLevel} Level`;
+                primaryBtn.onclick = () => {
+                    document.getElementById('levelCompleteModal').classList.add('hidden');
+                    startLevel(nextLevel);
+                };
+                secondaryBtn.textContent = '📄 Download Certificate';
+                secondaryBtn.onclick = () => downloadCertificate();
+            } else {
+                primaryBtn.textContent = '📄 Download Certificate';
+                primaryBtn.onclick = () => downloadCertificate();
+                secondaryBtn.textContent = 'Back to Dashboard';
+                secondaryBtn.onclick = () => backToDashboard();
+            }
+            
             document.getElementById('levelCompleteModal').classList.remove('hidden');
         }
         
@@ -3882,6 +3909,7 @@
         let certExamSubmitting = false;
         let certBypassGateOnce = false;
         let isAdvancingToNextQuestion = false;
+        let lastAdvancedQuestionIndex = -1;
         
         function containsArabic(textValue) {
             return /[\u0600-\u06FF]/.test(textValue || '');
@@ -4076,13 +4104,6 @@
             if (completed < requiredTotal) {
                 showError(`Complete ${requiredTotal} questions in ${level} before downloading the certificate.`);
                 return;
-            }
-            
-            if (!certBypassGateOnce) {
-                const certificationPassed = await ensureCertificationPassed(level);
-                if (!certificationPassed) return;
-            } else {
-                certBypassGateOnce = false;
             }
             
             await loadCertificateSettings();
@@ -5350,12 +5371,6 @@
                 return;
             }
             
-            const fullLevelsCompleted = getFullyCompletedLevelCount(currentUserDoc.data());
-            if (fullLevelsCompleted < 2) {
-                showError('You must complete at least 2 full levels before using challenges.');
-                return;
-            }
-            
             try {
                 const challengeData = {
                     challengerId: currentUser.uid,
@@ -5718,13 +5733,9 @@
         
         async function updateChallengeEligibilityUI() {
             const challengeBtn = document.getElementById('challengeFriendBtn');
-            if (!challengeBtn || !userProgress) return;
-            
-            const completed = getFullyCompletedLevelCount(userProgress);
-            challengeBtn.disabled = completed < 2;
-            challengeBtn.textContent = completed < 2
-                ? '🏆 Challenge Friend (Unlock after 2 levels)'
-                : '🏆 Challenge Friend';
+            if (!challengeBtn) return;
+            challengeBtn.disabled = false;
+            challengeBtn.textContent = '🏆 Challenge Friend';
         }
         
         async function updateChallengeStateIndicator() {
